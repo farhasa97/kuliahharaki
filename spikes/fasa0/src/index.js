@@ -229,6 +229,11 @@ export default {
       if (!dibenarkan(req, env)) return new Response('tidak dibenarkan', { status: 401 });
       if (p === '/bayarcash/mulakan' && req.method === 'POST') return mulakanBayaran(url, env);
       if (p === '/ujian/bayaran') return semakBayaran(url, env);
+      if (p === '/ujian/callback') {
+        // Semua rekod callback terkini, tanpa tapisan order, termasuk yang badannya tak dapat dihurai.
+        const { results } = await env.DB.prepare('SELECT * FROM callback_log ORDER BY id DESC LIMIT 20').all();
+        return json(results);
+      }
       if (p === '/ujian/cpu') return ujianCpu(url);
       if (p === '/ujian/subrequest') return ujianSubrequest(url, env);
       if (p === '/ujian/d1') return ujianD1(url, env);
