@@ -2,5 +2,26 @@ name = "kh-fasa0-spike"
 main = "src/index.js"
 compatibility_date = "2026-10-01"
 
+[vars]
+BAYARCASH_BASE = "https://api.console.bayarcash-sandbox.com/v3"
+
+# Rahsia (BUKAN di sini): BAYARCASH_PAT, BAYARCASH_API_SECRET_KEY, BAYARCASH_PORTAL_KEY, UJIAN_TOKEN.
+# Tetapkan dengan `wrangler secret put <NAMA>`. Lihat docs/CLOUDFLARE.md.
+
+[observability]
+enabled = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "kh-fasa0"
+database_id = "GANTI-DENGAN-ID-DARI-wrangler-d1-create" # bukan rahsia, boleh di-commit
+migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "FAIL"
+bucket_name = "kh-fasa0-ujian"
+
 [triggers]
-crons = ["0 22 * * *"] # 06:00 GMT+8
+# Ujian: setiap 5 minit supaya hasil cron nampak cepat di cron_log. Tukar ke harian
+# ("0 22 * * *" = 06:00 GMT+8) selepas ujian selesai.
+crons = ["*/5 * * * *"]
