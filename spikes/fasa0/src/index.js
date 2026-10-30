@@ -245,6 +245,13 @@ export default {
         return json(results);
       }
     }
+    if (req.method !== 'GET') {
+      // Rekod permintaan bukan-GET ke laluan tak dikenali (contohnya Bayarcash menuju laluan lain).
+      await env.DB.prepare(
+        `INSERT INTO callback_log (diterima_pada, jenis_kandungan, badan_mentah, checksum_sah, order_number, keputusan)
+         VALUES (?, ?, ?, 0, NULL, ?)`,
+      ).bind(sekarang(), req.headers.get('content-type') ?? '', (await req.text()).slice(0, 4000), `laluan_tak_dikenali:${req.method} ${p}`).run();
+    }
     return new Response('kh fasa0 spike');
   },
 
