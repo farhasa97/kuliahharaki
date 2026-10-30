@@ -1,0 +1,12 @@
+{
+  "name": "kh-fasa0-spike",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"test/*.test.js\"",
+    "dev": "wrangler dev --test-scheduled"
+  },
+  "devDependencies": {
+    "wrangler": "^4"
+  }
+}

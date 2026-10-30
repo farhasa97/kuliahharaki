@@ -1,0 +1,6 @@
+name = "kh-fasa0-spike"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+[triggers]
+crons = ["0 22 * * *"] # 06:00 GMT+8
