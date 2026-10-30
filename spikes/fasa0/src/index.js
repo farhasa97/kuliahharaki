@@ -145,7 +145,8 @@ async function rekonsiliasi(env, umurMinit) {
     }
     // Utamakan transaksi berjaya; kalau tiada, ambil yang gagal/batal; kalau tiada, biarkan.
     const akhir = r.senarai.find((t) => Number(t.status) === STATUS.SUCCESS) ?? r.senarai.find((t) => [2, 4, 5].includes(Number(t.status)));
-    hasil.push({ order, http: r.status, bilangan: r.senarai.length, keputusan: akhir ? await tetapkanBayaran(env, order, Number(akhir.status), akhir.id ?? akhir.transaction_id) : 'tiada_status_akhir' });
+    hasil.push({ order, http: r.status, bilangan: r.senarai.length, status_bayarcash: r.senarai.map((t) => t.status),
+      contoh: r.senarai.length ? undefined : r.teks.slice(0, 300), keputusan: akhir ? await tetapkanBayaran(env, order, Number(akhir.status), akhir.id ?? akhir.transaction_id) : 'tiada_status_akhir' });
   }
   return hasil;
 }
