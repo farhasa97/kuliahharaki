@@ -149,16 +149,20 @@ Siap: akaun Cloudflare (percuma), Bayarcash sandbox. Domain belum dibeli, guna `
 
 Capaian rangkaian ke `docs.bayarcash.com` dan `api-reference.bayarcash.com` sudah berfungsi pada session ini, jadi item lama tentang capaian dokumentasi dibuang.
 
-## 5. Ujian yang hanya boleh dibuat di Cloudflare sebenar
+## 5. Ujian di Cloudflare sebenar (30/10/2026, akaun plan Free, Worker `kh-fasa0-spike`)
 
-Langkah tepat ada di `docs/CLOUDFLARE.md`. Isi jadual ini selepas jalankan.
+Langkah ada di `docs/CLOUDFLARE.md`. Ujian dijalankan dari PowerShell terhadap Worker yang di-deploy melalui Git (branch `main`, root `spikes/fasa0`).
 
-| Ujian | Arahan | Jangkaan | Hasil |
-|---|---|---|---|
-| CPU login (PBKDF2 10k hingga 100k) | `node scripts/ujian.mjs cpu` | Cari iterasi tertinggi yang lulus 5/5 tanpa 1102 | belum dijalankan |
-| Subrequest | `node scripts/ujian.mjs subrequest` | Berhenti pada 50 (plan percuma) | belum dijalankan |
-| D1 `batch()` | `node scripts/ujian.mjs d1` | batch 200 dan 1000 lulus, `seq 60` gagal selepas 50 query | belum dijalankan |
-| R2 | `node scripts/ujian.mjs r2` | semua `true` | **ditangguh.** Disahkan 30/10/2026: R2 perlu "Add R2 subscription" pada akaun (kaedah bayaran disimpan; $0 dalam had percuma 10GB, 1 juta Class A, 10 juta Class B). Menunggu kelulusan pemilik akaun |
-| Cron | tunggu 10 minit, `node scripts/ujian.mjs cron` | baris `cron_log` setiap 5 minit; catat had bilangan cron | belum dijalankan |
-| Callback sandbox | `node scripts/ujian.mjs bayar`, bayar, `semak <order>` | bayaran `berjaya`, 1 baris `callback_log` sah; catat jenis kandungan dan `varian` | belum dijalankan |
-| Rekonsiliasi | `node scripts/ujian.mjs rekon` | bayaran `menunggu` bertukar selepas soal gateway; catat bentuk respons | belum dijalankan |
+| Ujian | Hasil |
+|---|---|
+| Subrequest (fetch keluar) | **Disahkan 50.** Request ke-51 gagal dengan "Too many subrequests by single Worker invocation". Cron reminder wajib dikelompokkan atau dipecah. |
+| D1 `batch()` | 200 INSERT dalam 141 ms, 1000 INSERT dalam 243 ms, satu invokasi, tiada ralat. |
+| D1 query berasingan | 60 `run()` berturut-turut **semua berjaya**, jadi had "50 query D1" dalam SPEC bahagian 14 **tidak terbukti** (had sebenar belum dicari). Setiap tulis berasingan lebih kurang 47 ms (2823 ms untuk 60), jauh lebih perlahan daripada batch. Tulis progress guna `batch()`. |
+| PBKDF2-SHA256 | 1k, 10k, 25k, 50k dan 100k iterasi lulus 5/5 setiap satu. 100,001 iterasi ralat (HTTP 500), jadi **100,000 ialah had WebCrypto di Workers**. |
+| CPU time (dashboard Metrics) | Satu PBKDF2 100k lebih kurang **21.6 ms (P90) dan 22.3 ms (P99)**. Satu request dengan 10 hash (lebih kurang 215 ms CPU) tetap berjaya pada plan Free. |
+| Cron `*/5 * * * *` | Berfungsi. Rekod id 16 hingga 35 (11:10 hingga 12:45 UTC) berturut-turut tanpa jurang. Kelewatan dari masa dijadual: 1 hingga 2 saat, sekali 4 saat. Had bilangan cron percuma **tidak diuji**. |
+| R2 | **Ditangguh.** Perlu "Add R2 subscription" pada akaun (kaedah bayaran disimpan; $0 dalam had percuma 10GB, 1 juta Class A, 10 juta Class B). Menunggu kelulusan pemilik akaun. |
+| Callback sandbox Bayarcash | belum dijalankan |
+| Rekonsiliasi (`GET /v3/transactions`) | belum dijalankan |
+
+**Tafsiran CPU dan keputusan login.** Dokumentasi (dari ingatan, belum disemak semula) menyebut had 10 ms CPU setiap request pada plan Free. Satu hash PBKDF2 100k makan lebih dua kali ganda itu, dan sepuluh hash (215 ms) tetap berjaya. Maksudnya had tak dikuatkuasakan seperti didokumenkan pada ujian ini. Sebabnya tak diketahui, dan jangan bina di atas kelonggaran yang tak difahami: ia boleh berubah tanpa notis. Faktanya, kos satu hash yang kukuh (100,000 ialah maksimum, masih di bawah saranan OWASP untuk PBKDF2-SHA256, dari ingatan) ialah lebih 20 ms. Kesimpulan: **kekal pilihan A (login tanpa kata laluan).** Pilihan B hanya wajar dengan Workers Paid. Ukuran Node (bahagian 3) terbukti proksi yang baik (17 ms lawan 21 ms sebenar).
