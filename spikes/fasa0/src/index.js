@@ -10,9 +10,10 @@ const json = (o, status = 200) => Response.json(o, { status });
 function cfg(env) {
   return {
     base: env.BAYARCASH_BASE,
-    pat: env.BAYARCASH_PAT,
-    secret: env.BAYARCASH_API_SECRET_KEY,
-    portalKey: env.BAYARCASH_PORTAL_KEY,
+    // trim: ruang atau baris baru tertampal dalam dashboard menyebabkan 401 atau checksum salah
+    pat: env.BAYARCASH_PAT?.trim(),
+    secret: env.BAYARCASH_API_SECRET_KEY?.trim(),
+    portalKey: env.BAYARCASH_PORTAL_KEY?.trim(),
   };
 }
 
@@ -59,12 +60,12 @@ async function terimaCallback(req, env) {
   const order = data.order_number ?? null;
   if (data.record_type !== 'transaction') {
     // Pre-transaction dan jenis lain: sahkan, simpan log, tiada perubahan status.
-    const sah = await sahkanCallback(env.BAYARCASH_API_SECRET_KEY, data, MEDAN_PRE_TRANSAKSI);
+    const sah = await sahkanCallback(cfg(env).secret, data, MEDAN_PRE_TRANSAKSI);
     await log(sah, null, order, `bukan_transaksi:${data.record_type ?? '?'}`);
     return sah ? new Response('ok') : new Response('checksum tidak sah', { status: 403 });
   }
 
-  const { sah, varian } = await sahkanTransaksi(env.BAYARCASH_API_SECRET_KEY, data);
+  const { sah, varian } = await sahkanTransaksi(cfg(env).secret, data);
   if (!sah) {
     await log(false, null, order, 'checksum_tak_sah');
     return new Response('checksum tidak sah', { status: 403 });
@@ -82,7 +83,7 @@ async function terimaCallback(req, env) {
 // Halaman pulang: paparan sahaja. Status sebenar hanya daripada callback dan cron.
 async function halamanPulang(url, env) {
   const data = Object.fromEntries(url.searchParams);
-  const sah = await sahkanCallback(env.BAYARCASH_API_SECRET_KEY, data, MEDAN_RETURN_URL);
+  const sah = await sahkanCallback(cfg(env).secret, data, MEDAN_RETURN_URL);
   const baris = data.order_number
     ? await env.DB.prepare('SELECT status FROM bayaran_ujian WHERE order_number = ?').bind(data.order_number).first()
     : null;
