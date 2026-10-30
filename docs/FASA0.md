@@ -158,7 +158,7 @@ Langkah tepat ada di `docs/CLOUDFLARE.md`. Isi jadual ini selepas jalankan.
 | CPU login (PBKDF2 10k hingga 100k) | `node scripts/ujian.mjs cpu` | Cari iterasi tertinggi yang lulus 5/5 tanpa 1102 | belum dijalankan |
 | Subrequest | `node scripts/ujian.mjs subrequest` | Berhenti pada 50 (plan percuma) | belum dijalankan |
 | D1 `batch()` | `node scripts/ujian.mjs d1` | batch 200 dan 1000 lulus, `seq 60` gagal selepas 50 query | belum dijalankan |
-| R2 | `node scripts/ujian.mjs r2` | semua `true`; catat sama ada kad diminta semasa aktifkan | belum dijalankan |
+| R2 | `node scripts/ujian.mjs r2` | semua `true` | **ditangguh.** Disahkan 30/10/2026: R2 perlu "Add R2 subscription" pada akaun (kaedah bayaran disimpan; $0 dalam had percuma 10GB, 1 juta Class A, 10 juta Class B). Menunggu kelulusan pemilik akaun |
 | Cron | tunggu 10 minit, `node scripts/ujian.mjs cron` | baris `cron_log` setiap 5 minit; catat had bilangan cron | belum dijalankan |
 | Callback sandbox | `node scripts/ujian.mjs bayar`, bayar, `semak <order>` | bayaran `berjaya`, 1 baris `callback_log` sah; catat jenis kandungan dan `varian` | belum dijalankan |
 | Rekonsiliasi | `node scripts/ujian.mjs rekon` | bayaran `menunggu` bertukar selepas soal gateway; catat bentuk respons | belum dijalankan |

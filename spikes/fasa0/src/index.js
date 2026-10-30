@@ -201,6 +201,7 @@ async function ujianR2(env) {
   const kunci = `ujian/${crypto.randomUUID()}.txt`;
   const isi = 'nota ujian r2 '.repeat(100);
   const langkah = {};
+  if (!env.FAIL) return json({ ralat: 'binding R2 (FAIL) belum diaktifkan, lihat wrangler.toml' }, 501);
   try {
     await env.FAIL.put(kunci, isi, { httpMetadata: { contentType: 'text/plain' } });
     langkah.put = true;

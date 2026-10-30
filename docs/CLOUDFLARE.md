@@ -42,6 +42,8 @@ npx wrangler d1 migrations apply DB --remote
 npx wrangler r2 bucket create kh-fasa0-ujian
 ```
 
+**Status R2 (30/10/2026):** binding R2 dalam `wrangler.toml` dikomen kerana akaun belum ada subscription R2. Langkah 2 untuk R2 dan ujian 6d dilangkau sehingga pemilik akaun setuju, kemudian buang `#` pada blok `[[r2_buckets]]`.
+
 **Catat:** adakah R2 minta kad atau kaedah bayaran semasa aktifkan? Kalau ya, ia akan keluar sebagai ralat atau halaman di dashboard (R2 Object Storage, Purchase). Ini jawapan kepada item "R2 perlu kad atau tidak".
 
 ## 3. Deploy pertama

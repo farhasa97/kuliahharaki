@@ -17,9 +17,11 @@ database_name = "kh-fasa0"
 database_id = "be7a69c5-8b1d-49a7-b0ab-6482a35d61ed" # bukan rahsia, boleh di-commit
 migrations_dir = "migrations"
 
-[[r2_buckets]]
-binding = "FAIL"
-bucket_name = "kh-fasa0-ujian"
+# R2 ditangguh: perlu subscription R2 pada akaun Cloudflare (kaedah bayaran disimpan, kos $0 dalam had
+# percuma 10GB). Tunggu kelulusan pemilik akaun, kemudian buang tanda # di bawah, buat bucket, dan deploy.
+# [[r2_buckets]]
+# binding = "FAIL"
+# bucket_name = "kh-fasa0-ujian"
 
 [triggers]
 # Ujian: setiap 5 minit supaya hasil cron nampak cepat di cron_log. Tukar ke harian
