@@ -14,7 +14,7 @@ enabled = true
 [[d1_databases]]
 binding = "DB"
 database_name = "kh-fasa0"
-database_id = "GANTI-DENGAN-ID-DARI-wrangler-d1-create" # bukan rahsia, boleh di-commit
+database_id = "be7a69c5-8b1d-49a7-b0ab-6482a35d61ed" # bukan rahsia, boleh di-commit
 migrations_dir = "migrations"
 
 [[r2_buckets]]
