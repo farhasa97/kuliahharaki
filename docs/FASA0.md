@@ -109,6 +109,24 @@ Penyelesaian T+2. Pengiraan di atas ialah matematik aku atas jadual rasmi, bukan
 
 Perubahan yang aku cadang pada `docs/SPEC.md` (belum disentuh, tunggu kau lulus): bahagian 7 langkah 2 tukar "POST form-encoded" kepada "form atau JSON"; tambah status `5`; tambah semakan jumlah; bahagian 7 langkah 1 sebut `Idempotency-Key`; bahagian 13 dan 16 rujuk jadual yuran rasmi dan pilihan DuitNow QR; bahagian 10 dan 14 tak berubah.
 
+### 1.10 Keputusan ujian sandbox (30 dan 31/10/2026)
+
+Disahkan terhadap Bayarcash sandbox sebenar:
+- `POST /v3/payment-intents` dengan bearer PAT: **201**. `amount` dihantar sebagai rentetan `"10.00"` diterima (respons memulangkan `10`). `order_number` 14 aksara diterima. Respons: `{ type, id: "pi_...", payer_*, order_number, amount, payment_channel, url }`, dengan `url` ke `console.bayarcash-sandbox.com/payment-intent/pi_...`.
+- Bank sandbox ialah bank tiruan (`exchange_reference_number` berawalan `MOCK-`).
+- **Return URL:** GET dengan query string. Selain 9 field checksum, ia membawa `payment_intent_id` dan `datetime` (format `2026-10-31T14:28:58+08:00`, GMT+8). Checksum 9 field **sah** pada dua bayaran berasingan, jadi API Secret Key, senarai field dan kaedah checksum disahkan.
+- **Rekonsiliasi:** `GET /v3/transactions?order_number=...` memulangkan senarai dengan status `3`. Bentuk tepat (tatasusunan terus atau dibalut `data`) tak dicatat; kod spike mengendalikan kedua-duanya.
+
+**Tidak berfungsi: callback.** Tiga bayaran berjaya (`pi_qpnwoG`, `pi_GWrgPY`, dan `pi_zgkX2z` dengan `callback_url` ke webhook.site) tidak menghasilkan sebarang POST callback:
+- Log Worker (`callback_log`) hanya ada satu baris, ujian palsu kita.
+- Cloudflare Observability tak menunjukkan sebarang request `POST /bayarcash/callback` atau ke laluan lain dalam tempoh selepas bayaran.
+- Callback ke webhook.site (URL awam) juga tidak sampai dalam 6 minit (dilaporkan pengguna).
+- Halaman Tools, Webhook Logs di dashboard sandbox kosong. Tidak pasti sama ada halaman itu merekod callback melalui `callback_url`.
+
+Kesimpulan sementara: sandbox tidak menghantar callback ke `callback_url` pada payment intent, atau memerlukan tetapan yang kita tak tahu. Ia **bukan** isu `*.workers.dev`, kod atau checksum. Soalan telah disediakan untuk sokongan Bayarcash (support@bayarcash.com), **belum dijawab**.
+
+**Cadangan reka bentuk (menunggu kelulusan, belum dalam SPEC atau kod):** bila pelajar tiba di halaman pulang, server menyemak checksum return URL dan terus bertanya `GET /v3/transactions?order_number=` dengan PAT, kemudian menetapkan status melalui laluan idempoten yang sama dengan callback. Query return URL tak dipercayai, hanya jawapan API. Callback dan cron rekonsiliasi menjadi jaring keselamatan. Faedah: langganan aktif seketika selepas bayar dan tak bergantung pada callback yang belum boleh diuji.
+
 ## 2. Kod spike (`spikes/fasa0/`)
 
 - `src/bayarcash.js`: checksum (WebCrypto), `hurai` (form atau JSON), `sahkanTransaksi` (varian amount), `ciptaPaymentIntent`, `cariTransaksi`.
@@ -162,7 +180,7 @@ Langkah ada di `docs/CLOUDFLARE.md`. Ujian dijalankan dari PowerShell terhadap W
 | CPU time (dashboard Metrics) | Satu PBKDF2 100k lebih kurang **21.6 ms (P90) dan 22.3 ms (P99)**. Satu request dengan 10 hash (lebih kurang 215 ms CPU) tetap berjaya pada plan Free. |
 | Cron `*/5 * * * *` | Berfungsi. Rekod id 16 hingga 35 (11:10 hingga 12:45 UTC) berturut-turut tanpa jurang. Kelewatan dari masa dijadual: 1 hingga 2 saat, sekali 4 saat. Had bilangan cron percuma **tidak diuji**. |
 | R2 | **Ditangguh.** Perlu "Add R2 subscription" pada akaun (kaedah bayaran disimpan; $0 dalam had percuma 10GB, 1 juta Class A, 10 juta Class B). Menunggu kelulusan pemilik akaun. |
-| Callback sandbox Bayarcash | belum dijalankan |
-| Rekonsiliasi (`GET /v3/transactions`) | belum dijalankan |
+| Callback sandbox Bayarcash | **Tiada callback diterima.** Lihat 1.10. |
+| Rekonsiliasi (`GET /v3/transactions?order_number=`) | **Berfungsi.** Pulang transaksi dengan status `3`, D1 ditetapkan `berjaya`, larian kedua tiada kerja (idempoten). |
 
 **Tafsiran CPU dan keputusan login.** Dokumentasi (dari ingatan, belum disemak semula) menyebut had 10 ms CPU setiap request pada plan Free. Satu hash PBKDF2 100k makan lebih dua kali ganda itu, dan sepuluh hash (215 ms) tetap berjaya. Maksudnya had tak dikuatkuasakan seperti didokumenkan pada ujian ini. Sebabnya tak diketahui, dan jangan bina di atas kelonggaran yang tak difahami: ia boleh berubah tanpa notis. Faktanya, kos satu hash yang kukuh (100,000 ialah maksimum, masih di bawah saranan OWASP untuk PBKDF2-SHA256, dari ingatan) ialah lebih 20 ms. Kesimpulan: **kekal pilihan A (login tanpa kata laluan).** Pilihan B hanya wajar dengan Workers Paid. Ukuran Node (bahagian 3) terbukti proksi yang baik (17 ms lawan 21 ms sebenar).
