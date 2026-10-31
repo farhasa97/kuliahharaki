@@ -109,7 +109,8 @@ async function mulakanBayaran(url, env) {
       nama: url.searchParams.get('nama') ?? 'Penguji Kuliah Haraki',
       emel: url.searchParams.get('emel') ?? 'penguji@example.com',
       returnUrl: `${url.origin}/bayarcash/pulang`,
-      callbackUrl: `${url.origin}/bayarcash/callback`,
+      // ?callback=... (ujian sahaja, dilindungi token) menghala callback ke URL lain untuk melihat badan mentah
+      callbackUrl: url.searchParams.get('callback') ?? `${url.origin}/bayarcash/callback`,
     });
   } catch (e) {
     await tandaGagalMula(env, order);
