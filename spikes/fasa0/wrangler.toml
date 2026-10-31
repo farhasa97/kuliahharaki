@@ -24,6 +24,5 @@ migrations_dir = "migrations"
 # bucket_name = "kh-fasa0-ujian"
 
 [triggers]
-# Ujian: setiap 5 minit supaya hasil cron nampak cepat di cron_log. Tukar ke harian
-# ("0 22 * * *" = 06:00 GMT+8) selepas ujian selesai.
-crons = ["*/5 * * * *"]
+# Harian, 22:00 UTC = 06:00 GMT+8. Ujian cron (*/5) sudah lulus pada 30/10/2026.
+crons = ["0 22 * * *"]

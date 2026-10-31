@@ -80,15 +80,19 @@ async function terimaCallback(req, env) {
   return new Response('ok'); // 200 menghentikan percubaan semula Bayarcash
 }
 
-// Halaman pulang: paparan sahaja. Status sebenar hanya daripada callback dan cron.
+// Halaman pulang: query tidak dipercayai untuk mengubah status. Hanya bila checksum sah, server
+// bertanya Bayarcash melalui API (PAT) dan jawapan API itulah yang menetapkan status. Checksum
+// diperlukan supaya orang luar tak boleh memaksa panggilan API dengan order sembarangan.
 async function halamanPulang(url, env) {
   const data = Object.fromEntries(url.searchParams);
   const sah = await sahkanCallback(cfg(env).secret, data, MEDAN_RETURN_URL);
+  let semakan = 'tidak dibuat (checksum tidak sah)';
+  if (sah && data.order_number) semakan = (await semakDanTetapkan(env, data.order_number)).keputusan;
   const baris = data.order_number
     ? await env.DB.prepare('SELECT status FROM bayaran_ujian WHERE order_number = ?').bind(data.order_number).first()
     : null;
   return new Response(
-    `Pembayaran sedang disahkan.\nchecksum return URL: ${sah ? 'sah' : 'TIDAK sah'}\nstatus dalam D1: ${baris?.status ?? 'tiada'}\n`,
+    `Pembayaran sedang disahkan.\nchecksum return URL: ${sah ? 'sah' : 'TIDAK sah'}\nsemakan API Bayarcash: ${semakan}\nstatus dalam D1: ${baris?.status ?? 'tiada'}\n`,
     { headers: { 'content-type': 'text/plain; charset=utf-8' } });
 }
 
@@ -131,24 +135,34 @@ async function semakBayaran(url, env) {
   return json({ bayaran, callback: logs.results });
 }
 
-// Rekonsiliasi: soal gateway untuk bayaran 'menunggu' yang cukup lama, guna laluan idempoten yang sama.
+// Tanya Bayarcash (API, bukan query return URL) tentang satu bayaran 'menunggu' dan tetapkan jika
+// sudah berstatus akhir. Dipakai oleh halaman pulang dan cron. Jumlah dari API mesti sama dengan
+// jumlah kita sebelum status berubah.
+async function semakDanTetapkan(env, order) {
+  const baris = await env.DB.prepare('SELECT jumlah_sen, status FROM bayaran_ujian WHERE order_number = ?').bind(order).first();
+  if (!baris) return { order, keputusan: 'order_tidak_dikenali' };
+  if (baris.status !== 'menunggu') return { order, keputusan: `sudah_${baris.status}` };
+  let r;
+  try { r = await cariTransaksi(cfg(env), order); } catch (e) {
+    return { order, ralat: String(e.message ?? e) }; // satu kegagalan tak boleh jatuhkan seluruh larian
+  }
+  // Utamakan transaksi berjaya; kalau tiada, ambil yang gagal/batal; kalau tiada, biarkan.
+  const akhir = r.senarai.find((t) => Number(t.status) === STATUS.SUCCESS)
+    ?? r.senarai.find((t) => [STATUS.FAILED, STATUS.CANCELLED, STATUS.ABANDONED].includes(Number(t.status)));
+  const ringkas = { order, http: r.status, bilangan: r.senarai.length, status_bayarcash: r.senarai.map((t) => t.status) };
+  if (!akhir) return { ...ringkas, contoh: r.senarai.length ? undefined : r.teks.slice(0, 300), keputusan: 'tiada_status_akhir' };
+  if (sen(akhir.amount) !== baris.jumlah_sen) return { ...ringkas, keputusan: 'jumlah_tidak_padan' };
+  return { ...ringkas, keputusan: await tetapkanBayaran(env, order, Number(akhir.status), akhir.id ?? akhir.transaction_id) };
+}
+
+// Rekonsiliasi cron: bayaran 'menunggu' yang cukup lama.
 async function rekonsiliasi(env, umurMinit) {
   const had = new Date(Date.now() - umurMinit * 60_000).toISOString();
   const { results } = await env.DB.prepare(
     `SELECT order_number FROM bayaran_ujian WHERE status = 'menunggu' AND dicipta_pada < ? LIMIT 20`,
   ).bind(had).all();
   const hasil = [];
-  for (const { order_number: order } of results) {
-    let r;
-    try { r = await cariTransaksi(cfg(env), order); } catch (e) {
-      hasil.push({ order, ralat: String(e.message ?? e) }); // satu kegagalan tak boleh jatuhkan seluruh larian
-      continue;
-    }
-    // Utamakan transaksi berjaya; kalau tiada, ambil yang gagal/batal; kalau tiada, biarkan.
-    const akhir = r.senarai.find((t) => Number(t.status) === STATUS.SUCCESS) ?? r.senarai.find((t) => [2, 4, 5].includes(Number(t.status)));
-    hasil.push({ order, http: r.status, bilangan: r.senarai.length, status_bayarcash: r.senarai.map((t) => t.status),
-      contoh: r.senarai.length ? undefined : r.teks.slice(0, 300), keputusan: akhir ? await tetapkanBayaran(env, order, Number(akhir.status), akhir.id ?? akhir.transaction_id) : 'tiada_status_akhir' });
-  }
+  for (const { order_number: order } of results) hasil.push(await semakDanTetapkan(env, order));
   return hasil;
 }
 
