@@ -125,7 +125,9 @@ Disahkan terhadap Bayarcash sandbox sebenar:
 
 Kesimpulan sementara: sandbox tidak menghantar callback ke `callback_url` pada payment intent, atau memerlukan tetapan yang kita tak tahu. Ia **bukan** isu `*.workers.dev`, kod atau checksum. Soalan telah disediakan untuk sokongan Bayarcash (support@bayarcash.com), **belum dijawab**.
 
-**Cadangan reka bentuk (menunggu kelulusan, belum dalam SPEC atau kod):** bila pelajar tiba di halaman pulang, server menyemak checksum return URL dan terus bertanya `GET /v3/transactions?order_number=` dengan PAT, kemudian menetapkan status melalui laluan idempoten yang sama dengan callback. Query return URL tak dipercayai, hanya jawapan API. Callback dan cron rekonsiliasi menjadi jaring keselamatan. Faedah: langganan aktif seketika selepas bayar dan tak bergantung pada callback yang belum boleh diuji.
+**Reka bentuk dipersetujui 31/10/2026 dan dilaksanakan dalam spike (belum dalam SPEC):** bila pelajar tiba di halaman pulang, server menyemak checksum return URL dan terus bertanya `GET /v3/transactions?order_number=` dengan PAT, kemudian menetapkan status melalui laluan idempoten yang sama dengan callback. Query return URL tak dipercayai, hanya jawapan API. Callback dan cron rekonsiliasi menjadi jaring keselamatan. Faedah: langganan aktif seketika selepas bayar dan tak bergantung pada callback yang belum boleh diuji.
+
+Status pelaksanaan: halaman pulang dan cron memakai satu fungsi (`semakDanTetapkan`) yang menyemak jumlah daripada API sama dengan jumlah kita, lalu menetapkan hanya jika masih `menunggu`. Disahkan dalam `workerd` lokal dengan pelayan Bayarcash palsu: checksum sah dan API kata berjaya menetapkan `berjaya`; larian kedua tidak memanggil API; jumlah tak padan ditolak; status belum akhir dibiarkan; checksum return URL tak sah **tidak** memanggil API langsung; senarai dengan beberapa transaksi mengambil yang berjaya. **Belum diuji terhadap sandbox sebenar.** Cron ditukar ke harian (`0 22 * * *`, 06:00 GMT+8).
 
 ## 2. Kod spike (`spikes/fasa0/`)
 
