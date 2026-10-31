@@ -232,6 +232,24 @@ async function ujianR2(env) {
   return json(langkah);
 }
 
+// Webhook BCL (borang bayaran, acara payment-success). Fasa 0: REKOD SAHAJA, tiada perubahan status,
+// supaya ujian pertama memberitahu format payload dan pengepala pengesahan sebenar. Laluan mengandungi
+// token rahsia (secret BCL_WEBHOOK_TOKEN); token salah dijawab 404 supaya laluan tak dapat diteka.
+async function terimaWebhookBcl(req, env, token) {
+  if (!env.BCL_WEBHOOK_TOKEN || !samaMasaTetap(token, env.BCL_WEBHOOK_TOKEN.trim())) return new Response('tiada', { status: 404 });
+  const mentah = await req.text();
+  // Simpan semua nama pengepala, dan nilai hanya untuk yang mungkin berkaitan pengesahan atau format.
+  const pengepala = {};
+  for (const [k, v] of req.headers) {
+    pengepala[k] = /content-type|user-agent|signature|bcl|webhook|x-/i.test(k) ? v : '(ada)';
+  }
+  await env.DB.prepare(
+    `INSERT INTO callback_log (diterima_pada, jenis_kandungan, badan_mentah, checksum_sah, order_number, keputusan)
+     VALUES (?, ?, ?, 0, NULL, 'bcl_webhook_rekod')`,
+  ).bind(sekarang(), req.headers.get('content-type') ?? '', JSON.stringify({ pengepala, badan: mentah.slice(0, 6000) })).run();
+  return new Response('ok');
+}
+
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
@@ -240,6 +258,8 @@ export default {
     // Awam (disahkan dengan checksum)
     if (p === '/bayarcash/callback' && req.method === 'POST') return terimaCallback(req, env);
     if (p === '/bayarcash/pulang' && req.method === 'GET') return halamanPulang(url, env);
+
+    if (p.startsWith('/bcl/') && req.method === 'POST') return terimaWebhookBcl(req, env, p.slice(5));
 
     if (p.startsWith('/ujian/') || p === '/bayarcash/mulakan') {
       if (!dibenarkan(req, env)) return new Response('tidak dibenarkan', { status: 401 });

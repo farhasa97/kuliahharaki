@@ -186,3 +186,28 @@ Langkah ada di `docs/CLOUDFLARE.md`. Ujian dijalankan dari PowerShell terhadap W
 | Rekonsiliasi (`GET /v3/transactions?order_number=`) | **Berfungsi.** Pulang transaksi dengan status `3`, D1 ditetapkan `berjaya`, larian kedua tiada kerja (idempoten). |
 
 **Tafsiran CPU dan keputusan login.** Dokumentasi (dari ingatan, belum disemak semula) menyebut had 10 ms CPU setiap request pada plan Free. Satu hash PBKDF2 100k makan lebih dua kali ganda itu, dan sepuluh hash (215 ms) tetap berjaya. Maksudnya had tak dikuatkuasakan seperti didokumenkan pada ujian ini. Sebabnya tak diketahui, dan jangan bina di atas kelonggaran yang tak difahami: ia boleh berubah tanpa notis. Faktanya, kos satu hash yang kukuh (100,000 ialah maksimum, masih di bawah saranan OWASP untuk PBKDF2-SHA256, dari ingatan) ialah lebih 20 ms. Kesimpulan: **kekal pilihan A (login tanpa kata laluan).** Pilihan B hanya wajar dengan Workers Paid. Ukuran Node (bahagian 3) terbukti proksi yang baik (17 ms lawan 21 ms sebenar).
+
+## 6. Keputusan 31/10/2026: bayaran melalui BCL (pilihan B)
+
+**Keputusan pemilik:** bayaran langganan melalui borang BCL dengan webhook `payment-success` ke Worker LMS, sama seperti corak sistem lesen Jadual Sekolah yang sudah berjalan. SPEC bahagian 2, 7, 13, 16 dan 17 dikemas kini.
+
+**Kenapa:** kod bayaran jauh berkurang (BCL sediakan halaman bayar dan resit), corak ini sudah biasa digunakan oleh pemilik, dan isu callback sandbox Bayarcash (bahagian 1.10) tak lagi menghalang kerana webhook datang daripada BCL. Login LMS pun berasaskan emel, jadi padanan melalui emel sesuai.
+
+**Dilihat pada akaun BCL pemilik (baca sahaja):** borang `JADUAL SEKOLAH & RELIEF SYSTEM` menjual "LANGGANAN BULANAN" (RM20) dan "LANGGANAN TAHUNAN" (RM200) sebagai produk biasa, dengan medan wajib emel akaun, saluran FPX (1) dan DuitNow QR (6), dan webhook `payment-success` ke Worker lesen dengan token rahsia dalam laluan URL. Jadi DuitNow QR sudah hidup pada portal itu.
+
+**Masih belum diketahui (diuji di bawah):** format payload webhook, pengepala pengesahan (tandatangan atau hanya token URL), medan ID transaksi yang unik, sama ada webhook dicuba semula bila gagal, dan yuran BCL sendiri. Tiada sandbox BCL yang diketahui, jadi ujian guna wang sebenar dalam jumlah kecil.
+
+**Spike API Bayarcash (bahagian 1 hingga 5):** kekal sebagai rujukan dan bukti; tidak dipakai dalam Fasa 2. Titik `/bayarcash/*` akan dibuang bersama Worker spike.
+
+### 6.1 Ujian webhook BCL (rekod sahaja)
+
+Worker spike ada titik `POST /bcl/<token>` yang **hanya merekod** pengepala dan badan webhook ke `callback_log` (`keputusan = bcl_webhook_rekod`) dan menjawab 200. Ia tak mengubah sebarang status. Token salah dijawab 404. Disahkan lokal 31/10/2026.
+
+Langkah:
+1. Jana token rawak (Chrome F12, Console, taip `crypto.randomUUID()+crypto.randomUUID()`), simpan sebagai secret `BCL_WEBHOOK_TOKEN` pada Worker `kh-fasa0-spike`.
+2. Di BCL, cipta borang ujian (contohnya "UJIAN KULIAH HARAKI"), satu produk RM1.00, saluran DuitNow QR sahaja (yuran minimum RM0.15), webhook `payment-success` ke `https://kh-fasa0-spike.farhan-sazali15.workers.dev/bcl/<token>`.
+3. Bayar RM1.00 sekali melalui borang itu.
+4. Semak: `Invoke-RestMethod -Headers @{"x-ujian-token"=$t} "$b/ujian/callback" | ConvertTo-Json -Depth 4`. Baris `bcl_webhook_rekod` menunjukkan pengepala dan badan sebenar.
+5. Selepas itu, nyahaktifkan borang ujian.
+
+Hasil: belum dijalankan.
