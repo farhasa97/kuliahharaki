@@ -70,7 +70,7 @@ Semua wang disimpan dalam sen (integer). Semua masa dalam UTC, dipaparkan GMT+8.
 
 **Aliran bayaran (BCL):**
 1. Pelajar tekan Langgan. LMS bawa pelajar ke borang BCL (produk "Advance bulanan"). Borang ada medan wajib "E-mel akaun Kuliah Haraki". Jika BCL membenarkan isian awal melalui URL, LMS isikan emel pelajar (belum disahkan).
-2. BCL hantar webhook `payment-success` ke Worker (`POST /bcl/<token>`). Worker sahkan permintaan (kaedah belum disahkan: token rahsia dalam URL seperti sistem lesen sedia ada, ditambah tandatangan jika BCL menyediakannya), kemudian simpan `bayaran` dengan `rujukan_gateway` unik. Webhook berulang untuk transaksi yang sama tidak menggandakan langganan.
+2. BCL hantar webhook `payment-success` (JSON, tidak ditandatangani, tidak dicuba semula) ke Worker (`POST /bcl/<kunci rawak>`). Worker jawab 200 segera dan, di latar, semak semula pesanan melalui API BCL (`GET /v1/transactions/{order_number}`): status berjaya, nombor pesanan dan jumlah sepadan. Hanya selepas itu simpan `bayaran` dengan `rujukan_gateway` = `record_id` unik. Webhook berulang (termasuk hantar semula manual) tidak menggandakan langganan. Webhook ujian BCL diabaikan.
 3. Emel medan akaun sepadan dengan pengguna: cipta atau lanjutkan `langganan` 30 hari. Tiada padanan: `bayaran` disimpan `tak_dipadankan` dan admin padankan secara manual dari panel.
 4. Jumlah dalam webhook mesti sama dengan harga produk yang dijangka. Jika tidak, simpan dan tandakan untuk semakan admin, jangan beri akses.
 5. Halaman selepas bayar (`success_url` BCL) hanya paparan. Ia tidak mengubah status.
@@ -155,7 +155,7 @@ Yuran BCL sendiri (jika ada, di atas yuran Bayarcash) **belum diketahui**.
 
 ## 17. Perkara terbuka
 
-1. Webhook BCL: format payload, cara pengesahan (token URL atau tandatangan), percubaan semula bila gagal, dan medan pengenal transaksi yang unik. Diuji dengan titik rekod `POST /bcl/<token>` dalam spike (`docs/FASA0.md` bahagian 6).
+1. Webhook BCL: dijawab oleh sistem lesen Annur Time Table (`docs/FASA0.md` bahagian 6). Kekal: ujian RM1 sebenar sebelum pelancaran, dan semakan mingguan transaksi BCL lawan langganan kerana BCL tidak mencuba semula.
 2. Yuran BCL, dan sama ada borang BCL boleh diisi awal (emel) melalui URL.
 3. API BCL untuk rekonsiliasi harian (cari transaksi ikut tarikh atau order).
 4. R2: subscription perlu kelulusan pemilik akaun Cloudflare.

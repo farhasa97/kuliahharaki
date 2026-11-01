@@ -195,7 +195,14 @@ Langkah ada di `docs/CLOUDFLARE.md`. Ujian dijalankan dari PowerShell terhadap W
 
 **Dilihat pada akaun BCL pemilik (baca sahaja):** borang `JADUAL SEKOLAH & RELIEF SYSTEM` menjual "LANGGANAN BULANAN" (RM20) dan "LANGGANAN TAHUNAN" (RM200) sebagai produk biasa, dengan medan wajib emel akaun, saluran FPX (1) dan DuitNow QR (6), dan webhook `payment-success` ke Worker lesen dengan token rahsia dalam laluan URL. Jadi DuitNow QR sudah hidup pada portal itu.
 
-**Masih belum diketahui (diuji di bawah):** format payload webhook, pengepala pengesahan (tandatangan atau hanya token URL), medan ID transaksi yang unik, sama ada webhook dicuba semula bila gagal, dan yuran BCL sendiri. Tiada sandbox BCL yang diketahui, jadi ujian guna wang sebenar dalam jumlah kecil.
+**Dijawab oleh sistem lesen Annur Time Table (production pemilik, repo `annurprosolutions-cell/ruztimetable`, `worker/index.mjs`, dibaca 01/11/2026):**
+- Webhook BCL **tidak ditandatangani** dan **tidak dicuba semula**. Keselamatan: kunci rawak panjang dalam laluan URL, ditambah semakan semula setiap pesanan melalui API BCL `GET https://api.bcl.my/v1/transactions/{order_number}` (pengepala `Authorization: Bearer <token API Read>`, `User-Agent` sendiri). Akses hanya jika status `3` atau `is_paid`, nombor pesanan sepadan, dan jumlah sepadan dengan badan webhook.
+- Badan webhook JSON: `{ event: "payment-success", data: { record_id, form_id atau formable_id, record_type, main_data: { order_number, status, amount, subtotal_amount, items, payer_email, transaction_type }, custom_fields_data } }`. `transaction_type = "test"` ialah webhook ujian BCL.
+- Idempotensi: simpan `record_id` yang sudah diproses sebelum melanjutkan; webhook gagal dihantar semula secara manual (BCL, Tools, Webhook Logs, Resend), jadi pengendali mesti selamat diulang.
+- Bulan kalendar dengan hari berlabuh (31 Jan + 1 bulan = 28/29 Feb, pembaharuan seterusnya kembali ke 31); bulan = bulan setiap item x kuantiti; lanjut dari tarikh tamat jika masih aktif.
+- Token API BCL tamat lebih kurang setahun: peringatan kalendar sebulan sebelum.
+
+**Masih belum diketahui:** yuran BCL sendiri. Ujian RM1 sebenar (6.1) kekal dalam senarai semak pelancaran, tapi bukan lagi penghalang reka bentuk.
 
 **Spike API Bayarcash (bahagian 1 hingga 5):** kekal sebagai rujukan dan bukti; tidak dipakai dalam Fasa 2. Titik `/bayarcash/*` akan dibuang bersama Worker spike.
 
