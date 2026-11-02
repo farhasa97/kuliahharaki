@@ -1,0 +1,26 @@
+name = "kuliahharaki"
+main = "src/worker.js"
+compatibility_date = "2026-10-01"
+
+# Fail statik dalam public/. Worker hanya dijalankan untuk laluan API, log masuk, webhook dan admin.
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = ["/api/*", "/auth/*", "/bcl/*", "/admin/*"]
+
+# Bukan rahsia. Rahsia (BCL_WEBHOOK_KEY, BCL_API_TOKEN, ADMIN_TOKEN) diset di dashboard Cloudflare.
+[vars]
+GOOGLE_CLIENT_ID = ""
+BUY_URL = ""
+BCL_FORM_ID = ""
+TANGGUH_HARI = "3"
+ADMIN_EMELS = ""
+
+[[d1_databases]]
+binding = "DB"
+database_name = "kuliahharaki"
+database_id = "GANTI-DENGAN-ID-DARI-DASHBOARD-D1" # bukan rahsia
+migrations_dir = "migrations"
+
+[observability]
+enabled = true

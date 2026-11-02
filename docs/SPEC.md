@@ -1,6 +1,6 @@
 # Kuliah Haraki LMS: Spec v0.1 (draf untuk kelulusan)
 
-Tarikh: 29/10/2026, kemas kini 31/10/2026 (bayaran melalui BCL). Status: draf, spike Fasa 0 sahaja. Prototaip lama (`index.html`) kekal sebagai rujukan UI dan tidak disentuh.
+Tarikh: 29/10/2026, kemas kini 02/11/2026 (keputusan micro-saas-builder dikunci). Status: teras langganan dibina dalam `app/`. Prototaip lama (`index.html`) kekal sebagai rujukan UI dan tidak disentuh.
 
 ## 1. Tujuan
 
@@ -13,23 +13,25 @@ Platform pembelajaran untuk satu kuliah (single-tenant). Pelajar tonton video pe
 | Tenancy | Single-tenant |
 | Struktur | Course mengandungi banyak Subject. Satu Subject ialah satu unit pembelajaran (video + nota PDF + komen) |
 | Sijil | Dikeluarkan bila semua Subject dalam satu Course selesai |
-| Tier | Percuma (tiada bayaran) dan Advance (default RM10 sebulan). Harga diubah oleh admin |
+| Tier | Percuma (tiada bayaran) dan Advance: bulanan RM10, tahunan RM100. Kuantiti dibenarkan (bayar beberapa bulan sekali gus). Harga diubah di borang BCL |
 | Bila harga diubah | Pelanggan sedia ada kekal harga lama sehingga renew. Harga baru untuk pelanggan baru dan renewal berikutnya |
-| Tempoh tangguh | 3 hari selepas langganan tamat. Admin boleh ubah |
+| Tempoh tangguh | 3 hari selepas langganan tamat. Diubah melalui var `TANGGUH_HARI` (`app/wrangler.toml`) |
 | Komuniti | Komen dan soal jawab di bawah setiap Subject |
 | Video | Fasa awal: YouTube unlisted untuk percuma dan premium. Bunny Stream kemudian (lihat 8) |
 | Mula dari kosong | Tiada migrate pengguna Supabase lama |
 | Tier infra | Percuma dahulu (Cloudflare), naik ke Murah ($5/bulan) bila perlu |
+| Login | Google sign-in (skop `openid email` sahaja). Sesi kuki 30 hari. Dikunci 02/11/2026 |
+| Kiraan tempoh | Bulan kalendar berlabuh pada hari bayaran pertama (31 Jan + 1 = 28/29 Feb, kemudian 31 Mac). Pembaharuan awal dilanjut dari tarikh tamat |
+| Percubaan percuma | Tiada. Course percuma dan subject pratonton berfungsi sebagai percubaan |
+| Teknologi | JavaScript biasa tanpa build step, Workers static assets + D1. Dikunci 02/11/2026 |
 | Bayaran | **BCL** (borang bayaran bcl.my + webhook `payment-success`) yang mengutip melalui Bayarcash. Dipilih 31/10/2026, mengikut corak sistem lesen Jadual Sekolah pemilik. Tiada auto-debit |
 
 ## 3. Belum disahkan (aku cadang, kau lulus)
 
 - Bendera percuma/ahli diletak di peringkat **Course**. Beberapa Subject dalam course berbayar boleh ditanda `pratonton` (percuma).
 - Advance membuka **semua** course berbayar.
-- Tempoh langganan = 30 hari dari tarikh bayar. Kalau renew awal, tambah 30 hari dari tarikh tamat semasa.
 - Sijil kekal milik pelajar walaupun langganan tamat. Progress juga kekal.
-- Login tanpa kata laluan (pautan atau kod emel), sesi 30 hari. Diukur di Cloudflare sebenar: satu hash PBKDF2 100k makan lebih 20 ms CPU, melebihi had 10 ms plan percuma yang didokumenkan (lihat `docs/FASA0.md` bahagian 5).
-- Saluran bayaran: DuitNow QR (sudah hidup pada portal pemilik) diutamakan berbanding FPX kerana yuran (lihat 16). Kedua-duanya ditawarkan.
+- Saluran bayaran: DuitNow QR dan FPX pada borang BCL (QR lebih murah, lihat 16).
 
 ## 4. Peranan
 
@@ -49,33 +51,34 @@ Platform pembelajaran untuk satu kuliah (single-tenant). Pelajar tonton video pe
 
 Semua wang disimpan dalam sen (integer). Semua masa dalam UTC, dipaparkan GMT+8.
 
-- `pengguna`: id, emel (unik), nama, peranan (`pelajar|guru|admin`), dicipta_pada
+- `pengguna`: id, emel (unik, dari Google), google_sub (unik), nama, peranan (`pelajar|guru|admin`), dicipta_pada. Admin awal ditetapkan melalui var `ADMIN_EMELS`
 - `course`: id, tajuk, slug, huraian, akses (`percuma|ahli`), status (`draf|terbit`), guru_id, urutan
 - `subject`: id, course_id, tajuk, huraian, urutan, pratonton (bool), video_sumber (`youtube|bunny`), video_id, tempoh_saat
 - `nota`: id, subject_id, nama_fail, kunci_r2, saiz
 - `progress`: pengguna_id, subject_id, selesai_pada (unik pada pasangan)
 - `komen`: id, subject_id, pengguna_id, induk_id (null jika komen atas), isi, dicipta_pada
-- `pelan`: id, kod, nama, harga_sen, tempoh_hari. Seed: `advance`, 1000 sen, 30 hari
-- `langganan`: id, pengguna_id, pelan_id, harga_sen (snapshot), tarikh_mula, tarikh_tamat, status (`aktif|tangguh|tamat`)
-- `bayaran`: id, pengguna_id (null jika belum dipadankan), langganan_id, gateway (`bcl`), rujukan_gateway (unik, ID transaksi BCL), emel_dibayar, jumlah_sen, status (`berjaya|tak_dipadankan|batal`), payload_mentah, dicipta_pada
+- `langganan`: **satu baris setiap emel** (bukan pengguna_id, supaya bayaran sebelum daftar tetap terpakai): emel, pelan (`bulanan|tahunan|manual`), tarikh_tamat (tarikh Malaysia), hari_labuh, dikemas_kini_pada
+- `bayaran`: id, rujukan_bcl (unik, `record_id` BCL), order_number, emel, bulan, jumlah_sen, status (`memproses|diproses|ditolak`), sebab, tarikh_tamat_baru, dicipta_pada
 - `sijil`: id, pengguna_id, course_id, kod_pengesahan (unik), dikeluarkan_pada
-- `tetapan`: kunci, nilai (tangguh_hari, banner, warna, teks laman)
-- `sesi`: token_hash, pengguna_id, tamat_pada
+- `tetapan`: kunci, nilai (banner, warna, teks laman)
+- `sesi`: token_hash (SHA-256), pengguna_id, tamat_pada
+
+Jadual `pelan` dibuang: harga dan item berada di borang BCL, dan bulan dikira daripada nama item ("BULANAN" = 1, "TAHUNAN" = 12) x kuantiti.
 
 ## 7. Logik langganan
 
-**Status** dikira, bukan diandaikan: `aktif` jika sekarang <= tarikh_tamat. `tangguh` jika sekarang <= tarikh_tamat + tangguh_hari. Selain itu `tamat`.
+**Status** dikira, bukan diandaikan: `aktif` jika hari ini (GMT+8) <= tarikh_tamat. `tangguh` jika hari ini <= tarikh_tamat + `TANGGUH_HARI` (3). Selain itu `tamat`. Dilaksanakan dalam `app/src/lib/langganan.js`.
 
 **Akses premium** (video, nota, komen eksklusif jika ada) hanya jika status `aktif` atau `tangguh`. Semakan dibuat di server pada setiap permintaan. Course percuma dan subject pratonton sentiasa terbuka.
 
 **Aliran bayaran (BCL):**
 1. Pelajar tekan Langgan. LMS bawa pelajar ke borang BCL (produk "Advance bulanan"). Borang ada medan wajib "E-mel akaun Kuliah Haraki". Jika BCL membenarkan isian awal melalui URL, LMS isikan emel pelajar (belum disahkan).
 2. BCL hantar webhook `payment-success` (JSON, tidak ditandatangani, tidak dicuba semula) ke Worker (`POST /bcl/<kunci rawak>`). Worker jawab 200 segera dan, di latar, semak semula pesanan melalui API BCL (`GET /v1/transactions/{order_number}`): status berjaya, nombor pesanan dan jumlah sepadan. Hanya selepas itu simpan `bayaran` dengan `rujukan_gateway` = `record_id` unik. Webhook berulang (termasuk hantar semula manual) tidak menggandakan langganan. Webhook ujian BCL diabaikan.
-3. Emel medan akaun sepadan dengan pengguna: cipta atau lanjutkan `langganan` 30 hari. Tiada padanan: `bayaran` disimpan `tak_dipadankan` dan admin padankan secara manual dari panel.
-4. Jumlah dalam webhook mesti sama dengan harga produk yang dijangka. Jika tidak, simpan dan tandakan untuk semakan admin, jangan beri akses.
+3. Langganan untuk emel dalam medan akaun dicipta atau dilanjutkan (bulan item x kuantiti). Pengguna yang belum mendaftar terus aktif bila log masuk dengan emel Google itu. Emel tersalah taip dibetulkan oleh admin (`docs/OPERASI.md`).
+4. Jumlah webhook mesti sama dengan jumlah API, dan nama item mesti dikenali. Jika tidak, `bayaran` ditanda `ditolak` dengan sebab untuk semakan admin, tanpa akses.
 5. Halaman selepas bayar (`success_url` BCL) hanya paparan. Ia tidak mengubah status.
 
-**Cron harian:** (a) rekonsiliasi transaksi BCL sehari lepas dengan `bayaran` (jika API BCL membenarkan; belum disahkan), (b) hantar reminder 3 hari dan 1 hari sebelum tamat, (c) hantar notis masuk tempoh tangguh, (d) tanda `tamat`.
+**Peringatan:** notis dalam aplikasi selepas log masuk (amaran 14 hari sebelum tamat, mendesak 3 hari, tempoh tangguh, tamat) dengan butang ke borang BCL. Tiada emel atau cron pada fasa ini. Semakan mingguan transaksi BCL oleh pemilik (`docs/OPERASI.md`).
 
 **Pembatalan:** pelajar tak renew, langganan tamat sendiri. Tiada auto-debit pada fasa 1.
 
@@ -92,14 +95,9 @@ Disimpan di R2 tanpa URL awam. Muat turun melalui Worker yang menyemak akses dul
 
 ## 10. Login
 
-Pelajar dan guru log masuk dengan emel. Turnstile (Cloudflare) pada borang daftar dan log masuk.
+Google sign-in (Google Identity Services, butang "Sign in with Google"). Pelayar menghantar ID token ke `POST /auth/google`; Worker mengesahkannya sekali melalui tokeninfo Google (audience, issuer, emel disahkan, belum tamat), kemudian memberi kuki sesi `kh_sesi` (HttpOnly, Secure, SameSite=Lax, 30 hari). Pangkalan data hanya menyimpan SHA-256 token. Skop hanya `openid email`, tidak sensitif, jadi tiada audit keselamatan Google. Kos CPU hampir sifar (tiada hash kata laluan) dan tiada emel dihantar.
 
-**Risiko terbuka:** plan Workers percuma had CPU 10ms setiap request. Hash kata laluan biasa (bcrypt, argon2) mungkin melebihi had itu. Ini belum diuji. Pilihan:
-- (A) Tanpa kata laluan: magic link atau kod emel, sesi 30 hari supaya login jarang. Perlu pantau had Resend free 100 emel sehari.
-- (B) Kata laluan dengan hash ringan yang diuji dalam had CPU.
-- (C) Naik ke Workers Paid ($5) yang CPU 30 saat.
-
-Keputusan dibuat di Fasa 0 selepas ujian. Cadangan awal aku: A.
+Had diketahui: pelajar tanpa akaun Google perlu cara lain (kod emel) jika ramai yang memintanya. Turnstile tidak diperlukan kerana Google mengendalikan anti-bot.
 
 ## 11. Sijil
 
@@ -114,11 +112,10 @@ Harga Advance diubah di borang BCL, bukan di panel LMS. Admin ubah dari panel: h
 | Lapisan | Pilihan |
 |---|---|
 | Kod | GitHub (repo persendirian), deploy automatik ke Cloudflare |
-| Aplikasi | Framework full-stack yang jalan di Cloudflare Workers. Dicadang SvelteKit, dimuktamadkan di Fasa 0 selepas ujian deploy |
+| Aplikasi | JavaScript biasa tanpa build step, Workers static assets (`app/public`) + Worker API (`app/src`) |
 | Pangkalan data | Cloudflare D1 |
 | Fail | Cloudflare R2 |
-| Emel | Resend (free) |
-| Anti-bot | Cloudflare Turnstile |
+| Login | Google Identity Services |
 | Video | YouTube unlisted (fasa awal), Bunny Stream (kemudian) |
 | Bayaran | BCL (borang + webhook) di atas Bayarcash: DuitNow QR dan FPX. Integrasi terus API Bayarcash v3 diuji dalam spike Fasa 0 sebagai rujukan, tidak digunakan |
 
@@ -130,15 +127,16 @@ Sumber: dokumentasi Cloudflare (Workers limits, D1 limits). Angka cron dan R2 pi
 - 50 subrequest dan 50 query D1 setiap invokasi (`db.batch()` dikira satu). Cron reminder wajib hantar kelompok atau dipecah. Tidak boleh satu panggilan emel setiap pelajar.
 - D1: 500MB setiap database, 5GB setiap akaun, 100,000 tulis dan 5 juta baca setiap hari. Melebihi had, query gagal (berkuat kuasa sejak 01/09/2026). Tulisan progress mesti dihadkan, bukan setiap saat.
 - Restore D1 (Time Travel) 7 hari pada plan percuma. Tambah eksport harian ke R2 sebagai sandaran.
-- Resend free: 100 emel sehari.
+- 
 
 ## 15. Fasa
 
-- **Fasa 0, asas dan ujian:** akaun Cloudflare dan GitHub, domain, akaun gateway (sandbox), ujian CPU untuk login, ujian cron dan webhook, pilih framework dan kaedah login.
-- **Fasa 1, kandungan percuma:** login, course, subject, pemain YouTube, progress, nota PDF, panel admin dan guru, halaman awam.
-- **Fasa 2, langganan:** pelan, bayaran, webhook, cron, tempoh tangguh, reminder, halaman langganan.
-- **Fasa 3, komuniti dan sijil:** komen, sijil dan pengesahan, tetapan laman (banner, warna, teks), kemasan.
-- **Kemudian:** migrasi premium ke Bunny, auto-debit, passkey, naik ke tier Murah bila had hampir.
+- **Fasa 0, asas dan ujian:** selesai 02/11/2026 (`docs/FASA0.md`).
+- **Teras langganan (dibina 02/11/2026, `app/`):** skema D1, log masuk Google dan sesi, webhook BCL dengan pengesahan API, logik langganan, admin API, halaman log masuk sementara. Ujian: 24 unit, 5 integrasi D1.
+- **Fasa 1, kandungan percuma:** course, subject, pemain YouTube, progress, nota PDF (perlu R2), panel admin dan guru, halaman awam.
+- **Fasa 2, langganan dalam UI:** kunci kandungan premium ikut status, notis, halaman langganan, ujian RM1 sebenar.
+- **Fasa 3, komuniti dan sijil:** komen, sijil dan pengesahan, tetapan laman (banner, warna, teks), manual dan video tutorial.
+- **Kemudian:** migrasi premium ke Bunny, auto-debit, kod emel untuk pelajar tanpa Google, naik ke tier Murah bila had hampir.
 
 ## 16. Kos (anggaran)
 
@@ -158,5 +156,6 @@ Yuran BCL sendiri (jika ada, di atas yuran Bayarcash) **belum diketahui**.
 1. Webhook BCL: dijawab oleh sistem lesen Annur Time Table (`docs/FASA0.md` bahagian 6). Kekal: ujian RM1 sebenar sebelum pelancaran, dan semakan mingguan transaksi BCL lawan langganan kerana BCL tidak mencuba semula.
 2. Yuran BCL, dan sama ada borang BCL boleh diisi awal (emel) melalui URL.
 3. API BCL untuk rekonsiliasi harian (cari transaksi ikut tarikh atau order).
-4. R2: subscription perlu kelulusan pemilik akaun Cloudflare.
-5. Lulus semua item di bahagian 3.
+4. R2: subscription perlu kelulusan pemilik akaun Cloudflare (diperlukan untuk nota PDF dalam Fasa 1).
+5. Tarikh sasaran pelancaran dan musim pendaftaran pelajar.
+6. Lulus semua item di bahagian 3.
