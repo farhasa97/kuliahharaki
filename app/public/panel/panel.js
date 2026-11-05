@@ -10,6 +10,43 @@
 // Klik ditangani melalui data-act, borang melalui data-borang (satu pendengar setiap jenis).
 
 const app = document.getElementById('app');
+const menuPanel = document.getElementById('menuPanel');
+
+// Ikon menu (gaya sama dengan menu pelajar)
+const IKON = {
+  course: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2" y="2" width="5" height="5" rx="1.3" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="2" width="5" height="5" rx="1.3" stroke="currentColor" stroke-width="1.5"/><rect x="2" y="9" width="5" height="5" rx="1.3" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="9" width="5" height="5" rx="1.3" stroke="currentColor" stroke-width="1.5"/></svg>',
+  kelulusan: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="m5.3 8.2 1.8 1.8 3.6-3.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  guru: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="6" cy="5.5" r="2.4" stroke="currentColor" stroke-width="1.5"/><path d="M1.8 13c.5-2 2.2-3.1 4.2-3.1s3.7 1.1 4.2 3.1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M10.6 3.4a2.3 2.3 0 0 1 0 4.3M12 9.9c1.2.4 2 1.4 2.3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
+  artikel: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M9.5 2H4.2A1.2 1.2 0 0 0 3 3.2v9.6A1.2 1.2 0 0 0 4.2 14h7.6a1.2 1.2 0 0 0 1.2-1.2V5.5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M9.5 2v3.5H13M5.8 8.5h4.4M5.8 11h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
+  tetapan: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="2.2" stroke="currentColor" stroke-width="1.5"/><path d="M8 1.8v1.6M8 12.6v1.6M14.2 8h-1.6M3.4 8H1.8M12.4 3.6l-1.1 1.1M4.7 11.3l-1.1 1.1M12.4 12.4l-1.1-1.1M4.7 4.7 3.6 3.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
+  luar: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M9 3h4v4M13 3 7.5 8.5M11.5 9.5v3a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  keluar: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 2.5H3.5a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1H6M10.5 11l3-3-3-3M13.5 8H6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  orang: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="5.5" r="2.6" stroke="currentColor" stroke-width="1.5"/><path d="M3 13.2c.6-2.2 2.6-3.4 5-3.4s4.4 1.2 5 3.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
+};
+
+// Menu pil di header. Item aktif ditanda ikut bahagian pertama hash.
+function binaMenu() {
+  const item = PERANAN === 'admin'
+    ? [['course', '#/', 'Course'], ['kelulusan', '#/kelulusan', 'Kelulusan'], ['guru', '#/guru', 'Guru'], ['artikel', '#/artikel', 'Artikel'], ['tetapan', '#/tetapan', 'Tetapan laman']]
+    : [['course', '#/', 'Course saya']];
+  menuPanel.innerHTML = item.map(([k, href, label]) => `<a href="${href}" data-menu="${k}">${IKON[k]}<span>${label}</span>${k === 'kelulusan' ? '<span class="bil-pil" id="bilKelulusan" hidden></span>' : ''}</a>`).join('')
+    + `<a href="/" data-menu="luar">${IKON.luar}<span>Laman pelajar</span></a>`;
+  menuPanel.hidden = false;
+}
+function tandaMenu() {
+  const bahagian = (location.hash || '#/').slice(2).split('/')[0];
+  const aktif = ['kelulusan', 'guru', 'artikel', 'tetapan'].includes(bahagian) ? bahagian : 'course';
+  menuPanel.querySelectorAll('a[data-menu]').forEach((a) => { if (a.dataset.menu === aktif) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+}
+async function kemaskiniBilKelulusan() {
+  const lencana = document.getElementById('bilKelulusan');
+  if (!lencana || PERANAN !== 'admin') return;
+  try {
+    const q = await api('GET', 'kelulusan');
+    const n = q.course.length + q.subject.length + q.perubahan.length + q.nota.length;
+    lencana.textContent = n; lencana.hidden = !n;
+  } catch { lencana.hidden = true; }
+}
 const kotakPengguna = document.getElementById('pengguna');
 
 const h = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -666,6 +703,8 @@ async function laluan() {
     else pergi('#/');
     window.scrollTo(0, 0);
   } catch (e) { paparRalat(e); }
+  tandaMenu();
+  kemaskiniBilKelulusan();
   // gerakan luncur setiap pertukaran skrin (gaya.css .halaman)
   app.classList.remove('halaman'); void app.offsetWidth; app.classList.add('halaman');
 }
@@ -682,8 +721,9 @@ async function mula() {
   if (saya.ok) {
     const d = await saya.json();
     PERANAN = d.pengguna.peranan;
-    const pautanAdmin = '<a class="butang kedua" href="#/kelulusan">Kelulusan</a><a class="butang kedua" href="#/guru">Guru</a><a class="butang kedua" href="#/artikel">Artikel</a><a class="butang kedua" href="#/tetapan">Tetapan laman</a>';
-    kotakPengguna.innerHTML = `${PERANAN === 'admin' ? pautanAdmin : '<span class="lencana pratonton">Guru</span>'}<a class="butang kedua" href="/">Laman pelajar</a><span class="kecil">${h(d.pengguna.emel)}</span><button class="kedua" data-act="keluar">Log keluar</button>`;
+    kotakPengguna.innerHTML = `<span class="role-chip" title="${h(d.pengguna.emel)}">${IKON.orang}<span class="rc-text"><small>${PERANAN === 'admin' ? 'Admin' : PERANAN === 'guru' ? 'Guru' : 'Pelajar'}</small><b>${h(d.pengguna.nama || d.pengguna.emel)}</b></span></span>
+      <button class="kedua pil ikon-keluar" data-act="keluar" aria-label="Log keluar" title="Log keluar">${IKON.keluar}</button>`;
+    if (PERANAN === 'admin' || PERANAN === 'guru') binaMenu();
     if (PERANAN !== 'admin' && PERANAN !== 'guru') {
       app.innerHTML = `<div class="kad"><h1>Tiada akses</h1><p>Akaun <b>${h(d.pengguna.emel)}</b> bukan admin atau guru. Hubungi pemilik jika ini satu kesilapan.</p><p><a href="/">Ke laman utama</a></p></div>`;
       return;
@@ -692,6 +732,7 @@ async function mula() {
     return laluan();
   }
   kotakPengguna.innerHTML = '';
+  menuPanel.hidden = true;
   const k = await (await fetch('/api/konfig')).json();
   app.innerHTML = '<div class="kad"><h1>Panel admin</h1><p>Log masuk dengan akaun Google admin.</p><div id="google"></div></div>';
   if (!k.googleClientId) { app.querySelector('p').textContent = 'GOOGLE_CLIENT_ID belum ditetapkan.'; return; }

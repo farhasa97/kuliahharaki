@@ -47,7 +47,8 @@ try {
   await langkah('panel dibuka untuk admin daripada ADMIN_EMELS, senarai kosong', async () => {
     await page.goto(B + '/panel/');
     await page.getByText('Belum ada course').waitFor();
-    assert.ok((await page.locator('#pengguna').textContent()).includes(ADMIN));
+    assert.equal(await page.locator('#pengguna .role-chip').getAttribute('title'), ADMIN); // nama dipapar, emel dalam tooltip
+    assert.ok((await page.locator('#pengguna').textContent()).includes('Admin E2E'));
     await skrin('01-kosong');
   });
 

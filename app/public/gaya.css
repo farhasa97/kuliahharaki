@@ -179,3 +179,30 @@ a.btn{text-decoration:none}
   .artikel-kad-gambar{grid-row:auto;margin-bottom:12px}
 }
 .p-admin .gambar-utama{display:block;width:100%;max-width:480px;aspect-ratio:16/9;object-fit:cover;border-radius:12px;border:1px solid var(--line);background:var(--surface-2)}
+
+/* Menu pil (pautan) — sama gaya dengan butang navpills pelajar; dipakai header panel */
+.navpills a{display:flex;align-items:center;gap:7px;height:34px;padding:0 15px;border-radius:var(--r-pill);font-size:13.5px;font-weight:600;color:var(--ink-2);text-decoration:none;white-space:nowrap;transition:background .15s,color .15s}
+.navpills a:hover{color:var(--ink)}
+.navpills a[aria-current="page"]{background:var(--night-2);color:#fff}
+.navpills .bil-pil{min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--bad);color:#fff;font-size:11.5px;font-weight:700;display:inline-grid;place-items:center}
+.navpills .bil-pil[hidden]{display:none}
+.p-admin .atas .bekas{justify-content:space-between;gap:14px;padding:10px 12px 10px 16px;max-width:1240px}
+.p-admin .atas .navpills{margin:0 auto;overflow-x:auto;scrollbar-width:none;max-width:100%}
+.p-admin .atas .navpills::-webkit-scrollbar{display:none}
+.p-admin .atas .navpills[hidden]{display:none}
+.p-admin #pengguna{margin-left:0;gap:8px}
+.p-admin .role-chip{cursor:default}
+.p-admin .role-chip b{display:block;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.p-admin button.pil{border-radius:var(--r-pill);height:42px;background:var(--surface);color:var(--ink);border-color:var(--line-strong)}
+.p-admin button.ikon-keluar{width:42px;padding:0}
+.p-admin button.pil:hover{background:var(--surface-2);border-color:var(--line-strong)}
+@media (max-width:1240px){
+  .p-admin .atas .navpills{order:3;width:100%;margin:2px 0 0;justify-content:flex-start}
+}
+@media (max-width:560px){
+  .p-admin .role-chip{width:42px;padding:0;justify-content:center}
+  .p-admin .role-chip .rc-text{display:none}
+  .p-admin .atas .bekas{padding:10px 12px;gap:10px}
+  .p-admin .jenama small{display:none}
+}
+.p-admin main.bekas,.p-admin .atas .bekas{max-width:1240px}
