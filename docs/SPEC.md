@@ -187,7 +187,7 @@ Yuran BCL sendiri (jika ada, di atas yuran Bayarcash) **belum diketahui**.
 
 ## 17. Perkara terbuka
 
-1. Webhook BCL: dijawab oleh sistem lesen Annur Time Table (`docs/FASA0.md` bahagian 6). Kekal: ujian RM1 sebenar sebelum pelancaran, dan semakan mingguan transaksi BCL lawan langganan kerana BCL tidak mencuba semula.
+1. Webhook BCL: **disahkan dalam production 05/11/2026** (`docs/FASA0.md` bahagian 6.2). Kekal: semakan mingguan transaksi BCL lawan langganan kerana BCL tidak mencuba semula, dan ujian bayaran kedua, kuantiti dan item tahunan.
 2. Yuran BCL, dan sama ada borang BCL boleh diisi awal (emel) melalui URL.
 3. API BCL untuk rekonsiliasi harian (cari transaksi ikut tarikh atau order).
 4. R2: subscription perlu kelulusan pemilik akaun Cloudflare (diperlukan untuk nota PDF dalam Fasa 1).

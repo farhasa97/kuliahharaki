@@ -218,3 +218,14 @@ Langkah:
 5. Selepas itu, nyahaktifkan borang ujian.
 
 Hasil: belum dijalankan.
+
+### 6.2 Ujian production RM1 (05/11/2026): lulus
+
+Dibuat terhadap Worker `kuliahharaki` (bukan spike) dan borang BCL `langgan-advance` (ID 20826) dalam akaun BCL pemilik LMS:
+- Log masuk Google berfungsi (peranan admin untuk emel dalam `ADMIN_EMELS`, langganan "Tiada langganan" sebelum bayar).
+- Bayaran RM1.00 melalui borang BCL, dengan emel akaun dalam medan khas.
+- Webhook `payment-success` sampai ke Worker, disahkan semula melalui API BCL, dan `bayaran` direkod: `status = diproses`, `bulan = 1`, `jumlah_sen = 100`. Rujukan (`record_id`) dan nombor pesanan bermula dengan `LINK`.
+- Halaman Kuliah Haraki selepas bayar: "Langganan: Aktif hingga 2026-12-05" (bayar 05/11/2026, satu bulan kalendar).
+- Transaksi turut kelihatan dalam dashboard BCL.
+
+Ini menjawab soalan terbuka tentang webhook BCL (format, pengesahan API, idempotensi) dalam production. Belum diuji: bayaran kedua melanjutkan dari tarikh tamat, kuantiti lebih daripada 1, item tahunan, dan webhook dihantar semula dari BCL. Ujian unit meliputi semuanya, tetapi bukan dengan BCL sebenar.
