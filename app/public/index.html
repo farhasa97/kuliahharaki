@@ -37,6 +37,7 @@ function papar(d) {
     <p>Emel: ${teks(d.pengguna.emel)}<br>Peranan: ${teks(d.pengguna.peranan)}</p>
     <p>Langganan: <b>${RM[l.status]}</b>${l.tarikh_tamat ? ` hingga ${teks(l.tarikh_tamat)}` : ''}</p>
     ${n}<p>${beli}</p>
+    ${d.pengguna.peranan === 'admin' ? '<p><a href="/panel/">Buka panel admin</a></p>' : ''}
     <p class="kecil">Semasa membayar, isikan emel <b>${teks(d.pengguna.emel)}</b> dalam medan emel akaun.</p>
     <button class="kedua" id="keluar">Log keluar</button>`;
   document.getElementById('keluar').onclick = async () => { await fetch('/auth/keluar', { method: 'POST' }); location.reload(); };

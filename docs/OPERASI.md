@@ -109,9 +109,16 @@ const A = (p, o = {}) => fetch(p, Object.assign({ headers: { authorization: 'Bea
 
 **Tahunan:** perbaharui token API BCL sebelum tamat, tukar `ADMIN_TOKEN`, perbaharui domain.
 
-## D. Memasukkan kandungan (API admin)
+## D. Memasukkan kandungan
 
-Panel admin (UI) sedang dibina. Sehingga siap, kandungan boleh dimasukkan melalui konsol pelayar selepas log masuk sebagai admin (emel dalam `ADMIN_EMELS`), tanpa token. Buka laman Kuliah Haraki, F12, tab Console:
+Guna **panel admin** di `https://kuliahharaki.farhan-sazali15.workers.dev/panel/` dan log masuk dengan emel dalam `ADMIN_EMELS`.
+
+1. **Tambah course**: tajuk, huraian, Berbayar atau Percuma, Draf atau Terbit.
+2. Buka course, **Tambah subject**: tajuk, tampal pautan YouTube (dari butang Share, video sebaiknya Unlisted), tandakan **Pratonton** untuk video intro percuma, pilih Terbit.
+3. Susun subject dengan butang anak panah. Course dan subject hanya kelihatan kepada pelajar bila kedua-duanya **Terbit**.
+4. Panel memberi amaran bila course masih draf, tiada subject terbit, atau course berbayar tiada pratonton.
+
+Cara alternatif (tanpa panel), melalui konsol pelayar selepas log masuk sebagai admin. Buka laman Kuliah Haraki, F12, tab Console:
 
 ```js
 const A = (m, p, b) => fetch('/api/admin/' + p, { method: m, headers: { 'content-type': 'application/json' }, body: b ? JSON.stringify(b) : undefined }).then((r) => r.json()).then((x) => (console.log(x), x));

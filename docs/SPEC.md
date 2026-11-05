@@ -159,7 +159,7 @@ Sumber: dokumentasi Cloudflare (Workers limits, D1 limits). Angka cron dan R2 pi
 - **Teras akses video (05/11/2026, `app/`):** jadual `pesanan`, `pesanan_item`, `akses_video`; keputusan akses subject; semakan dan penciptaan pesanan; penyelesaian pesanan yang atomik dan idempoten. Belum ada laluan gateway atau UI.
 - **Fasa 1, kandungan (sasaran buka kepada pelajar November 2026; keputusan 06/11/2026):** kandungan awal 3 course dan 6 video, satu video intro percuma (pratonton) dalam course berbayar. Admin sahaja mengisi kandungan semasa buka (peranan guru kemudian). Nota PDF ditangguh sehingga R2 diluluskan. Domain ditangguh, guna `workers.dev`. Urutan:
   1. Kandungan dan API admin (**siap 06/11/2026**: jadual `course`, `subject`, `progress`; `/api/admin/*` dengan sesi dan peranan admin; pengesahan pautan YouTube; 68 unit dan 18 integrasi D1).
-  2. Panel admin (UI).
+  2. Panel admin (**siap 06/11/2026**, `/panel/`): senarai course, cipta dan sunting course dan subject, pautan YouTube dengan gambar kecil, pratonton, draf atau terbit, susun semula, padam, amaran (course draf, tiada subject terbit, tiada pratonton). Ujian hujung ke hujung Chromium: 14 langkah.
   3. Halaman pelajar: senarai course, halaman course, pemain subject.
   4. Kunci akses di server dan progress.
   5. Kemas, uji di telefon, Google OAuth ke Production, padam Worker spike.

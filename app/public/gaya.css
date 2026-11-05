@@ -1,0 +1,57 @@
+/* Gaya bersama Kuliah Haraki (panel dan halaman pelajar). Warna jenama sementara; tetapan laman datang kemudian. */
+:root {
+  --latar: #f6f5f1; --kad: #fff; --teks: #1d1d1b; --redup: #5f5f5a; --garis: #e3e1da;
+  --jenama: #1f6f4a; --jenama-gelap: #17573a; --lembut: #eaf3ee;
+  --amaran: #8a5200; --amaran-latar: #fff6e6; --bahaya: #a12b2b; --bahaya-latar: #fdf0f0;
+  --jejari: 12px;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--latar); color: var(--teks); }
+a { color: var(--jenama); }
+h1 { font-size: 1.5rem; margin: 0; line-height: 1.25; }
+h2 { font-size: 1.15rem; margin: 0 0 8px; }
+.bekas { max-width: 880px; margin: 0 auto; padding: 0 16px; }
+main.bekas { padding-top: 20px; padding-bottom: 48px; }
+.atas { background: var(--kad); border-bottom: 1px solid var(--garis); }
+.atas .bekas { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; flex-wrap: wrap; }
+.jenama { font-weight: 700; color: var(--teks); text-decoration: none; }
+.jenama span { font-weight: 500; color: var(--redup); }
+.baris { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.antara { justify-content: space-between; margin-bottom: 16px; }
+.kad { display: block; background: var(--kad); border: 1px solid var(--garis); border-radius: var(--jejari); padding: 16px; margin-bottom: 12px; color: inherit; text-decoration: none; }
+a.kad:hover { border-color: var(--jenama); }
+.kecil { font-size: 0.875rem; color: var(--redup); }
+.kosong { text-align: center; color: var(--redup); padding: 32px 16px; }
+.butang, button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 8px 14px; border-radius: 8px;
+  border: 1px solid var(--jenama); background: var(--jenama); color: #fff; font: inherit; font-weight: 600; text-decoration: none; cursor: pointer; }
+.butang:hover, button:hover { background: var(--jenama-gelap); }
+.butang.kedua, button.kedua { background: transparent; color: var(--jenama); }
+.butang.kedua:hover, button.kedua:hover { background: var(--lembut); }
+button.bahaya { background: transparent; color: var(--bahaya); border-color: var(--bahaya); }
+button.bahaya:hover { background: var(--bahaya-latar); }
+button.ikon { min-width: 40px; padding: 8px; }
+button:disabled { opacity: 0.55; cursor: wait; }
+.lencana { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--lembut); color: var(--jenama-gelap); white-space: nowrap; }
+.lencana.draf { background: #eeece6; color: var(--redup); }
+.lencana.ahli { background: #e9eefb; color: #2b4a8f; }
+.lencana.pratonton { background: var(--amaran-latar); color: var(--amaran); }
+label { display: block; font-weight: 600; margin: 14px 0 6px; }
+input[type=text], input[type=url], input[type=number], textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--garis); border-radius: 8px; font: inherit; background: #fff; }
+textarea { min-height: 96px; resize: vertical; }
+input:focus, textarea:focus { outline: 2px solid var(--jenama); outline-offset: 1px; border-color: var(--jenama); }
+.salah { border-color: var(--bahaya) !important; }
+.pilihan { display: flex; gap: 16px; flex-wrap: wrap; font-weight: 400; }
+.pilihan label { font-weight: 400; margin: 0; display: flex; align-items: center; gap: 6px; }
+.bantuan { font-size: 0.875rem; color: var(--redup); margin-top: 4px; }
+.ralat { background: var(--bahaya-latar); color: var(--bahaya); border-radius: 8px; padding: 10px 12px; margin: 12px 0; }
+.info { background: var(--amaran-latar); color: var(--amaran); border-radius: 8px; padding: 10px 12px; margin: 12px 0; }
+.tindakan { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 20px; }
+.subject { display: flex; gap: 12px; align-items: center; }
+.subject img, .subject .tiada-video { width: 96px; height: 54px; object-fit: cover; border-radius: 6px; background: #eeece6; flex: none; }
+.subject .tiada-video { display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: var(--redup); }
+.subject .isi { flex: 1; min-width: 0; }
+.subject .isi b { display: block; overflow-wrap: anywhere; }
+@media (max-width: 560px) {
+  .subject { flex-wrap: wrap; }
+  .subject .baris.alat { width: 100%; }
+}
