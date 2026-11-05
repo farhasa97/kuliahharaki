@@ -110,6 +110,7 @@ Harga yang dipaparkan kepada pelajar datang dari `app/wrangler.toml`: `HARGA_TEK
 3. BCL, borang `langgan-advance`, webhook `payment-success`: tukar hos kepada `https://kuliahharaki.com/bcl/<kunci>` (kunci sama). Alamat lama masih berfungsi, jadi tukar bila-bila selepas domain hidup.
 4. Pengguna dengan sesi lama di alamat `workers.dev` perlu log masuk semula di domain baru (kuki terikat pada hos).
 5. `SITE_URL` dalam `app/wrangler.toml` dipakai untuk canonical dan sitemap artikel.
+6. Alamat `workers.dev` akan menghantar pelawat ke `kuliahharaki.com` secara automatik, tetapi hanya selepas domain itu terbukti menghidangkan aplikasi ini (skrip dalam `app/public/index.html` membaca manifest domain dan menyemak namanya). Jika domain belum hidup, tiada apa berlaku. Webhook BCL dan API di `workers.dev` tidak diubah. Domain `https://kuliahharaki.com` ditulis terus dalam `index.html`; ubah di situ jika domain bertukar.
 
 ## B. Konsol admin
 

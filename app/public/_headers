@@ -1,0 +1,3 @@
+# Dibaca oleh halaman di workers.dev untuk memastikan domain utama hidup sebelum mengalihkan (lihat index.html).
+/manifest.webmanifest
+  Access-Control-Allow-Origin: *

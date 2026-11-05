@@ -6,6 +6,19 @@
 <title>Kuliah Haraki</title>
 <meta name="description" content="Kuliah dalam talian dalam Bahasa Melayu. Mula dengan kuliah percuma, naik taraf ahli penuh bila mahu ikuti siri yang lebih mendalam.">
 <meta name="theme-color" content="#0B6B4F">
+<link rel="canonical" href="https://kuliahharaki.com/">
+<script>
+// Alamat workers.dev dialihkan ke domain utama, tetapi HANYA jika domain itu benar-benar menghidangkan aplikasi ini
+// (manifest dibaca dan namanya disemak). Jika domain belum hidup atau menunjuk ke tempat lain, pengguna kekal di sini.
+(function () {
+  var D = 'https://kuliahharaki.com';
+  if (!/\.workers\.dev$/.test(location.hostname)) return;
+  fetch(D + '/manifest.webmanifest', { cache: 'no-store' })
+    .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+    .then(function (m) { if (m && m.name === 'Kuliah Haraki') location.replace(D + location.pathname + location.search + location.hash); })
+    .catch(function () {});
+})();
+</script>
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/ikon/ikon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="/ikon/apple-touch-icon.png">

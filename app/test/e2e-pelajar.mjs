@@ -270,6 +270,7 @@ try {
     const p = await ctx.newPage();
     const m = await (await p.request.get(B + '/manifest.webmanifest')).json();
     assert.deepEqual([m.name, m.display, m.start_url], ['Kuliah Haraki', 'standalone', '/']);
+    assert.equal((await p.request.get(B + '/manifest.webmanifest')).headers()['access-control-allow-origin'], '*'); // semakan domain utama (index.html)
     for (const ikon of m.icons) {
       const r = await p.request.get(B + ikon.src);
       assert.equal(r.status(), 200, ikon.src);
