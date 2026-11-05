@@ -5,6 +5,7 @@ import { json } from './lib/http.js';
 import { bacaKuki, hashToken } from './lib/sesi.js';
 import { peranEfektif } from './lib/peranan.js';
 import { sahkanCourse, sahkanSubject, buatSlug } from './lib/kandungan.js';
+import { MAKS_LOGO, sahkanTetapan, gabungTetapan, jenisGambar, urlLogo, LALAI } from './lib/tetapan.js';
 import { MAKS_SAIZ, MAKS_SETIAP_SUBJECT, namaNota, adaPdf, kunciBaru } from './lib/nota.js';
 
 const MAKS_BADAN = 50_000;
@@ -38,6 +39,40 @@ export async function adminApi(req, env, url, repo, now) {
   const bahagian = url.pathname.replace(/^\/api\/admin\//, '').split('/');
   const [sumber, idMentah, anak] = bahagian;
   const id = idDari(idMentah);
+
+  // Tetapan laman: teks (JSON) dan logo (gambar mentah, disimpan dalam R2).
+  if (sumber === 'tetapan') {
+    const lihat = async () => { const g = gabungTetapan(await repo.semuaTetapan()); return { nilai: g.nilai, lalai: LALAI, logo: urlLogo(g) }; };
+    if (bahagian.length === 1 && req.method === 'GET') return json(await lihat());
+    if (bahagian.length === 1 && req.method === 'PUT') {
+      const b = await bacaJson(req); if (b.gagal) return b.gagal;
+      const v = sahkanTetapan(b.nilai); if (!v.ok) return ralatSah(v);
+      await repo.simpanTetapan(v.nilai);
+      return json(await lihat());
+    }
+    if (bahagian.length === 2 && idMentah === 'logo') {
+      if (!env.NOTA) return json({ ralat: 'r2-belum-sedia' }, 503);
+      const lama = gabungTetapan(await repo.semuaTetapan()).logoKunci;
+      if (req.method === 'POST') {
+        if (Number(req.headers.get('content-length') || 0) > MAKS_LOGO) return json({ ralat: 'logo-terlalu-besar' }, 413);
+        const bait = await req.arrayBuffer();
+        if (bait.byteLength > MAKS_LOGO) return json({ ralat: 'logo-terlalu-besar' }, 413);
+        const jenis = jenisGambar(bait);
+        if (!jenis) return json({ ralat: 'bukan-gambar' }, 415);
+        const kunci = 'tetapan/logo-' + [...crypto.getRandomValues(new Uint8Array(8))].map((x) => x.toString(16).padStart(2, '0')).join('');
+        await env.NOTA.put(kunci, bait, { httpMetadata: { contentType: jenis } });
+        await repo.simpanTetapan({ logo_kunci: kunci, logo_jenis: jenis });
+        if (lama) await env.NOTA.delete(lama).catch(() => {});
+        return json(await lihat());
+      }
+      if (req.method === 'DELETE') {
+        await repo.simpanTetapan({ logo_kunci: '', logo_jenis: '' });
+        if (lama) await env.NOTA.delete(lama).catch(() => {});
+        return json(await lihat());
+      }
+    }
+    return json({ ralat: 'kaedah-tidak-disokong' }, 405);
+  }
 
   if (sumber === 'course') {
     if (bahagian.length === 1) {

@@ -24,6 +24,11 @@ const RALAT = {
   'tidak-dijumpai': 'Tidak dijumpai. Mungkin sudah dipadam.',
   'asal-tidak-dibenarkan': 'Permintaan ditolak (asal laman tidak sah).',
   'bukan-pdf': 'Fail ini bukan PDF yang sah.',
+  'bukan-gambar': 'Logo mesti gambar PNG, JPG atau WEBP.',
+  'logo-terlalu-besar': 'Logo terlalu besar. Maksimum 500 KB.',
+  'terlalu-panjang': 'Teks terlalu panjang.',
+  'emel-tidak-sah': 'Format emel tidak sah.',
+  'medan-tidak-sah': 'Nilai tidak sah.',
   'fail-terlalu-besar': 'Fail terlalu besar. Maksimum 20 MB.',
   'fail-kosong': 'Fail kosong.',
   'had-nota': 'Setiap subject maksimum 10 nota. Padam nota lama dahulu.',
@@ -166,6 +171,63 @@ async function borangSubject(cid, sid) {
   if (sid) segarNota(sid);
 }
 
+// ---------- tetapan laman ----------
+
+const MEDAN_TETAPAN = [
+  ['nama', 'Nama laman', 'input', 'Dipaparkan di header, footer dan tab pelayar.'],
+  ['tagline', 'Tagline di bawah nama', 'input', 'Kosongkan untuk guna teks lalai.'],
+  ['hero_tajuk', 'Tajuk utama (laman awam)', 'input', ''],
+  ['hero_teks', 'Teks pengenalan (laman awam)', 'textarea', ''],
+  ['footer_teks', 'Teks footer', 'textarea', ''],
+  ['emel_hubungan', 'Emel hubungan', 'input', 'Dipaparkan di footer jika diisi.'],
+];
+
+async function borangTetapan() {
+  const t = await api('GET', 'tetapan');
+  app.innerHTML = `
+    <p><a href="#/">&larr; Senarai course</a></p>
+    <h1>Tetapan laman</h1>
+    <form class="kad" data-borang="tetapan" novalidate>
+      <div class="ralat" hidden></div>
+      <div class="info" id="tetapan-ok" hidden>Disimpan. Muat semula laman pelajar untuk lihat perubahan.</div>
+      ${MEDAN_TETAPAN.map(([k, label, jenis, bantuan]) => `
+        <label for="${k}">${label}</label>
+        ${jenis === 'textarea'
+          ? `<textarea id="${k}" name="${k}" maxlength="300" placeholder="${h(t.lalai[k])}">${t.nilai[k] === t.lalai[k] ? '' : h(t.nilai[k])}</textarea>`
+          : `<input type="text" id="${k}" name="${k}" maxlength="${k === 'hero_tajuk' || k === 'emel_hubungan' ? 120 : 60}" placeholder="${h(t.lalai[k])}" value="${t.nilai[k] === t.lalai[k] ? '' : h(t.nilai[k])}">`}
+        ${bantuan ? `<div class="bantuan">${bantuan}</div>` : ''}`).join('')}
+      <div class="tindakan"><button type="submit">Simpan</button></div>
+    </form>
+    <div class="kad" id="kad-logo"></div>`;
+  paparLogo(t.logo);
+}
+
+function paparLogo(logo, ralat) {
+  document.getElementById('kad-logo').innerHTML = `<h2>Logo</h2>
+    <div class="ralat" ${ralat ? '' : 'hidden'}>${h(ralat || '')}</div>
+    ${logo ? `<div class="baris" style="margin-bottom:12px"><img src="${h(logo)}" alt="Logo semasa" style="width:64px;height:64px;object-fit:contain;border:1px solid var(--line);border-radius:12px;padding:6px;background:#fff">
+      <button type="button" class="bahaya" data-act="buang-logo">Buang logo</button></div>` : '<p class="kecil">Belum ada logo. Ikon lalai digunakan.</p>'}
+    <label for="failLogo">Muat naik logo (PNG, JPG atau WEBP, maksimum 500 KB)</label>
+    <input type="file" id="failLogo" accept="image/png,image/jpeg,image/webp" data-logo-fail>
+    <div class="bantuan">Gambar segi empat sama (contoh 512x512) paling sesuai. Ikon pada skrin utama telefon (PWA) tidak berubah dengan logo ini; hubungi pembangun untuk menukarnya.</div>`;
+}
+
+document.addEventListener('change', async (e) => {
+  const input = e.target.closest('[data-logo-fail]');
+  if (!input || !input.files.length) return;
+  const f = input.files[0];
+  input.disabled = true;
+  try {
+    const r = await fetch('/api/admin/tetapan/logo', { method: 'POST', headers: { 'content-type': f.type || 'application/octet-stream' }, body: f });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new RalatApi(d, r.status);
+    paparLogo(d.logo);
+  } catch (err) {
+    if (err.status === 401) return mula();
+    paparLogo(null, err.message); document.getElementById('kad-logo').scrollIntoView({ block: 'center' });
+  }
+});
+
 // ---------- nota PDF ----------
 
 const saizTeks = (b) => (b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB');
@@ -224,6 +286,14 @@ const BORANG = {
     const c = id ? await api('PUT', `course/${id}`, badan) : await api('POST', 'course', badan);
     pergi(`#/course/${c.id}`);
   },
+  async tetapan(b) {
+    const d = new FormData(b);
+    const badan = Object.fromEntries(MEDAN_TETAPAN.map(([k]) => [k, d.get(k) ?? '']));
+    await api('PUT', 'tetapan', badan);
+    b.querySelector('.ralat').hidden = true;
+    b.querySelectorAll('.salah').forEach((x) => x.classList.remove('salah'));
+    const ok = document.getElementById('tetapan-ok'); ok.hidden = false; ok.scrollIntoView({ block: 'center' });
+  },
   async subject(b) {
     const d = new FormData(b);
     const badan = { tajuk: d.get('tajuk'), huraian: d.get('huraian'), video: d.get('video'), pratonton: d.get('pratonton') === 'on', status: d.get('status') };
@@ -238,6 +308,11 @@ const TINDAKAN = {
     if (!confirm('Padam course ini? Tindakan ini tidak boleh dibatalkan.')) return;
     await api('DELETE', `course/${el.dataset.id}`);
     pergi('#/');
+  },
+  async 'buang-logo'() {
+    if (!confirm('Buang logo? Ikon lalai akan digunakan semula.')) return;
+    const d = await api('DELETE', 'tetapan/logo');
+    paparLogo(d.logo);
   },
   async 'padam-nota'(el) {
     if (!confirm('Padam nota ini?')) return;
@@ -291,6 +366,7 @@ async function laluan() {
   const m = (location.hash || '#/').slice(1).split('/').filter(Boolean);
   try {
     if (!m.length) await senaraiCourse();
+    else if (m[0] === 'tetapan') await borangTetapan();
     else if (m[0] === 'course' && m[1] === 'baru') await borangCourse(null);
     else if (m[0] === 'course' && m.length === 2) await butiranCourse(m[1]);
     else if (m[0] === 'course' && m[2] === 'sunting') await borangCourse(m[1]);
@@ -314,7 +390,7 @@ async function mula() {
   const saya = await fetch('/api/saya');
   if (saya.ok) {
     const d = await saya.json();
-    kotakPengguna.innerHTML = `<a class="butang kedua" href="/">Laman pelajar</a><span class="kecil">${h(d.pengguna.emel)}</span><button class="kedua" data-act="keluar">Log keluar</button>`;
+    kotakPengguna.innerHTML = `<a class="butang kedua" href="#/tetapan">Tetapan laman</a><a class="butang kedua" href="/">Laman pelajar</a><span class="kecil">${h(d.pengguna.emel)}</span><button class="kedua" data-act="keluar">Log keluar</button>`;
     if (d.pengguna.peranan !== 'admin') {
       app.innerHTML = `<div class="kad"><h1>Tiada akses</h1><p>Akaun <b>${h(d.pengguna.emel)}</b> bukan admin. Hubungi pemilik jika ini satu kesilapan.</p><p><a href="/">Ke laman utama</a></p></div>`;
       return;

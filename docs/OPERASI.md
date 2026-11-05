@@ -51,6 +51,15 @@ CREATE INDEX nota_subject ON nota(subject_id);
 
 3. Panel admin, sunting subject, bahagian **Nota PDF** di bawah borang: pilih fail PDF (maksimum 20 MB, sehingga 10 nota setiap subject). Pelajar nampak tab **Nota PDF** pada halaman kuliah. Peraturan: mesti log masuk DAN layak menonton kuliah itu (percuma, pratonton, atau langganan aktif/tangguh). Padam subject memadam nota dan failnya sekali.
 
+### A1d. Tetapan laman dan logo (07/11/2026)
+Jalankan sekali dalam Console D1 `kuliahharaki`. Selagi belum dijalankan, laman guna teks lalai dan tetapan tidak boleh disimpan:
+
+```sql
+CREATE TABLE tetapan ( kunci TEXT PRIMARY KEY, nilai TEXT NOT NULL );
+```
+
+Panel admin, butang **Tetapan laman**: nama laman, tagline, tajuk dan teks hero, teks footer, emel hubungan, dan logo (PNG, JPG atau WEBP, maksimum 500 KB, disimpan dalam R2). Medan dikosongkan = kembali ke teks lalai. Ikon PWA pada skrin utama telefon ialah fail statik dan tidak ikut logo ini.
+
 ### A2. Worker dari GitHub
 Workers & Pages, Create, import repository `farhasa97/kuliahharaki`:
 - Project name: `kuliahharaki` (mesti sama dengan `name` dalam `app/wrangler.toml`)

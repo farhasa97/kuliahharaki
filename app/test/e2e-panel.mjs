@@ -162,6 +162,48 @@ try {
     assert.deepEqual(amaranXss, []);
   });
 
+  await langkah('tetapan laman: simpan teks, logo dimuat naik, laman awam menunjukkan nama, teks dan logo baru', async () => {
+    await page.getByRole('link', { name: 'Tetapan laman' }).click();
+    await page.locator('#nama').waitFor();
+    await page.fill('#nama', 'Madrasah <b>Maya</b>');
+    await page.fill('#hero_tajuk', 'Ilmu untuk semua');
+    await page.fill('#emel_hubungan', 'salah');
+    await simpan();
+    await page.locator('.ralat').getByText('Format emel tidak sah').waitFor();
+    await page.fill('#emel_hubungan', 'salam@contoh.my');
+    await simpan();
+    await page.locator('#tetapan-ok').waitFor({ state: 'visible' });
+    await page.setInputFiles('#failLogo', { name: 'logo.png', mimeType: 'image/png', buffer: Buffer.from('<svg onload=alert(1)/>') });
+    await page.locator('#kad-logo .ralat').getByText('PNG, JPG atau WEBP').waitFor();
+    await page.setInputFiles('#failLogo', { name: 'logo.png', mimeType: 'image/png', buffer: PNG });
+    await page.locator('#kad-logo img[alt="Logo semasa"]').waitFor();
+    await skrin('04-tetapan');
+    // pelawat (tanpa kuki) melihat tetapan baharu
+    const v = await pelayar.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+    await v.route('**/*', (r) => (r.request().url().startsWith(B) ? r.continue() : r.abort()));
+    const pv = await v.newPage();
+    await pv.goto(B + '/');
+    await pv.locator('.hero h1', { hasText: 'Ilmu untuk semua' }).waitFor();
+    assert.equal(await pv.locator('.site-header .brand-name').textContent(), 'Madrasah <b>Maya</b>'); // teks, bukan HTML
+    assert.equal(await pv.locator('.site-header .brand-name b').count(), 0);
+    assert.match(await pv.title(), /Madrasah/);
+    await pv.locator('.site-header .mark img.logo-img').waitFor();
+    assert.equal(await pv.locator('.site-header .mark img').evaluate((i) => i.complete && i.naturalWidth), 1);
+    await pv.locator('.footer a[href="mailto:salam@contoh.my"], footer a[href="mailto:salam@contoh.my"]').first().waitFor();
+    // buang logo: kembali ke ikon lalai
+    await page.getByRole('button', { name: 'Buang logo' }).click();
+    await page.getByText('Belum ada logo').waitFor();
+    await pv.reload();
+    await pv.locator('.site-header .mark svg').waitFor();
+    await v.close();
+    // kosongkan nama = kembali ke lalai
+    await page.fill('#nama', '');
+    await simpan();
+    await page.locator('#tetapan-ok').waitFor({ state: 'visible' });
+    await page.goto(B + '/panel/#/');
+    await page.locator('h1', { hasText: 'Course' }).waitFor();
+  });
+
   await langkah('tiada ralat JavaScript sepanjang sesi admin', async () => {
     assert.deepEqual(ralatHalaman, []);
   });

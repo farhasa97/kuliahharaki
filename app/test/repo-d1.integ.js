@@ -8,7 +8,7 @@ import { repoD1 } from '../src/repo.js';
 
 const proksi = await getPlatformProxy({ configPath: 'wrangler.toml', persist: false });
 const db = proksi.env.DB;
-const sql = ['migrations/0001_skema.sql', 'migrations/0002_video.sql', 'migrations/0003_kandungan.sql', 'migrations/0004_nota.sql'].map((f) => readFileSync(f, 'utf8')).join(';').replace(/--[^\n]*/g, '');
+const sql = ['migrations/0001_skema.sql', 'migrations/0002_video.sql', 'migrations/0003_kandungan.sql', 'migrations/0004_nota.sql', 'migrations/0005_tetapan.sql'].map((f) => readFileSync(f, 'utf8')).join(';').replace(/--[^\n]*/g, '');
 await db.batch(sql.split(';').map((s) => s.trim()).filter(Boolean).map((s) => db.prepare(s)));
 const repo = repoD1(db);
 test.after(() => proksi.dispose());
@@ -201,6 +201,13 @@ test('progress: tanda selesai idempoten, kiraan hanya subject terbit, dikumpul i
   await repo.kemaskiniSubject(b.id, { status: 'draf' }, 't'); // subject ditarik balik tidak dikira
   assert.deepEqual(await kira(), { [c1.id]: 1, [c2.id]: 1 });
   await assert.rejects(repo.tandaSelesai(p.id, 987654, 't')); // kunci asing subject
+});
+
+test('tetapan: simpan, timpa, nilai kosong memadam baris', async () => {
+  await repo.simpanTetapan({ nama: 'A', tagline: 'B' });
+  await repo.simpanTetapan({ nama: 'A2', tagline: '' });
+  assert.deepEqual((await repo.semuaTetapan()).sort((x, y) => x.kunci.localeCompare(y.kunci)), [{ kunci: 'nama', nilai: 'A2' }]);
+  await repo.simpanTetapan({});
 });
 
 test('nota: cipta, senarai tanpa kunci, kunci unik, kunci asing, dipadam bersama subject', async () => {

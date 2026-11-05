@@ -14,7 +14,11 @@ const akar = document.getElementById('akar');
 const h = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const dua = (n) => String(n).padStart(2, '0');
 
-let konfig = { googleClientId: '', buyUrl: '', hargaTeks: '', hargaBulanan: '', hargaTahunan: '' };
+// `laman` datang dari tetapan admin (/api/konfig); nilai di sini hanya sandaran jika permintaan gagal.
+let konfig = { googleClientId: '', buyUrl: '', hargaTeks: '', hargaBulanan: '', hargaTahunan: '', laman: {
+  nama: 'Kuliah Haraki', tagline: 'Ilmu · Tarbiyah · Amal', hero_tajuk: 'Menuntut ilmu tanpa terikat masa dan tempat.',
+  hero_teks: 'Setiap kuliah dalam bentuk video yang boleh ditonton bila-bila masa. Mula dengan kuliah percuma, naik taraf ahli penuh bila mahu ikuti siri yang lebih mendalam.',
+  footer_teks: 'Platform kuliah dalam talian untuk peserta usrah, halaqah dan sesiapa yang mahu menuntut ilmu secara berterusan.', emel_hubungan: '', logo: null } };
 let saya = null; // { pengguna, langganan } atau null jika pelawat
 let pemain = null;
 let kedalamanLalu = 0;
@@ -51,7 +55,11 @@ async function dapat(url) {
 
 // ---------- komponen bersama ----------
 
-const brand = (sub = true) => `<a class="brand" href="#/"><span class="mark">${MARK}</span><span><span class="brand-name">Kuliah Haraki</span>${sub ? '<span class="brand-sub">Ilmu · Tarbiyah · Amal</span>' : ''}</span></a>`;
+// Logo yang dimuat naik admin menggantikan ikon lalai; semua teks jenama datang dari tetapan laman.
+const tanda = () => (konfig.laman.logo
+  ? `<span class="mark ada-logo"><img class="logo-img" src="${h(konfig.laman.logo)}" alt=""></span>`
+  : `<span class="mark">${MARK}</span>`);
+const brand = (sub = true) => `<a class="brand" href="#/">${tanda()}<span><span class="brand-name">${h(konfig.laman.nama)}</span>${sub && konfig.laman.tagline ? `<span class="brand-sub">${h(konfig.laman.tagline)}</span>` : ''}</span></a>`;
 
 function inisial(p) {
   const n = String(p.nama || p.emel || '?').trim().split(/\s+/);
@@ -185,8 +193,8 @@ async function lamanAwam() {
       <div class="muncul">
         <div class="rule"></div>
         <p class="kicker" style="color:#8FB3A2">Kuliah dalam talian · Bahasa Melayu</p>
-        <h1 style="margin-top:14px">Menuntut ilmu tanpa terikat masa dan tempat.</h1>
-        <p class="hero-lede">Setiap kuliah dalam bentuk video yang boleh ditonton bila-bila masa. Mula dengan kuliah percuma, naik taraf ahli penuh bila mahu ikuti siri yang lebih mendalam.</p>
+        <h1 style="margin-top:14px">${h(konfig.laman.hero_tajuk)}</h1>
+        <p class="hero-lede">${h(konfig.laman.hero_teks)}</p>
         <div class="hero-actions">
           <a class="btn primary lg" href="#/masuk">Daftar percuma ${ANAK_PANAH}</a>
           ${tonton ? `<a class="btn outline lg" href="#/subject/${tonton.id}">Tonton kuliah percuma</a>` : ''}
@@ -292,14 +300,15 @@ async function lamanAwam() {
     <div class="wrap">
       <div class="foot-grid">
         <div class="foot-about">
-          <div class="brand"><span class="mark">${MARK}</span><span><span class="brand-name" style="color:#fff">Kuliah Haraki</span><span class="brand-sub">Ilmu · Tarbiyah · Amal</span></span></div>
-          <p>Platform kuliah dalam talian untuk peserta usrah, halaqah dan sesiapa yang mahu menuntut ilmu secara berterusan.</p>
+          <div class="brand">${tanda()}<span><span class="brand-name" style="color:#fff">${h(konfig.laman.nama)}</span>${konfig.laman.tagline ? `<span class="brand-sub">${h(konfig.laman.tagline)}</span>` : ''}</span></div>
+          <p>${h(konfig.laman.footer_teks)}</p>
+          ${konfig.laman.emel_hubungan ? `<p>Hubungi: <a href="mailto:${h(konfig.laman.emel_hubungan)}">${h(konfig.laman.emel_hubungan)}</a></p>` : ''}
         </div>
         <div><h4>Siri kuliah</h4><ul>${senarai.slice(0, 5).map((c) => `<li><a href="#/course/${encodeURIComponent(c.slug)}">${h(c.tajuk)}</a></li>`).join('')}</ul></div>
         <div><h4>Akaun</h4><ul><li><a href="#/masuk">Log masuk</a></li><li><a href="#/" data-act="gulung" data-sasaran="pricing">Yuran</a></li></ul></div>
       </div>
       <div class="foot-bottom">
-        <span>&copy; ${new Date().getFullYear()} Kuliah Haraki. Hak cipta terpelihara.</span>
+        <span>&copy; ${new Date().getFullYear()} ${h(konfig.laman.nama)}. Hak cipta terpelihara.</span>
         <span class="pay-methods">Kaedah bayaran: <i>FPX</i><i>DUITNOW</i></span>
       </div>
     </div>
@@ -327,7 +336,7 @@ function halamanMasuk() {
         </ul>
       </div>
       <div class="auth-card">
-        <div class="auth-brand"><span class="mark">${MARK}</span><span><b>Kuliah Haraki</b><span>Ilmu · Tarbiyah · Amal</span></span></div>
+        <div class="auth-brand">${tanda()}<span><b>${h(konfig.laman.nama)}</b>${konfig.laman.tagline ? `<span>${h(konfig.laman.tagline)}</span>` : ''}</span></div>
         <h2>Log masuk</h2>
         <p class="lede">Guna akaun Google anda. Akaun baharu dicipta secara automatik.</p>
         <div class="gsi" id="google"></div>
@@ -695,7 +704,8 @@ async function muatSaya() {
 }
 
 async function mula() {
-  try { konfig = { ...konfig, ...(await dapat('/api/konfig')) }; } catch { /* guna lalai */ }
+  try { const k = await dapat('/api/konfig'); konfig = { ...konfig, ...k, laman: { ...konfig.laman, ...(k.laman || {}) } }; } catch { /* guna lalai */ }
+  document.title = konfig.laman.nama;
   await muatSaya();
   window.addEventListener('hashchange', laluan);
   await laluan();

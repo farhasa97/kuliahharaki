@@ -116,6 +116,16 @@ export function repoD1(db) {
       db.prepare('DELETE FROM subject WHERE id = ?').bind(id),
     ]),
 
+    // ---- tetapan laman ----
+    async semuaTetapan() { return (await db.prepare('SELECT kunci, nilai FROM tetapan').all()).results; },
+    // Nilai kosong memadam baris (kembali ke lalai). Satu batch supaya borang disimpan sepenuhnya atau tidak langsung.
+    async simpanTetapan(nilai) {
+      const kenyataan = Object.entries(nilai).map(([k, v]) => (v === ''
+        ? db.prepare('DELETE FROM tetapan WHERE kunci = ?').bind(k)
+        : db.prepare('INSERT INTO tetapan (kunci, nilai) VALUES (?, ?) ON CONFLICT(kunci) DO UPDATE SET nilai = excluded.nilai').bind(k, v)));
+      if (kenyataan.length) await db.batch(kenyataan);
+    },
+
     // ---- nota PDF (metadata; fail dalam R2) ----
     async senaraiNota(subjectId) {
       return (await db.prepare('SELECT id, nama, saiz FROM nota WHERE subject_id = ? ORDER BY id').bind(subjectId).all()).results;

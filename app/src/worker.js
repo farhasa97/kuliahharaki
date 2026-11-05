@@ -16,6 +16,7 @@ import { adminEmel, peranEfektif } from './lib/peranan.js';
 import { adminApi } from './admin-api.js';
 import { pelajarApi } from './pelajar-api.js';
 import { tangguhHari } from './lib/konfig.js';
+import { gabungTetapan, urlLogo, LALAI } from './lib/tetapan.js';
 
 async function profil(repo, env, p, now) {
   const st = status(await repo.langganan(p.emel), hariIni(now), tangguhHari(env));
@@ -93,8 +94,18 @@ export async function handle(req, env, opts = {}) {
   if (p.startsWith('/admin/')) return admin(req, env, url, repo, now);
 
   if (p === '/api/konfig' && req.method === 'GET') {
+    // Tetapan laman: jika jadual belum dicipta (migrasi 0005), guna lalai supaya laman tetap berfungsi.
+    let laman = { ...LALAI, logo: null };
+    try { const g = gabungTetapan(await repo.semuaTetapan()); laman = { ...g.nilai, logo: urlLogo(g) }; } catch { /* lalai */ }
     return json({ googleClientId: env.GOOGLE_CLIENT_ID || '', buyUrl: env.BUY_URL || '', hargaTeks: env.HARGA_TEKS || '',
-      hargaBulanan: env.HARGA_BULANAN || '', hargaTahunan: env.HARGA_TAHUNAN || '' });
+      hargaBulanan: env.HARGA_BULANAN || '', hargaTahunan: env.HARGA_TAHUNAN || '', laman });
+  }
+
+  if (p === '/api/logo' && req.method === 'GET') {
+    let g; try { g = gabungTetapan(await repo.semuaTetapan()); } catch { g = null; }
+    const obj = g?.logoKunci && env.NOTA ? await env.NOTA.get(g.logoKunci) : null;
+    if (!obj) return json({ ralat: 'tidak-dijumpai' }, 404);
+    return new Response(obj.body, { headers: { 'content-type': g.logoJenis || 'image/png', 'cache-control': 'public, max-age=3600', 'x-content-type-options': 'nosniff' } });
   }
 
   if (p.startsWith('/api/course') || p.startsWith('/api/subject') || p.startsWith('/api/nota')) return pelajarApi(req, env, url, repo, now);

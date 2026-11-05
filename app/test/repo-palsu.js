@@ -2,7 +2,7 @@
 export function repoPalsu() {
   const bayaran = new Map(), langganan = new Map(), pengguna = new Map(), sesi = new Map();
   const pesanan = new Map(), itemPesanan = new Map(), akses = new Map();
-  const courses = new Map(), subjects = new Map(), progress = new Map(), notas = new Map(); let idC = 1, idS = 1, idN = 1;
+  const courses = new Map(), subjects = new Map(), progress = new Map(), notas = new Map(), tetapan = new Map(); let idC = 1, idS = 1, idN = 1;
   let idSeterusnya = 1;
   return {
     _bayaran: bayaran, _langganan: langganan, _pengguna: pengguna, _sesi: sesi, _pesanan: pesanan, _akses: akses, _course: courses, _subject: subjects, _progress: progress,
@@ -107,6 +107,8 @@ export function repoPalsu() {
       subjects.delete(id); for (const k of [...progress.keys()]) if (k.endsWith('|' + id)) progress.delete(k);
       for (const [k, n] of notas) if (n.subject_id === id) notas.delete(k);
     },
+    async semuaTetapan() { return [...tetapan].map(([kunci, nilai]) => ({ kunci, nilai })); },
+    async simpanTetapan(nilai) { for (const [k, v] of Object.entries(nilai)) { if (v === '') tetapan.delete(k); else tetapan.set(k, v); } },
     async senaraiNota(sid) { return [...notas.values()].filter((n) => n.subject_id === sid).map(({ id, nama, saiz }) => ({ id, nama, saiz })); },
     async kunciNota(sid) { return [...notas.values()].filter((n) => n.subject_id === sid).map((n) => n.kunci); },
     async notaDariId(id) { return notas.get(id) ?? null; },
