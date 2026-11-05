@@ -4,65 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kuliah Haraki</title>
-<style>
-  :root { --latar: #f7f7f5; --teks: #1d1d1b; --jenama: #1f6f4a; --amaran: #9a5b00; --bahaya: #a12b2b; }
-  body { margin: 0; font: 16px/1.5 system-ui, sans-serif; background: var(--latar); color: var(--teks); }
-  main { max-width: 560px; margin: 0 auto; padding: 32px 16px; }
-  .kad { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.08); margin-top: 16px; }
-  .notis { border-left: 4px solid var(--amaran); padding: 8px 12px; background: #fff8ec; }
-  .notis.tamat, .notis.tangguh, .notis.mendesak { border-color: var(--bahaya); background: #fdf0f0; }
-  a.butang, button { display: inline-block; background: var(--jenama); color: #fff; border: 0; border-radius: 8px; padding: 10px 16px; text-decoration: none; font: inherit; cursor: pointer; }
-  button.kedua { background: transparent; color: var(--jenama); border: 1px solid var(--jenama); }
-</style>
+<meta name="description" content="Tonton video kuliah, ikut kemajuan anda, dan buka semua kandungan dengan langganan Advance.">
+<link rel="stylesheet" href="/gaya.css">
 </head>
 <body>
-<main>
-  <h1>Kuliah Haraki</h1>
-  <p>Halaman sementara untuk menguji log masuk dan status langganan. UI penuh dibina dalam Fasa 1.</p>
-  <div id="kandungan" class="kad">Memuatkan...</div>
-</main>
-<script>
-const el = document.getElementById('kandungan');
-const RM = { aktif: 'Aktif', tangguh: 'Tempoh tangguh', tamat: 'Tamat', tiada: 'Tiada langganan' };
-const NOTIS = {
-  amaran: 'Langganan tamat dalam {n} hari.', mendesak: 'Langganan tamat dalam {n} hari. Sila sambung sekarang.',
-  tangguh: 'Langganan sudah tamat. Akses premium kekal untuk tempoh tangguh yang singkat.', tamat: 'Langganan tamat. Kandungan percuma masih boleh ditonton.',
-};
-const teks = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-
-function papar(d) {
-  const l = d.langganan, beli = d.buyUrl ? `<a class="butang" href="${teks(d.buyUrl)}" target="_blank" rel="noopener">${l.akses ? 'Sambung langganan' : 'Langgan Advance'}</a>` : '';
-  const n = l.notis ? `<p class="notis ${l.notis}">${NOTIS[l.notis].replace('{n}', Math.max(0, l.bakiHari))}</p>` : '';
-  el.innerHTML = `<p>Assalamualaikum, <b>${teks(d.pengguna.nama || d.pengguna.emel)}</b></p>
-    <p>Emel: ${teks(d.pengguna.emel)}<br>Peranan: ${teks(d.pengguna.peranan)}</p>
-    <p>Langganan: <b>${RM[l.status]}</b>${l.tarikh_tamat ? ` hingga ${teks(l.tarikh_tamat)}` : ''}</p>
-    ${n}<p>${beli}</p>
-    ${d.pengguna.peranan === 'admin' ? '<p><a href="/panel/">Buka panel admin</a></p>' : ''}
-    <p class="kecil">Semasa membayar, isikan emel <b>${teks(d.pengguna.emel)}</b> dalam medan emel akaun.</p>
-    <button class="kedua" id="keluar">Log keluar</button>`;
-  document.getElementById('keluar').onclick = async () => { await fetch('/auth/keluar', { method: 'POST' }); location.reload(); };
-}
-
-async function logMasuk(res) {
-  const r = await fetch('/auth/google', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ credential: res.credential }) });
-  if (r.ok) papar(await r.json()); else el.textContent = 'Log masuk gagal. Cuba lagi.';
-}
-
-async function mula() {
-  const saya = await fetch('/api/saya');
-  if (saya.ok) return papar(await saya.json());
-  const k = await (await fetch('/api/konfig')).json();
-  if (!k.googleClientId) { el.textContent = 'GOOGLE_CLIENT_ID belum ditetapkan.'; return; }
-  el.innerHTML = '<p>Log masuk dengan akaun Google anda.</p><div id="google"></div>';
-  const s = document.createElement('script');
-  s.src = 'https://accounts.google.com/gsi/client';
-  s.onload = () => {
-    google.accounts.id.initialize({ client_id: k.googleClientId, callback: logMasuk });
-    google.accounts.id.renderButton(document.getElementById('google'), { theme: 'outline', size: 'large', text: 'signin_with' });
-  };
-  document.head.appendChild(s);
-}
-mula();
-</script>
+<header class="atas">
+  <div class="bekas">
+    <a class="jenama" href="#/">Kuliah Haraki</a>
+    <nav class="baris" id="nav"></nav>
+  </div>
+</header>
+<main class="bekas" id="app">Memuatkan...</main>
+<script type="module" src="/app.js"></script>
 </body>
 </html>

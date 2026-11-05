@@ -55,3 +55,25 @@ input:focus, textarea:focus { outline: 2px solid var(--jenama); outline-offset: 
   .subject { flex-wrap: wrap; }
   .subject .baris.alat { width: 100%; }
 }
+
+/* ---- halaman pelajar ---- */
+.wira { padding: 8px 0 20px; }
+.wira p { color: var(--redup); margin: 8px 0 0; max-width: 560px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.grid .kad { margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.kemajuan { height: 8px; background: #eeece6; border-radius: 999px; overflow: hidden; }
+.kemajuan > i { display: block; height: 100%; background: var(--jenama); border-radius: 999px; }
+.senarai-subject { list-style: none; padding: 0; margin: 0; }
+.senarai-subject a { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--kad); border: 1px solid var(--garis);
+  border-radius: var(--jejari); margin-bottom: 8px; color: inherit; text-decoration: none; }
+.senarai-subject a:hover { border-color: var(--jenama); }
+.senarai-subject .no { width: 28px; height: 28px; flex: none; border-radius: 999px; background: #eeece6; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; }
+.senarai-subject .selesai .no { background: var(--jenama); color: #fff; }
+.senarai-subject .tajuk { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.pemain { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: var(--jejari); overflow: hidden; }
+.pemain > iframe, .pemain > div { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.kunci { text-align: center; padding: 28px 16px; }
+.kunci h2 { margin-bottom: 4px; }
+.navigasi { display: flex; justify-content: space-between; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+.navigasi .butang { flex: 1 1 140px; }
+.lencana.selesai { background: var(--jenama); color: #fff; }

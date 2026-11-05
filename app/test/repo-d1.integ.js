@@ -181,3 +181,24 @@ test('padamCourse dengan subject ditolak oleh kunci asing; course kosong boleh d
   await repo.padamCourse(kosong.id);
   assert.equal(await repo.courseDariId(kosong.id), null);
 });
+
+// ---- progress: SQL sebenar ----
+test('progress: tanda selesai idempoten, kiraan hanya subject terbit, dikumpul ikut course', async () => {
+  const p = await repo.simpanPengguna({ emel: 'kemajuan@gmail.com', sub: 'km', nama: 'K' }, 't');
+  const c1 = await repo.ciptaCourse({ tajuk: 'P1', slug: 'p1', akses: 'percuma', status: 'terbit' }, 't');
+  const c2 = await repo.ciptaCourse({ tajuk: 'P2', slug: 'p2', akses: 'ahli', status: 'terbit' }, 't');
+  const a = await repo.ciptaSubject(c1.id, { tajuk: 'a', video_id: 'aaaaaaaaaaa', status: 'terbit' }, 't');
+  const b = await repo.ciptaSubject(c1.id, { tajuk: 'b', video_id: 'bbbbbbbbbbb', status: 'terbit' }, 't');
+  const c = await repo.ciptaSubject(c2.id, { tajuk: 'c', video_id: 'ccccccccccc', status: 'terbit' }, 't');
+  await repo.tandaSelesai(p.id, a.id, 't1');
+  await repo.tandaSelesai(p.id, a.id, 't2'); // ulang: diabaikan
+  await repo.tandaSelesai(p.id, b.id, 't1');
+  await repo.tandaSelesai(p.id, c.id, 't1');
+  assert.deepEqual((await repo.subjectSelesai(p.id)).sort((x, y) => x - y), [a.id, b.id, c.id]);
+  assert.equal((await db.prepare('SELECT selesai_pada FROM progress WHERE pengguna_id = ? AND subject_id = ?').bind(p.id, a.id).first()).selesai_pada, 't1');
+  const kira = async () => Object.fromEntries((await repo.kiraanSelesai(p.id)).map((r) => [r.course_id, r.bil]));
+  assert.deepEqual(await kira(), { [c1.id]: 2, [c2.id]: 1 });
+  await repo.kemaskiniSubject(b.id, { status: 'draf' }, 't'); // subject ditarik balik tidak dikira
+  assert.deepEqual(await kira(), { [c1.id]: 1, [c2.id]: 1 });
+  await assert.rejects(repo.tandaSelesai(p.id, 987654, 't')); // kunci asing subject
+});

@@ -2,10 +2,10 @@
 export function repoPalsu() {
   const bayaran = new Map(), langganan = new Map(), pengguna = new Map(), sesi = new Map();
   const pesanan = new Map(), itemPesanan = new Map(), akses = new Map();
-  const courses = new Map(), subjects = new Map(); let idC = 1, idS = 1;
+  const courses = new Map(), subjects = new Map(), progress = new Map(); let idC = 1, idS = 1;
   let idSeterusnya = 1;
   return {
-    _bayaran: bayaran, _langganan: langganan, _pengguna: pengguna, _sesi: sesi, _pesanan: pesanan, _akses: akses, _course: courses, _subject: subjects,
+    _bayaran: bayaran, _langganan: langganan, _pengguna: pengguna, _sesi: sesi, _pesanan: pesanan, _akses: akses, _course: courses, _subject: subjects, _progress: progress,
     async tuntutBayaran(rid, order, masa) {
       if (bayaran.has(rid)) return false;
       bayaran.set(rid, { rujukan_bcl: rid, order_number: order, status: 'memproses', dicipta_pada: masa });
@@ -51,6 +51,14 @@ export function repoPalsu() {
       for (const a of baru) akses.set(emel + '|' + a.subject_id, { emel, ...a, dikemas_kini_pada: masa });
       return true;
     },
+    // ---- progress ----
+    async subjectSelesai(pid) { return [...progress.keys()].filter((k) => k.startsWith(pid + '|')).map((k) => Number(k.split('|')[1])); },
+    async kiraanSelesai(pid) {
+      const m = new Map();
+      for (const sid of await this.subjectSelesai(pid)) { const s = subjects.get(sid); if (s && s.status === 'terbit') m.set(s.course_id, (m.get(s.course_id) ?? 0) + 1); }
+      return [...m].map(([course_id, bil]) => ({ course_id, bil }));
+    },
+    async tandaSelesai(pid, sid, masa) { const k = pid + '|' + sid; if (!progress.has(k)) progress.set(k, masa); },
     // ---- kandungan ----
     async senaraiCourse({ termasukDraf = false } = {}) {
       return [...courses.values()].filter((c) => termasukDraf || c.status === 'terbit').sort((a, b) => a.urutan - b.urutan || a.id - b.id)
@@ -95,7 +103,7 @@ export function repoPalsu() {
       s.dikemas_kini_pada = masa;
       return s;
     },
-    async padamSubject(id) { subjects.delete(id); },
+    async padamSubject(id) { subjects.delete(id); for (const k of [...progress.keys()]) if (k.endsWith('|' + id)) progress.delete(k); },
     async padamLangganan(emel) { langganan.delete(emel); },
   };
 }

@@ -51,6 +51,17 @@ export function repoD1(db) {
         emel, l.pelan, l.tarikh_tamat, l.hari_labuh, masa),
     padamLangganan: (emel) => jalan('DELETE FROM langganan WHERE emel = ?', emel),
 
+    // ---- progress ----
+    async subjectSelesai(penggunaId) {
+      return (await db.prepare('SELECT subject_id FROM progress WHERE pengguna_id = ?').bind(penggunaId).all()).results.map((r) => r.subject_id);
+    },
+    // Bilangan subject terbit yang selesai bagi setiap course.
+    async kiraanSelesai(penggunaId) {
+      return (await db.prepare(`SELECT s.course_id, COUNT(*) AS bil FROM progress p JOIN subject s ON s.id = p.subject_id
+        WHERE p.pengguna_id = ? AND s.status = 'terbit' GROUP BY s.course_id`).bind(penggunaId).all()).results;
+    },
+    tandaSelesai: (penggunaId, subjectId, masa) =>
+      jalan('INSERT OR IGNORE INTO progress (pengguna_id, subject_id, selesai_pada) VALUES (?, ?, ?)', penggunaId, subjectId, masa),
     // ---- kandungan (course, subject) ----
     async senaraiCourse({ termasukDraf = false } = {}) {
       const sql = `SELECT c.*,

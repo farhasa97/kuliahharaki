@@ -4,7 +4,7 @@ Worker Cloudflare dengan static assets dan D1. JavaScript biasa, tiada build ste
 
 | Laluan | Fail | Fungsi |
 |---|---|---|
-| `public/` | `index.html` | Halaman (sementara: log masuk dan status langganan) |
+| `public/` | `index.html`, `app.js` | Halaman pelajar: course, pemain, kemajuan, log masuk, akaun (laluan hash) |
 | `public/panel/` | `index.html`, `panel.js` | Panel admin: course dan subject (laluan hash, tiada build step) |
 | `public/gaya.css` | | Gaya bersama |
 | `src/worker.js` | | API: `/auth/google`, `/auth/keluar`, `/api/saya`, `/api/konfig`, `/bcl/<kunci>`, `/admin/*` |
@@ -13,6 +13,8 @@ Worker Cloudflare dengan static assets dan D1. JavaScript biasa, tiada build ste
 | `src/lib/akses.js` | | Keputusan akses subject (percuma, langganan, video), semakan pesanan video |
 | `src/lib/pesanan.js` | | Cipta pesanan video, selesaikan pesanan (atomik, idempoten) |
 | `src/lib/google.js`, `src/lib/sesi.js` | | Pengesahan ID token Google, kuki sesi |
+| `src/pelajar-api.js` | | API pelajar: course, subject (kunci akses), tanda selesai |
+| `src/lib/pelajar.js` | | Keputusan akses dan bentuk data untuk pelajar (video_id hanya jika layak) |
 | `src/admin-api.js` | | API panel admin `/api/admin/*` (sesi, peranan admin, semakan asal) |
 | `src/lib/kandungan.js` | | Pengesahan course dan subject, ekstrak ID YouTube, slug |
 | `src/lib/peranan.js`, `src/lib/http.js` | | Peranan efektif (ADMIN_EMELS), pembantu respons JSON |
@@ -28,4 +30,4 @@ npm run test:d1
 npm run test:e2e
 ```
 
-`npm run test:e2e` memandu panel admin dalam Chromium (Playwright) terhadap Worker tempatan; `SKRIN_DIR=<folder>` untuk tangkapan skrin. `npm test` ialah ujian unit (repo dalam memori, Google dan BCL palsu). `npm run test:d1` menguji SQL sebenar terhadap D1 tempatan melalui wrangler.
+`npm run test:e2e` memandu panel admin dan halaman pelajar dalam Chromium (Playwright) terhadap Worker tempatan; `SKRIN_DIR=<folder>` untuk tangkapan skrin. `npm test` ialah ujian unit (repo dalam memori, Google dan BCL palsu). `npm run test:d1` menguji SQL sebenar terhadap D1 tempatan melalui wrangler.

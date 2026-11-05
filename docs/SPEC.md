@@ -160,8 +160,8 @@ Sumber: dokumentasi Cloudflare (Workers limits, D1 limits). Angka cron dan R2 pi
 - **Fasa 1, kandungan (sasaran buka kepada pelajar November 2026; keputusan 06/11/2026):** kandungan awal 3 course dan 6 video, satu video intro percuma (pratonton) dalam course berbayar. Admin sahaja mengisi kandungan semasa buka (peranan guru kemudian). Nota PDF ditangguh sehingga R2 diluluskan. Domain ditangguh, guna `workers.dev`. Urutan:
   1. Kandungan dan API admin (**siap 06/11/2026**: jadual `course`, `subject`, `progress`; `/api/admin/*` dengan sesi dan peranan admin; pengesahan pautan YouTube; 68 unit dan 18 integrasi D1).
   2. Panel admin (**siap 06/11/2026**, `/panel/`): senarai course, cipta dan sunting course dan subject, pautan YouTube dengan gambar kecil, pratonton, draf atau terbit, susun semula, padam, amaran (course draf, tiada subject terbit, tiada pratonton). Ujian hujung ke hujung Chromium: 14 langkah.
-  3. Halaman pelajar: senarai course, halaman course, pemain subject.
-  4. Kunci akses di server dan progress.
+  3. Halaman pelajar (**siap 06/11/2026**, `/`): laman utama dengan kemajuan, halaman course, pemain YouTube (youtube-nocookie), sebelum dan seterusnya, log masuk, akaun dan langganan, ajakan langgan dengan emel akaun dan butang "Saya dah bayar, semak semula".
+  4. Kunci akses dan progress (**siap 06/11/2026**): `/api/course`, `/api/course/<slug>`, `/api/subject/<id>`, `POST /api/subject/<id>/selesai`. `video_id` hanya dalam butiran subject dan hanya jika layak; senarai tidak pernah membawa `video_id`. Pelawat boleh tonton course percuma dan pratonton; subject berbayar meminta log masuk dahulu. Video tamat menanda selesai secara automatik. Ujian: 79 unit, 19 integrasi D1, 10 langkah hujung ke hujung (pelawat, pelajar, pelanggan).
   5. Kemas, uji di telefon, Google OAuth ke Production, padam Worker spike.
 - **Fasa 2, bayaran dalam UI:** kunci kandungan premium ikut keputusan akses, notis, halaman langganan, Beli video dan Video saya, laluan gateway pesanan video, ujian RM1 sebenar.
 - **Fasa 3, komuniti dan sijil:** komen, sijil dan pengesahan, tetapan laman (banner, warna, teks), manual dan video tutorial.

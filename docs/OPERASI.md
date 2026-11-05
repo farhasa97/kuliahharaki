@@ -75,6 +75,8 @@ Kemudian di BCL, webhook borang: acara **Payment Success**, URL `https://kuliahh
 
 Letak emel admin dalam `ADMIN_EMELS` (dipisah koma) dalam `app/wrangler.toml`.
 
+Teks harga yang dipaparkan kepada pelajar ialah `HARGA_TEKS` dalam `app/wrangler.toml`. Bila harga dalam borang BCL berubah, ubah teks ini juga.
+
 ### A6. Ujian RM1 sebelum pelancaran
 1. Tambah item sementara `ADVANCE BULANAN UJIAN` RM1.00 (kekalkan perkataan BULANAN).
 2. Bayar dengan DuitNow QR, isikan emel Google ujian dalam medan akaun.

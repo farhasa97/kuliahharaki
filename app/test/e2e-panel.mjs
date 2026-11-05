@@ -2,38 +2,22 @@
 // (workerd + D1 tempatan dalam .wrangler/e2e). Tiada akaun sebenar atau rangkaian luar. Sesi disemai terus ke D1.
 // Jalankan: npm run test:e2e. Tetapkan SKRIN_DIR=<folder> untuk menyimpan tangkapan skrin.
 
-import { spawn, execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { createHash, randomBytes } from 'node:crypto';
-import { rmSync, mkdirSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import assert from 'node:assert/strict';
+import { mulaWorker, sha256 as hash, tokenRawak } from './e2e-sedia.mjs';
 
 const { chromium } = createRequire(import.meta.url)('playwright');
 
-const PORT = 8791, B = `http://localhost:${PORT}`, SIMPAN = '.wrangler/e2e';
+const PORT = 8791;
 const ADMIN = 'admin-e2e@contoh.my', PELAJAR = 'pelajar-e2e@contoh.my';
 const SKRIN = process.env.SKRIN_DIR;
-const envProses = { ...process.env, NO_PROXY: 'localhost,127.0.0.1', no_proxy: 'localhost,127.0.0.1' };
-const wrangler = (...a) => execFileSync('npx', ['wrangler', ...a], { stdio: 'pipe', env: envProses }).toString();
-const hash = (t) => createHash('sha256').update(t).digest('hex');
-
-// ---- sediakan D1 tempatan yang bersih dan semai dua sesi ----
-rmSync(SIMPAN, { recursive: true, force: true });
-wrangler('d1', 'migrations', 'apply', 'DB', '--local', '--persist-to', SIMPAN);
-const tokenAdmin = randomBytes(32).toString('base64url'), tokenPelajar = randomBytes(32).toString('base64url');
+const tokenAdmin = tokenRawak(), tokenPelajar = tokenRawak();
 const masa = new Date().toISOString(), tamat = new Date(Date.now() + 864e5).toISOString();
-// Peranan dalam pangkalan data sengaja 'pelajar': admin mesti datang daripada ADMIN_EMELS (--var di bawah).
-wrangler('d1', 'execute', 'DB', '--local', '--persist-to', SIMPAN, '--command',
+// Peranan dalam pangkalan data sengaja 'pelajar': admin mesti datang daripada ADMIN_EMELS.
+const { B, henti } = await mulaWorker({ port: PORT, vars: { ADMIN_EMELS: ADMIN }, semaiSql:
   `INSERT INTO pengguna (emel, nama, peranan, dicipta_pada) VALUES ('${ADMIN}', 'Admin E2E', 'pelajar', '${masa}'), ('${PELAJAR}', 'Pelajar E2E', 'pelajar', '${masa}');
-   INSERT INTO sesi (token_hash, pengguna_id, tamat_pada) VALUES ('${hash(tokenAdmin)}', 1, '${tamat}'), ('${hash(tokenPelajar)}', 2, '${tamat}');`);
-
-const dev = spawn('npx', ['wrangler', 'dev', '--local', '--port', String(PORT), '--persist-to', SIMPAN, '--var', `ADMIN_EMELS:${ADMIN}`],
-  { detached: true, stdio: ['ignore', 'pipe', 'pipe'], env: envProses });
-await new Promise((sedia, gagal) => {
-  const masaTamat = setTimeout(() => gagal(new Error('wrangler dev tidak sedia dalam 90 saat')), 90_000);
-  dev.stdout.on('data', (d) => { if (String(d).includes('Ready on')) { clearTimeout(masaTamat); sedia(); } });
-  dev.on('exit', (k) => gagal(new Error('wrangler dev keluar ' + k)));
-});
+   INSERT INTO sesi (token_hash, pengguna_id, tamat_pada) VALUES ('${hash(tokenAdmin)}', 1, '${tamat}'), ('${hash(tokenPelajar)}', 2, '${tamat}');` });
 
 const pelayar = await chromium.launch();
 let lulus = 0;
@@ -186,5 +170,5 @@ try {
   process.exitCode = 1;
 } finally {
   await pelayar.close();
-  try { process.kill(-dev.pid, 'SIGTERM'); } catch { /* sudah tamat */ }
+  henti();
 }

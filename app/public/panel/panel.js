@@ -117,7 +117,7 @@ async function butiranCourse(id) {
         ${gambarVideo(s.video_id)}
         <div class="isi">
           <b>${i + 1}. ${h(s.tajuk)}</b>
-          <div class="baris">${lencanaStatus(s.status)} ${s.pratonton ? '<span class="lencana pratonton">Pratonton percuma</span>' : ''}</div>
+          <div class="baris">${lencanaStatus(s.status)} ${s.pratonton && c.akses === 'ahli' ? '<span class="lencana pratonton">Pratonton percuma</span>' : ''}</div>
         </div>
         <div class="baris alat">
           <button class="kedua ikon" title="Naik" aria-label="Naikkan ${h(s.tajuk)}" data-act="alih" data-course="${id}" data-id="${s.id}" data-arah="-1" ${i === 0 ? 'disabled' : ''}>&uarr;</button>

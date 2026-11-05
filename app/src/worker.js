@@ -14,11 +14,8 @@ import { repoD1 } from './repo.js';
 import { json } from './lib/http.js';
 import { adminEmel, peranEfektif } from './lib/peranan.js';
 import { adminApi } from './admin-api.js';
-
-const tangguhHari = (env) => {
-  const n = Number(env.TANGGUH_HARI);
-  return Number.isFinite(n) && env.TANGGUH_HARI !== '' && env.TANGGUH_HARI != null ? n : 3;
-};
+import { pelajarApi } from './pelajar-api.js';
+import { tangguhHari } from './lib/konfig.js';
 
 async function profil(repo, env, p, now) {
   const st = status(await repo.langganan(p.emel), hariIni(now), tangguhHari(env));
@@ -96,8 +93,10 @@ export async function handle(req, env, opts = {}) {
   if (p.startsWith('/admin/')) return admin(req, env, url, repo, now);
 
   if (p === '/api/konfig' && req.method === 'GET') {
-    return json({ googleClientId: env.GOOGLE_CLIENT_ID || '', buyUrl: env.BUY_URL || '' });
+    return json({ googleClientId: env.GOOGLE_CLIENT_ID || '', buyUrl: env.BUY_URL || '', hargaTeks: env.HARGA_TEKS || '' });
   }
+
+  if (p.startsWith('/api/course') || p.startsWith('/api/subject')) return pelajarApi(req, env, url, repo, now);
 
   if (p === '/auth/google' && req.method === 'POST') {
     // JSON sahaja: borang silang laman tidak boleh menghantar application/json tanpa CORS
