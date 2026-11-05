@@ -19,7 +19,7 @@ ADMIN_EMELS = ""
 [[d1_databases]]
 binding = "DB"
 database_name = "kuliahharaki"
-database_id = "GANTI-DENGAN-ID-DARI-DASHBOARD-D1" # bukan rahsia
+database_id = "6245241e-0433-4b18-b32d-103a6a8965ea" # bukan rahsia
 migrations_dir = "migrations"
 
 [observability]
