@@ -78,6 +78,28 @@ Peraturan SEO yang dijaga oleh sistem:
 - Halaman hanya boleh diindeks di hos `SITE_URL` (`kuliahharaki.com`). Di `workers.dev` semua halaman `noindex` dan `robots.txt` melarang semua.
 - Selepas artikel pertama terbit, hantar `https://kuliahharaki.com/sitemap.xml` di Google Search Console (Sitemaps).
 
+### A1f. Peranan guru dan kelulusan (07/11/2026)
+Jalankan dalam Console D1 `kuliahharaki` **sejurus selepas deploy**. Sebelum ini dijalankan, panel tidak boleh mencipta course dan nota PDF tersembunyi daripada pelajar (log masuk dan tontonan video tidak terjejas). Jika console menolak beberapa pernyataan sekali gus, jalankan satu baris setiap kali:
+
+```sql
+CREATE TABLE guru ( emel TEXT PRIMARY KEY, nama TEXT NOT NULL, dicipta_pada TEXT NOT NULL );
+ALTER TABLE course ADD COLUMN guru_emel TEXT;
+ALTER TABLE course ADD COLUMN catatan_semakan TEXT;
+ALTER TABLE subject ADD COLUMN catatan_semakan TEXT;
+ALTER TABLE nota ADD COLUMN status TEXT NOT NULL DEFAULT 'terbit';
+CREATE TABLE semakan ( id INTEGER PRIMARY KEY AUTOINCREMENT, jenis TEXT NOT NULL, sasaran_id INTEGER NOT NULL, course_id INTEGER NOT NULL, guru_emel TEXT NOT NULL, perubahan TEXT NOT NULL, dicipta_pada TEXT NOT NULL, UNIQUE (jenis, sasaran_id) );
+CREATE INDEX course_guru ON course(guru_emel);
+```
+
+Cara kerja:
+- **Tambah guru**: panel, **Guru**: emel Google guru dan nama paparan (dilihat pelajar sebagai "Bersama ..."). Guru log masuk di `/panel/` dengan emel itu.
+- **Guru** nampak course miliknya sahaja. Kandungan baru: Draf, kemudian "Hantar untuk kelulusan admin". Guru tidak boleh menerbitkan, menyahterbit atau memadam kandungan terbit, dan tidak nampak artikel, tetapan, langganan atau guru lain.
+- **Sunting kandungan terbit oleh guru**: pelajar terus melihat versi lama; perubahan masuk barisan kelulusan. Susunan kuliah (anak panah) berubah serta-merta.
+- **Nota PDF guru** dipaparkan selepas diluluskan. Admin boleh membuka PDF dalam barisan kelulusan sebelum memutuskan.
+- **Kelulusan**: panel, **Kelulusan**: Lulus atau Tolak (dengan catatan yang dilihat guru). Senarai course menunjuk bilangan item menunggu.
+- **Pemilik course**: admin boleh menetapkan guru pada mana-mana course (borang course, medan Guru). Buang guru: course kekal, guru tidak lagi boleh masuk panel.
+- Guru nampak bilangan pelajar yang khatam setiap kuliah, tanpa nama atau emel pelajar.
+
 ### A2. Worker dari GitHub
 Workers & Pages, Create, import repository `farhasa97/kuliahharaki`:
 - Project name: `kuliahharaki` (mesti sama dengan `name` dalam `app/wrangler.toml`)

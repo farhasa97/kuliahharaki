@@ -12,7 +12,7 @@ import { hariIni, lanjut, status, notis, tambahBulan } from './lib/langganan.js'
 import { tokenBaru, hashToken, bacaKuki, kukiSesi, kukiPadam, samaMasaTetap, HARI_SESI } from './lib/sesi.js';
 import { repoD1 } from './repo.js';
 import { json } from './lib/http.js';
-import { adminEmel, peranEfektif } from './lib/peranan.js';
+import { adminEmel, perananPenuh } from './lib/peranan.js';
 import { adminApi } from './admin-api.js';
 import { pelajarApi } from './pelajar-api.js';
 import { halamanArtikel } from './artikel-halaman.js';
@@ -22,7 +22,7 @@ import { gabungTetapan, urlLogo, LALAI } from './lib/tetapan.js';
 async function profil(repo, env, p, now) {
   const st = status(await repo.langganan(p.emel), hariIni(now), tangguhHari(env));
   return {
-    pengguna: { emel: p.emel, nama: p.nama, peranan: peranEfektif(env, p) },
+    pengguna: { emel: p.emel, nama: p.nama, peranan: await perananPenuh(env, repo, p) },
     langganan: { ...st, notis: notis(st) },
     buyUrl: env.BUY_URL || '',
   };

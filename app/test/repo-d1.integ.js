@@ -8,7 +8,7 @@ import { repoD1 } from '../src/repo.js';
 
 const proksi = await getPlatformProxy({ configPath: 'wrangler.toml', persist: false });
 const db = proksi.env.DB;
-const sql = ['migrations/0001_skema.sql', 'migrations/0002_video.sql', 'migrations/0003_kandungan.sql', 'migrations/0004_nota.sql', 'migrations/0005_tetapan.sql', 'migrations/0006_artikel.sql'].map((f) => readFileSync(f, 'utf8')).join(';').replace(/--[^\n]*/g, '');
+const sql = ['migrations/0001_skema.sql', 'migrations/0002_video.sql', 'migrations/0003_kandungan.sql', 'migrations/0004_nota.sql', 'migrations/0005_tetapan.sql', 'migrations/0006_artikel.sql', 'migrations/0007_guru.sql'].map((f) => readFileSync(f, 'utf8')).join(';').replace(/--[^\n]*/g, '');
 await db.batch(sql.split(';').map((s) => s.trim()).filter(Boolean).map((s) => db.prepare(s)));
 const repo = repoD1(db);
 test.after(() => proksi.dispose());
@@ -232,7 +232,7 @@ test('nota: cipta, senarai tanpa kunci, kunci unik, kunci asing, dipadam bersama
   const s1 = await repo.ciptaSubject(c.id, { tajuk: 'n1', video_id: 'nnnnnnnnnnn', status: 'terbit' }, 't');
   const n1 = await repo.ciptaNota(s1.id, { nama: 'a.pdf', kunci: 'nota/x/1.pdf', saiz: 10 }, 't1');
   await repo.ciptaNota(s1.id, { nama: 'b.pdf', kunci: 'nota/x/2.pdf', saiz: 20 }, 't2');
-  assert.deepEqual(await repo.senaraiNota(s1.id), [{ id: n1.id, nama: 'a.pdf', saiz: 10 }, { id: n1.id + 1, nama: 'b.pdf', saiz: 20 }]);
+  assert.deepEqual(await repo.senaraiNota(s1.id), [{ id: n1.id, nama: 'a.pdf', saiz: 10, status: 'terbit' }, { id: n1.id + 1, nama: 'b.pdf', saiz: 20, status: 'terbit' }]);
   assert.deepEqual((await repo.kunciNota(s1.id)).sort(), ['nota/x/1.pdf', 'nota/x/2.pdf']);
   assert.equal((await repo.notaDariId(n1.id)).kunci, 'nota/x/1.pdf');
   assert.equal(await repo.notaDariId(null), null);
@@ -242,4 +242,37 @@ test('nota: cipta, senarai tanpa kunci, kunci unik, kunci asing, dipadam bersama
   assert.equal((await repo.senaraiNota(s1.id)).length, 1);
   await repo.padamSubject(s1.id); // nota dipadam dalam batch yang sama, tidak dihalang kunci asing
   assert.deepEqual(await repo.senaraiNota(s1.id), []);
+});
+
+test('guru dan kelulusan: guru, course milik guru, subject menunggu, semakan unik, khatam, nota menunggu, padam berantai', async () => {
+  await repo.simpanGuru('g@x.my', 'Ustaz G', 't');
+  await repo.simpanGuru('g@x.my', 'Ustaz G2', 't2'); // kemas kini nama
+  const c = await repo.ciptaCourse({ tajuk: 'G', slug: 'g-guru', akses: 'percuma', status: 'menunggu', guru_emel: 'g@x.my' }, 't');
+  assert.equal(c.guru_emel, 'g@x.my');
+  assert.deepEqual((await repo.senaraiGuru()).map((g) => [g.emel, g.nama, g.bil_course]), [['g@x.my', 'Ustaz G2', 1]]);
+  const s = await repo.ciptaSubject(c.id, { tajuk: 'S', video_id: 'ggggggggggg', status: 'menunggu' }, 't');
+  assert.deepEqual((await repo.subjectMenunggu()).map((x) => [x.tajuk, x.course_tajuk, x.guru_emel]), [['S', 'G', 'g@x.my']]);
+  await repo.kemaskiniSubject(s.id, { catatan_semakan: 'nota' }, 't');
+  assert.equal((await repo.subjectDariId(s.id)).catatan_semakan, 'nota');
+  await repo.simpanSemakan({ jenis: 'subject', sasaran_id: s.id, course_id: c.id, guru_emel: 'g@x.my', perubahan: '{"tajuk":"A"}' }, 't1');
+  await repo.simpanSemakan({ jenis: 'subject', sasaran_id: s.id, course_id: c.id, guru_emel: 'g@x.my', perubahan: '{"tajuk":"B"}' }, 't2');
+  const semua = await repo.senaraiSemakan();
+  assert.equal(semua.length, 1); assert.equal(semua[0].perubahan, '{"tajuk":"B"}');
+  assert.equal((await repo.semakanUntuk('subject', s.id)).id, semua[0].id);
+  const n = await repo.ciptaNota(s.id, { nama: 'n.pdf', kunci: 'nota/g/1.pdf', saiz: 5, status: 'menunggu' }, 't');
+  assert.deepEqual(await repo.senaraiNota(s.id), []);
+  assert.equal((await repo.senaraiNota(s.id, { termasukMenunggu: true }))[0].status, 'menunggu');
+  assert.deepEqual((await repo.notaMenunggu()).map((x) => [x.nama, x.subject_tajuk, x.guru_emel]), [['n.pdf', 'S', 'g@x.my']]);
+  await repo.tetapkanStatusNota(n.id, 'terbit');
+  assert.equal((await repo.senaraiNota(s.id)).length, 1);
+  const p = await repo.simpanPengguna({ emel: 'khatam@x.my', sub: 'k', nama: 'K' }, 't');
+  await repo.tandaSelesai(p.id, s.id, 't');
+  assert.deepEqual(await repo.kiraKhatam(c.id), [{ subject_id: s.id, bil: 1 }]);
+  await repo.padamSubject(s.id); // progress, nota, semakan ikut dipadam
+  assert.deepEqual(await repo.senaraiSemakan(), []);
+  await repo.simpanSemakan({ jenis: 'course', sasaran_id: c.id, course_id: c.id, guru_emel: 'g@x.my', perubahan: '{}' }, 't');
+  await repo.padamCourse(c.id);
+  assert.deepEqual(await repo.senaraiSemakan(), []);
+  await repo.padamGuru('g@x.my');
+  assert.equal(await repo.guruDariEmel('g@x.my'), null);
 });

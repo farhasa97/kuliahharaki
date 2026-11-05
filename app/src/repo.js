@@ -1,8 +1,8 @@
 // Semua akses D1 di satu tempat. Ujian memakai repo dalam memori dengan antara muka yang sama (test/repo-palsu.js).
 
-const KOLUM_COURSE = ['tajuk', 'huraian', 'akses', 'status', 'urutan'];
+const KOLUM_COURSE = ['tajuk', 'huraian', 'akses', 'status', 'urutan', 'guru_emel', 'catatan_semakan'];
 const KOLUM_ARTIKEL = ['slug', 'tajuk', 'ringkasan', 'isi', 'bil_perkataan', 'status', 'diterbit_pada'];
-const KOLUM_SUBJECT = ['tajuk', 'huraian', 'urutan', 'pratonton', 'status', 'video_id', 'tempoh_saat'];
+const KOLUM_SUBJECT = ['tajuk', 'huraian', 'urutan', 'pratonton', 'status', 'video_id', 'tempoh_saat', 'catatan_semakan'];
 
 export function repoD1(db) {
   const satu = (sql, ...p) => db.prepare(sql).bind(...p).first();
@@ -82,9 +82,9 @@ export function repoD1(db) {
     },
     async ciptaCourse(c, masa) {
       const r = await jalan(
-        `INSERT INTO course (tajuk, slug, huraian, akses, status, urutan, dicipta_pada, dikemas_kini_pada)
-         VALUES (?, ?, ?, ?, ?, COALESCE(?, (SELECT COALESCE(MAX(urutan), 0) + 1 FROM course)), ?, ?)`,
-        c.tajuk, c.slug, c.huraian ?? null, c.akses, c.status, c.urutan ?? null, masa, masa);
+        `INSERT INTO course (tajuk, slug, huraian, akses, status, urutan, guru_emel, dicipta_pada, dikemas_kini_pada)
+         VALUES (?, ?, ?, ?, ?, COALESCE(?, (SELECT COALESCE(MAX(urutan), 0) + 1 FROM course)), ?, ?, ?)`,
+        c.tajuk, c.slug, c.huraian ?? null, c.akses, c.status, c.urutan ?? null, c.guru_emel ?? null, masa, masa);
       return satu('SELECT * FROM course WHERE id = ?', r.meta.last_row_id);
     },
     async kemaskiniCourse(id, nilai, masa) {
@@ -92,7 +92,10 @@ export function repoD1(db) {
       if (k.length) await jalan(`UPDATE course SET ${k.map((x) => x + ' = ?').join(', ')}, dikemas_kini_pada = ? WHERE id = ?`, ...k.map((x) => nilai[x]), masa, id);
       return satu('SELECT * FROM course WHERE id = ?', id);
     },
-    padamCourse: (id) => jalan('DELETE FROM course WHERE id = ?', id),
+    padamCourse: (id) => db.batch([
+      db.prepare(`DELETE FROM semakan WHERE jenis = 'course' AND sasaran_id = ?`).bind(id),
+      db.prepare('DELETE FROM course WHERE id = ?').bind(id),
+    ]),
     async bilanganSubject(courseId) { return (await satu('SELECT COUNT(*) AS c FROM subject WHERE course_id = ?', courseId)).c; },
     async senaraiSubject(courseId, { termasukDraf = false } = {}) {
       return (await db.prepare(`SELECT * FROM subject WHERE course_id = ? ${termasukDraf ? '' : `AND status = 'terbit'`} ORDER BY urutan, id`).bind(courseId).all()).results;
@@ -114,8 +117,32 @@ export function repoD1(db) {
     padamSubject: (id) => db.batch([
       db.prepare('DELETE FROM progress WHERE subject_id = ?').bind(id),
       db.prepare('DELETE FROM nota WHERE subject_id = ?').bind(id),
+      db.prepare(`DELETE FROM semakan WHERE jenis = 'subject' AND sasaran_id = ?`).bind(id),
       db.prepare('DELETE FROM subject WHERE id = ?').bind(id),
     ]),
+
+    // ---- guru dan kelulusan ----
+    async senaraiGuru() {
+      return (await db.prepare(`SELECT g.emel, g.nama, g.dicipta_pada, (SELECT COUNT(*) FROM course c WHERE c.guru_emel = g.emel) AS bil_course
+        FROM guru g ORDER BY g.nama`).all()).results;
+    },
+    guruDariEmel: (emel) => satu('SELECT * FROM guru WHERE emel = ?', emel),
+    simpanGuru: (emel, nama, masa) => jalan('INSERT INTO guru (emel, nama, dicipta_pada) VALUES (?, ?, ?) ON CONFLICT(emel) DO UPDATE SET nama = excluded.nama', emel, nama, masa),
+    padamGuru: (emel) => jalan('DELETE FROM guru WHERE emel = ?', emel),
+    async subjectMenunggu() {
+      return (await db.prepare(`SELECT s.id, s.tajuk, s.video_id, s.course_id, c.tajuk AS course_tajuk, c.guru_emel FROM subject s JOIN course c ON c.id = s.course_id
+        WHERE s.status = 'menunggu' ORDER BY s.id`).all()).results;
+    },
+    async kiraKhatam(courseId) {
+      return (await db.prepare(`SELECT p.subject_id, COUNT(*) AS bil FROM progress p JOIN subject s ON s.id = p.subject_id WHERE s.course_id = ? GROUP BY p.subject_id`).bind(courseId).all()).results;
+    },
+    async senaraiSemakan() { return (await db.prepare('SELECT * FROM semakan ORDER BY id').all()).results; },
+    semakanDariId: (id) => satu('SELECT * FROM semakan WHERE id = ?', id),
+    semakanUntuk: (jenis, id) => satu('SELECT * FROM semakan WHERE jenis = ? AND sasaran_id = ?', jenis, id),
+    simpanSemakan: (s, masa) => jalan(`INSERT INTO semakan (jenis, sasaran_id, course_id, guru_emel, perubahan, dicipta_pada) VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT(jenis, sasaran_id) DO UPDATE SET perubahan = excluded.perubahan, guru_emel = excluded.guru_emel, dicipta_pada = excluded.dicipta_pada`,
+      s.jenis, s.sasaran_id, s.course_id, s.guru_emel, s.perubahan, masa),
+    padamSemakan: (id) => jalan('DELETE FROM semakan WHERE id = ?', id),
 
     // ---- artikel ----
     async senaraiArtikel({ termasukDraf = false } = {}) {
@@ -154,15 +181,21 @@ export function repoD1(db) {
     },
 
     // ---- nota PDF (metadata; fail dalam R2) ----
-    async senaraiNota(subjectId) {
-      return (await db.prepare('SELECT id, nama, saiz FROM nota WHERE subject_id = ? ORDER BY id').bind(subjectId).all()).results;
+    // Lalai: nota terbit sahaja (untuk pelajar). Panel memakai termasukMenunggu.
+    async senaraiNota(subjectId, { termasukMenunggu = false } = {}) {
+      return (await db.prepare(`SELECT id, nama, saiz, status FROM nota WHERE subject_id = ? ${termasukMenunggu ? '' : `AND status = 'terbit'`} ORDER BY id`).bind(subjectId).all()).results;
+    },
+    tetapkanStatusNota: (id, status) => jalan('UPDATE nota SET status = ? WHERE id = ?', status, id),
+    async notaMenunggu() {
+      return (await db.prepare(`SELECT n.id, n.nama, n.saiz, n.subject_id, s.tajuk AS subject_tajuk, s.course_id, c.tajuk AS course_tajuk, c.guru_emel
+        FROM nota n JOIN subject s ON s.id = n.subject_id JOIN course c ON c.id = s.course_id WHERE n.status = 'menunggu' ORDER BY n.id`).all()).results;
     },
     async kunciNota(subjectId) {
       return (await db.prepare('SELECT kunci FROM nota WHERE subject_id = ?').bind(subjectId).all()).results.map((r) => r.kunci);
     },
     notaDariId: (id) => satu('SELECT * FROM nota WHERE id = ?', id),
     async ciptaNota(subjectId, n, masa) {
-      const r = await jalan('INSERT INTO nota (subject_id, nama, kunci, saiz, dicipta_pada) VALUES (?, ?, ?, ?, ?)', subjectId, n.nama, n.kunci, n.saiz, masa);
+      const r = await jalan('INSERT INTO nota (subject_id, nama, kunci, saiz, status, dicipta_pada) VALUES (?, ?, ?, ?, ?, ?)', subjectId, n.nama, n.kunci, n.saiz, n.status ?? 'terbit', masa);
       return satu('SELECT * FROM nota WHERE id = ?', r.meta.last_row_id);
     },
     padamNota: (id) => jalan('DELETE FROM nota WHERE id = ?', id),

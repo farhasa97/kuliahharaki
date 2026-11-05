@@ -10,14 +10,15 @@ import { mulaWorker, sha256 as hash, tokenRawak } from './e2e-sedia.mjs';
 const { chromium } = createRequire(import.meta.url)('playwright');
 
 const PORT = 8791;
-const ADMIN = 'admin-e2e@contoh.my', PELAJAR = 'pelajar-e2e@contoh.my';
+const ADMIN = 'admin-e2e@contoh.my', PELAJAR = 'pelajar-e2e@contoh.my', GURU = 'guru-e2e@contoh.my';
 const SKRIN = process.env.SKRIN_DIR;
-const tokenAdmin = tokenRawak(), tokenPelajar = tokenRawak();
+const tokenAdmin = tokenRawak(), tokenPelajar = tokenRawak(), tokenGuru = tokenRawak();
 const masa = new Date().toISOString(), tamat = new Date(Date.now() + 864e5).toISOString();
 // Peranan dalam pangkalan data sengaja 'pelajar': admin mesti datang daripada ADMIN_EMELS.
 const { B, henti } = await mulaWorker({ port: PORT, vars: { ADMIN_EMELS: ADMIN }, semaiSql:
-  `INSERT INTO pengguna (emel, nama, peranan, dicipta_pada) VALUES ('${ADMIN}', 'Admin E2E', 'pelajar', '${masa}'), ('${PELAJAR}', 'Pelajar E2E', 'pelajar', '${masa}');
-   INSERT INTO sesi (token_hash, pengguna_id, tamat_pada) VALUES ('${hash(tokenAdmin)}', 1, '${tamat}'), ('${hash(tokenPelajar)}', 2, '${tamat}');` });
+  `INSERT INTO pengguna (emel, nama, peranan, dicipta_pada) VALUES ('${ADMIN}', 'Admin E2E', 'pelajar', '${masa}'), ('${PELAJAR}', 'Pelajar E2E', 'pelajar', '${masa}'), ('${GURU}', 'Guru Google', 'pelajar', '${masa}');
+   INSERT INTO sesi (token_hash, pengguna_id, tamat_pada) VALUES ('${hash(tokenAdmin)}', 1, '${tamat}'), ('${hash(tokenPelajar)}', 2, '${tamat}'), ('${hash(tokenGuru)}', 3, '${tamat}');
+   INSERT INTO guru (emel, nama, dicipta_pada) VALUES ('${GURU}', 'Ustaz Guru', '${masa}');` });
 
 const pelayar = await chromium.launch();
 let lulus = 0;
@@ -33,7 +34,12 @@ try {
   page.setDefaultTimeout(10_000);
   const ralatHalaman = [], amaranXss = [];
   page.on('pageerror', (e) => ralatHalaman.push(e.message));
-  page.on('dialog', (d) => { if (d.type() === 'confirm') d.accept(); else { amaranXss.push(d.message()); d.dismiss(); } });
+  page.on('dialog', (d) => {
+    if (d.type() === 'confirm') d.accept();
+    else if (d.type() === 'prompt') d.accept('Sila betulkan tajuk'); // catatan tolak kelulusan
+    else { amaranXss.push(d.message()); d.dismiss(); }
+  });
+  const skrinHalaman = async (p, nama) => { if (SKRIN) { mkdirSync(SKRIN, { recursive: true }); await p.screenshot({ path: `${SKRIN}/${nama}.png`, fullPage: true }); } };
   const skrin = async (nama) => { if (SKRIN) { mkdirSync(SKRIN, { recursive: true }); await page.screenshot({ path: `${SKRIN}/${nama}.png`, fullPage: true }); } };
   const simpan = () => page.getByRole('button', { name: 'Simpan' }).click();
   const tajukSubject = () => page.locator('.subject .isi b').allTextContents();
@@ -259,6 +265,100 @@ try {
     await page.getByRole('button', { name: 'Padam' }).click();
     await page.getByText('Belum ada artikel').waitFor();
     assert.deepEqual(amaranXss, []);
+  });
+
+  await langkah('guru: cipta course dan kuliah, hantar untuk kelulusan; tidak nampak menu admin', async () => {
+    const ctxG = await pelayar.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+    await ctxG.route('https://i.ytimg.com/**', (r) => r.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
+    await ctxG.addCookies([{ name: 'kh_sesi', value: tokenGuru, domain: 'localhost', path: '/', httpOnly: true, secure: false, sameSite: 'Lax' }]);
+    const g = await ctxG.newPage();
+    g.setDefaultTimeout(10_000);
+    g.on('pageerror', (e) => ralatHalaman.push('guru: ' + e.message));
+    g.on('dialog', (d) => d.accept());
+    await g.goto(B + '/panel/');
+    await g.locator('h1', { hasText: 'Course saya' }).waitFor();
+    assert.equal(await g.getByRole('link', { name: 'Kelulusan' }).count(), 0);
+    assert.equal(await g.getByRole('link', { name: 'Tetapan laman' }).count(), 0);
+    await g.getByRole('link', { name: 'Tambah course' }).click();
+    assert.equal(await g.locator('input[name=status][value=terbit]').count(), 0); // guru tidak boleh terus terbit
+    assert.equal(await g.locator('#guru_emel').count(), 0);
+    await g.fill('#tajuk', 'Sirah Guru');
+    await g.check('input[name=akses][value=percuma]');
+    await g.check('input[name=status][value=menunggu]');
+    await g.getByRole('button', { name: 'Simpan' }).click();
+    await g.getByText('menunggu kelulusan', { exact: false }).first().waitFor();
+    await g.getByRole('link', { name: 'Tambah subject' }).click();
+    await g.fill('#tajuk', 'Sirah 1');
+    await g.fill('#video', 'https://youtu.be/sirahsirah1');
+    await g.check('input[name=status][value=menunggu]');
+    await g.getByRole('button', { name: 'Simpan' }).click();
+    await g.locator('.subject', { hasText: 'Sirah 1' }).getByText('Menunggu kelulusan').waitFor();
+    // halaman admin sahaja ditolak
+    await g.goto(B + '/panel/#/artikel');
+    await g.getByText('bukan admin').waitFor();
+    await skrinHalaman(g, '08-guru');
+    globalThis.__guru = { ctxG, g };
+  });
+
+  await langkah('admin: barisan kelulusan, lulus course dan kuliah; pelajar nampak "Bersama Ustaz Guru"', async () => {
+    await page.goto(B + '/panel/#/');
+    await page.getByText('item menunggu kelulusan').waitFor();
+    await page.goto(B + '/panel/#/kelulusan');
+    await page.locator('h1', { hasText: 'Kelulusan' }).waitFor();
+    await page.locator('.kad', { hasText: 'Sirah Guru' }).first().getByText('Guru: Ustaz Guru').waitFor();
+    await skrin('09-kelulusan');
+    await page.locator('button[data-act=lulus][data-jenis=course]').click();
+    await page.locator('h2', { hasText: 'Course baru (0)' }).waitFor();
+    await page.locator('button[data-act=lulus][data-jenis=subject]').click();
+    await page.locator('h2', { hasText: 'Kuliah baru (0)' }).waitFor();
+    const awam = await pelayar.newContext({ serviceWorkers: 'block' });
+    const senarai = await (await awam.request.get(B + '/api/course')).json();
+    const sirah = senarai.find((c) => c.tajuk === 'Sirah Guru');
+    assert.equal(sirah.guru, 'Ustaz Guru');
+    const pv = await awam.newPage();
+    await pv.route('**/*', (r) => (r.request().url().startsWith(B) ? r.continue() : r.abort()));
+    await pv.goto(B + '/');
+    await pv.locator('.course', { hasText: 'Sirah Guru' }).getByText('Bersama Ustaz Guru').waitFor();
+    await awam.close();
+  });
+
+  await langkah('guru sunting kuliah terbit: laman kekal versi lama; admin tolak dengan catatan; guru nampak catatan', async () => {
+    const { g, ctxG } = globalThis.__guru;
+    await g.goto(B + '/panel/#/');
+    await g.locator('.kad', { hasText: 'Sirah Guru' }).click();
+    await g.locator('.subject', { hasText: 'Sirah 1' }).getByRole('link', { name: 'Sunting' }).click();
+    await g.getByText('Sudah diterbitkan. Perubahan').waitFor();
+    assert.equal(await g.getByRole('button', { name: 'Padam subject' }).count(), 0);
+    await g.fill('#tajuk', 'Sirah 1: Kelahiran');
+    await g.getByRole('button', { name: 'Simpan' }).click();
+    await g.locator('.subject', { hasText: 'Sirah 1' }).getByText('Perubahan menunggu').waitFor();
+    const awam = await pelayar.newContext({ serviceWorkers: 'block' });
+    const sid = (await (await awam.request.get(B + '/api/course/sirah-guru')).json()).subject[0];
+    assert.equal(sid.tajuk, 'Sirah 1'); // pelajar masih nampak versi terbit
+    await page.goto(B + '/panel/#/kelulusan');
+    await page.reload(); // URL sama (hash sahaja): muat semula untuk data terkini
+    const kad = page.locator('.kad', { hasText: 'Kuliah: Sirah 1' });
+    await kad.locator('table.beza').getByText('Sirah 1: Kelahiran').waitFor();
+    await kad.getByRole('button', { name: 'Tolak' }).click(); // prompt dijawab 'Sila betulkan tajuk'
+    await page.locator('h2', { hasText: 'Perubahan pada kandungan terbit (0)' }).waitFor();
+    assert.equal((await (await awam.request.get(B + '/api/course/sirah-guru')).json()).subject[0].tajuk, 'Sirah 1');
+    await g.locator('.subject', { hasText: 'Sirah 1' }).getByRole('link', { name: 'Sunting' }).click();
+    await g.getByText('Catatan admin: Perubahan ditolak: Sila betulkan tajuk').waitFor();
+    await awam.close(); await ctxG.close();
+  });
+
+  await langkah('admin: tambah guru baharu, emel salah ditolak, buang guru', async () => {
+    await page.goto(B + '/panel/#/guru');
+    await page.locator('.kad', { hasText: 'Ustaz Guru' }).waitFor();
+    await page.fill('#emel', 'salah');
+    await page.fill('#nama', 'Ustazah Baru');
+    await simpan();
+    await page.getByText('Format emel tidak sah').waitFor();
+    await page.fill('#emel', 'baru@contoh.my');
+    await simpan();
+    await page.locator('.kad', { hasText: 'Ustazah Baru' }).waitFor();
+    await page.locator('.kad', { hasText: 'Ustazah Baru' }).getByRole('button', { name: 'Buang' }).click();
+    await page.waitForFunction(() => !document.body.textContent.includes('Ustazah Baru'));
   });
 
   await langkah('tiada ralat JavaScript sepanjang sesi admin', async () => {

@@ -3,7 +3,7 @@
 const ID_YT = /^[A-Za-z0-9_-]{11}$/;
 const HOS_YT = new Set(['youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtube-nocookie.com', 'www.youtube-nocookie.com']);
 export const AKSES = ['percuma', 'ahli'];
-export const STATUS = ['draf', 'terbit'];
+export const STATUS = ['draf', 'menunggu', 'terbit']; // menunggu = dihantar guru, menunggu kelulusan admin
 
 // Terima pautan YouTube (watch, youtu.be, embed, shorts, live) atau ID 11 aksara. Hos lain ditolak,
 // termasuk youtube.com.penipu.test. Pulangkan ID atau null.

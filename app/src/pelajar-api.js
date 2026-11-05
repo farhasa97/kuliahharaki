@@ -18,7 +18,9 @@ async function konteks(req, env, repo, now) {
   return { pengguna, langganan, hari };
 }
 
-const courseAwam = (c) => ({ id: c.id, slug: c.slug, tajuk: c.tajuk, huraian: c.huraian ?? null, akses: c.akses });
+const courseAwam = (c, guru) => ({ id: c.id, slug: c.slug, tajuk: c.tajuk, huraian: c.huraian ?? null, akses: c.akses, guru: (c.guru_emel && guru?.get(c.guru_emel)) || null });
+// Nama guru untuk paparan. Jadual guru mungkin belum wujud (migrasi 0007): pulangkan peta kosong.
+const petaGuru = async (repo) => { try { return new Map((await repo.senaraiGuru()).map((g) => [g.emel, g.nama])); } catch { return new Map(); } };
 
 // Subject terbit dalam course terbit sahaja; selain itu dianggap tidak wujud (404), termasuk untuk admin.
 async function subjectTerbit(repo, id) {
@@ -36,8 +38,9 @@ export async function pelajarApi(req, env, url, repo, now) {
 
   if (bahagian[0] === 'course' && bahagian.length === 1 && req.method === 'GET') {
     const selesai = logMasuk ? new Map((await repo.kiraanSelesai(k.pengguna.id)).map((r) => [r.course_id, r.bil])) : null;
+    const guru = await petaGuru(repo);
     const senarai = (await repo.senaraiCourse()).filter((c) => c.bil_subject_terbit > 0)
-      .map((c) => ({ ...courseAwam(c), bil_subject: c.bil_subject_terbit, selesai: selesai ? (selesai.get(c.id) ?? 0) : null }));
+      .map((c) => ({ ...courseAwam(c, guru), bil_subject: c.bil_subject_terbit, selesai: selesai ? (selesai.get(c.id) ?? 0) : null }));
     return json(senarai);
   }
 
@@ -47,7 +50,7 @@ export async function pelajarApi(req, env, url, repo, now) {
     const selesai = new Set(logMasuk ? await repo.subjectSelesai(k.pengguna.id) : []);
     const subject = (await repo.senaraiSubject(c.id)).map((s) =>
       subjectRingkas(s, keputusanSubject({ course: c, subject: s, langganan: k.langganan, hari: k.hari, logMasuk }), selesai.has(s.id)));
-    return json({ course: courseAwam(c), subject, log_masuk: logMasuk });
+    return json({ course: courseAwam(c, await petaGuru(repo)), subject, log_masuk: logMasuk });
   }
 
   if (bahagian[0] === 'subject' && bahagian.length === 2 && req.method === 'GET') {
@@ -61,9 +64,9 @@ export async function pelajarApi(req, env, url, repo, now) {
     // Nama nota hanya untuk yang layak DAN sudah log masuk. Kunci R2 tidak pernah dihantar. Jika jadual nota
     // belum dicipta (migrasi 0004 belum dijalankan), halaman kuliah tetap berfungsi tanpa nota.
     let nota = [];
-    try { nota = await repo.senaraiNota(t.s.id); } catch { /* jadual nota belum wujud */ }
+    try { nota = (await repo.senaraiNota(t.s.id)).map(({ id, nama, saiz }) => ({ id, nama, saiz })); } catch { /* jadual atau lajur belum wujud */ }
     return json({
-      subject: subjectPenuh(t.s, keputusan, selesai), course: courseAwam(t.c),
+      subject: subjectPenuh(t.s, keputusan, selesai), course: courseAwam(t.c, await petaGuru(repo)),
       bil_nota: nota.length, nota: keputusan.akses && logMasuk ? nota : [],
       kedudukan: i + 1, jumlah: adik.length, sebelum: ringkas(adik[i - 1]), seterusnya: ringkas(adik[i + 1]), log_masuk: logMasuk,
     });
@@ -84,7 +87,7 @@ export async function pelajarApi(req, env, url, repo, now) {
   // Muat turun nota: peraturan akses sama seperti video, ditambah mesti log masuk (SPEC bahagian 9).
   if (bahagian[0] === 'nota' && bahagian.length === 2 && req.method === 'GET') {
     const n = await repo.notaDariId(idDari(bahagian[1]));
-    const t = n && await subjectTerbit(repo, n.subject_id);
+    const t = n && (n.status ?? 'terbit') === 'terbit' && await subjectTerbit(repo, n.subject_id); // nota menunggu kelulusan = tiada
     if (!t) return json({ ralat: 'tidak-dijumpai' }, 404);
     const keputusan = keputusanSubject({ course: t.c, subject: t.s, langganan: k.langganan, hari: k.hari, logMasuk });
     if (!logMasuk) return json({ ralat: 'belum-log-masuk' }, 401);

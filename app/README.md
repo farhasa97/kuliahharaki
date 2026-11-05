@@ -18,7 +18,7 @@ Worker Cloudflare dengan static assets dan D1. JavaScript biasa, tiada build ste
 | `src/lib/google.js`, `src/lib/sesi.js` | | Pengesahan ID token Google, kuki sesi |
 | `src/pelajar-api.js` | | API pelajar: course, subject (kunci akses), tanda selesai |
 | `src/lib/pelajar.js` | | Keputusan akses dan bentuk data untuk pelajar (video_id hanya jika layak) |
-| `src/admin-api.js` | | API panel admin `/api/admin/*` (sesi, peranan admin, semakan asal) |
+| `src/admin-api.js` | | API panel `/api/admin/*`: admin (semua) dan guru (course sendiri; terbit dan perubahan melalui kelulusan), kelulusan, guru, artikel, tetapan |
 | `src/lib/kandungan.js` | | Pengesahan course dan subject, ekstrak ID YouTube, slug |
 | `src/lib/peranan.js`, `src/lib/http.js` | | Peranan efektif (ADMIN_EMELS), pembantu respons JSON |
 | `src/repo.js` | | Semua SQL D1 |
@@ -26,7 +26,7 @@ Worker Cloudflare dengan static assets dan D1. JavaScript biasa, tiada build ste
 | `src/lib/artikel.js` | | Pengesahan artikel, slug, kiraan perkataan, Markdown ringkas yang selamat (semua teks di-escape) |
 | `src/lib/tetapan.js` | | Tetapan laman: medan dan lalai, semakan gambar logo (PNG, JPEG, WEBP; bukan SVG) |
 | `src/lib/nota.js` | | Nota PDF: nama, had saiz, semakan `%PDF-`, kunci R2 rawak, Content-Disposition |
-| `migrations/` | | Skema D1 (`0001_skema.sql` teras, `0002_video.sql` beli satu video, DITANGGUH, `0003_kandungan.sql` course, subject, progress, `0004_nota.sql` metadata nota PDF, `0005_tetapan.sql` tetapan laman, `0006_artikel.sql` artikel) |
+| `migrations/` | | Skema D1 (`0001_skema.sql` teras, `0002_video.sql` beli satu video, DITANGGUH, `0003_kandungan.sql` course, subject, progress, `0004_nota.sql` metadata nota PDF, `0005_tetapan.sql` tetapan laman, `0006_artikel.sql` artikel, `0007_guru.sql` guru, semakan, status nota) |
 
 Ujian:
 

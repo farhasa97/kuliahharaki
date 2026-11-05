@@ -5,6 +5,8 @@
 //   #/course/<id>/sunting              sunting course
 //   #/course/<id>/subject/baru         tambah subject
 //   #/course/<id>/subject/<sid>        sunting subject
+//   #/kelulusan, #/guru, #/artikel, #/tetapan   admin sahaja
+// Peranan: admin (semua) atau guru (course sendiri; penerbitan dan perubahan melalui kelulusan admin).
 // Klik ditangani melalui data-act, borang melalui data-borang (satu pendengar setiap jenis).
 
 const app = document.getElementById('app');
@@ -60,7 +62,7 @@ async function api(kaedah, laluan, badan) {
 
 const pergi = (hash) => { if (location.hash === hash) laluan(); else location.hash = hash; };
 const lencanaAkses = (a) => (a === 'percuma' ? '<span class="lencana">Percuma</span>' : '<span class="lencana ahli">Berbayar</span>');
-const lencanaStatus = (s) => (s === 'terbit' ? '<span class="lencana">Terbit</span>' : '<span class="lencana draf">Draf</span>');
+const lencanaStatus = (s) => (s === 'terbit' ? '<span class="lencana">Terbit</span>' : s === 'menunggu' ? '<span class="lencana pratonton">Menunggu kelulusan</span>' : '<span class="lencana draf">Draf</span>');
 const gambarVideo = (id) => (id
   ? `<img src="https://i.ytimg.com/vi/${h(id)}/mqdefault.jpg" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'tiada-video',textContent:'Video'}))">`
   : '<div class="tiada-video">Tiada video</div>');
@@ -72,44 +74,69 @@ function paparRalat(e) {
 
 // ---------- paparan ----------
 
+// Peranan pengguna panel: 'admin' atau 'guru' (ditetapkan dalam mula()).
+let PERANAN = 'admin';
+const ADMIN = () => PERANAN === 'admin';
+
+// Pilihan status ikut peranan. Guru tidak boleh menerbitkan; kandungan terbit milik guru tiada pilihan status.
+function pilihanStatus(status, jenis) {
+  if (ADMIN()) {
+    return `<label>Status</label><div class="pilihan">
+      <label><input type="radio" name="status" value="draf" ${status === 'draf' ? 'checked' : ''}> Draf${jenis === 'course' ? ' (pelajar tak nampak)' : ''}</label>
+      ${status === 'menunggu' ? '<label><input type="radio" name="status" value="menunggu" checked> Menunggu kelulusan</label>' : ''}
+      <label><input type="radio" name="status" value="terbit" ${status === 'terbit' ? 'checked' : ''}> Terbit</label></div>`;
+  }
+  if (status === 'terbit') return '<div class="info">Sudah diterbitkan. Perubahan yang anda simpan dihantar kepada admin untuk kelulusan; pelajar terus melihat versi semasa sehingga diluluskan.</div>';
+  return `<label>Status</label><div class="pilihan">
+    <label><input type="radio" name="status" value="draf" ${status !== 'menunggu' ? 'checked' : ''}> Draf (simpan dahulu)</label>
+    <label><input type="radio" name="status" value="menunggu" ${status === 'menunggu' ? 'checked' : ''}> Hantar untuk kelulusan admin</label></div>`;
+}
+const kotakCatatan = (x) => (x.catatan_semakan ? `<div class="catatan">Catatan admin: ${h(x.catatan_semakan)}</div>` : '');
+const kotakSemakan = (x) => (x.semakan ? '<div class="info">Ada perubahan menunggu kelulusan admin. Borang di bawah menunjukkan versi yang anda cadangkan.</div>' : '');
+
 async function senaraiCourse() {
-  const senarai = await api('GET', 'course');
+  const [senarai, q] = await Promise.all([api('GET', 'course'), ADMIN() ? api('GET', 'kelulusan').catch(() => null) : null]);
+  const bil = q ? q.course.length + q.subject.length + q.perubahan.length + q.nota.length : 0;
   app.innerHTML = `
-    <div class="baris antara"><h1>Course</h1><a class="butang" href="#/course/baru">Tambah course</a></div>
+    ${bil ? `<a class="info" style="display:block" href="#/kelulusan"><b>${bil}</b> item menunggu kelulusan. Semak sekarang &rarr;</a>` : ''}
+    <div class="baris antara"><h1>${ADMIN() ? 'Course' : 'Course saya'}</h1><a class="butang" href="#/course/baru">Tambah course</a></div>
     ${senarai.length ? senarai.map((c) => `
       <a class="kad" href="#/course/${c.id}">
-        <div class="baris"><b>${h(c.tajuk)}</b> ${lencanaAkses(c.akses)} ${lencanaStatus(c.status)}</div>
-        <div class="kecil">${c.bil_subject_terbit} daripada ${c.bil_subject} subject diterbitkan</div>
+        <div class="baris"><b>${h(c.tajuk)}</b> ${lencanaAkses(c.akses)} ${lencanaStatus(c.status)} ${c.ada_semakan ? '<span class="lencana pratonton">Perubahan menunggu</span>' : ''}</div>
+        <div class="kecil">${c.bil_subject_terbit} daripada ${c.bil_subject} subject diterbitkan${ADMIN() && c.guru_nama ? ` · Guru: ${h(c.guru_nama)}` : ''}</div>
       </a>`).join('') : '<div class="kad kosong">Belum ada course. Mula dengan <b>Tambah course</b>.</div>'}`;
 }
 
 async function borangCourse(id) {
-  const c = id ? await api('GET', `course/${id}`) : { tajuk: '', huraian: '', akses: 'ahli', status: 'draf', urutan: '' };
+  const c = id ? await api('GET', `course/${id}`) : { tajuk: '', huraian: '', akses: 'ahli', status: 'draf', urutan: '', guru_emel: null, semakan: null };
+  const v = { ...c, ...(c.semakan || {}) }; // guru menyunting versi cadangan jika ada
+  const guru = ADMIN() ? await api('GET', 'guru').catch(() => []) : [];
   app.innerHTML = `
     <p><a href="${id ? `#/course/${id}` : '#/'}">&larr; Kembali</a></p>
     <h1>${id ? 'Sunting course' : 'Course baru'}</h1>
     <form class="kad" data-borang="course" data-id="${id || ''}" novalidate>
       <div class="ralat" hidden></div>
+      ${kotakCatatan(c)}${kotakSemakan(c)}
       <label for="tajuk">Tajuk</label>
-      <input type="text" id="tajuk" name="tajuk" maxlength="120" value="${h(c.tajuk)}" required>
+      <input type="text" id="tajuk" name="tajuk" maxlength="120" value="${h(v.tajuk)}" required>
       <label for="huraian">Huraian</label>
-      <textarea id="huraian" name="huraian" maxlength="2000">${h(c.huraian)}</textarea>
+      <textarea id="huraian" name="huraian" maxlength="2000">${h(v.huraian)}</textarea>
       <label>Akses</label>
       <div class="pilihan">
-        <label><input type="radio" name="akses" value="ahli" ${c.akses === 'ahli' ? 'checked' : ''}> Berbayar (pelanggan Advance)</label>
-        <label><input type="radio" name="akses" value="percuma" ${c.akses === 'percuma' ? 'checked' : ''}> Percuma (semua pelajar)</label>
+        <label><input type="radio" name="akses" value="ahli" ${v.akses === 'ahli' ? 'checked' : ''}> Berbayar (pelanggan Advance)</label>
+        <label><input type="radio" name="akses" value="percuma" ${v.akses === 'percuma' ? 'checked' : ''}> Percuma (semua pelajar)</label>
       </div>
-      <label>Status</label>
-      <div class="pilihan">
-        <label><input type="radio" name="status" value="draf" ${c.status === 'draf' ? 'checked' : ''}> Draf (pelajar tak nampak)</label>
-        <label><input type="radio" name="status" value="terbit" ${c.status === 'terbit' ? 'checked' : ''}> Terbit</label>
-      </div>
+      ${pilihanStatus(c.status, 'course')}
+      ${ADMIN() ? `
+      <label for="guru_emel">Guru</label>
+      <select id="guru_emel" name="guru_emel"><option value="">Tiada (diurus admin)</option>${guru.map((g) => `<option value="${h(g.emel)}" ${g.emel === c.guru_emel ? 'selected' : ''}>${h(g.nama)} (${h(g.emel)})</option>`).join('')}</select>
+      <div class="bantuan">Guru boleh menyunting course ini dan kuliahnya. Setiap penerbitan dan perubahan perlu kelulusan admin.</div>
       <label for="urutan">Urutan</label>
       <input type="number" id="urutan" name="urutan" min="0" max="9999" value="${h(c.urutan)}">
-      <div class="bantuan">Nombor kecil dipaparkan dahulu. Biarkan kosong untuk letak di hujung.</div>
+      <div class="bantuan">Nombor kecil dipaparkan dahulu. Biarkan kosong untuk letak di hujung.</div>` : ''}
       <div class="tindakan">
         <button type="submit">Simpan</button>
-        ${id ? `<button type="button" class="bahaya" data-act="padam-course" data-id="${id}">Padam course</button>` : ''}
+        ${id && (ADMIN() || c.status !== 'terbit') ? `<button type="button" class="bahaya" data-act="padam-course" data-id="${id}">Padam course</button>` : ''}
       </div>
     </form>`;
 }
@@ -118,16 +145,19 @@ async function butiranCourse(id) {
   const c = await api('GET', `course/${id}`);
   const terbit = c.subject.filter((s) => s.status === 'terbit');
   const amaran = [];
-  if (c.status === 'draf') amaran.push('Course ini masih <b>draf</b>: pelajar belum nampak. Sunting course dan pilih Terbit bila sedia.');
+  if (c.status === 'draf') amaran.push(ADMIN() ? 'Course ini masih <b>draf</b>: pelajar belum nampak. Sunting course dan pilih Terbit bila sedia.'
+    : 'Course ini masih <b>draf</b>. Bila sedia, sunting course dan pilih <b>Hantar untuk kelulusan admin</b>.');
+  else if (c.status === 'menunggu') amaran.push('Course ini sedang <b>menunggu kelulusan</b> admin.');
   else if (!terbit.length) amaran.push('Course ini diterbitkan tetapi belum ada subject yang diterbitkan.');
   if (c.akses === 'ahli' && terbit.length && !terbit.some((s) => s.pratonton)) amaran.push('Tiada subject pratonton: pelajar tanpa langganan tak dapat menonton apa-apa dalam course ini. Tandakan video intro sebagai pratonton jika mahu.');
   app.innerHTML = `
     <p><a href="#/">&larr; Semua course</a></p>
     <div class="baris antara">
-      <div><h1>${h(c.tajuk)}</h1><div class="baris" style="margin-top:6px">${lencanaAkses(c.akses)} ${lencanaStatus(c.status)}</div></div>
+      <div><h1>${h(c.tajuk)}</h1><div class="baris" style="margin-top:6px">${lencanaAkses(c.akses)} ${lencanaStatus(c.status)} ${c.semakan ? '<span class="lencana pratonton">Perubahan menunggu</span>' : ''}${ADMIN() && c.guru_nama ? `<span class="kecil">Guru: ${h(c.guru_nama)}</span>` : ''}</div></div>
       <div class="baris"><a class="butang kedua" href="#/course/${id}/sunting">Sunting course</a><a class="butang" href="#/course/${id}/subject/baru">Tambah subject</a></div>
     </div>
     ${c.huraian ? `<p>${h(c.huraian)}</p>` : ''}
+    ${kotakCatatan(c)}
     ${amaran.map((a) => `<div class="info">${a}</div>`).join('')}
     <h2>Subject (${c.subject.length})</h2>
     ${c.subject.length ? c.subject.map((s, i) => `
@@ -135,7 +165,9 @@ async function butiranCourse(id) {
         ${gambarVideo(s.video_id)}
         <div class="isi">
           <b>${i + 1}. ${h(s.tajuk)}</b>
-          <div class="baris">${lencanaStatus(s.status)} ${s.pratonton && c.akses === 'ahli' ? '<span class="lencana pratonton">Pratonton percuma</span>' : ''}</div>
+          <div class="baris">${lencanaStatus(s.status)} ${s.pratonton && c.akses === 'ahli' ? '<span class="lencana pratonton">Pratonton percuma</span>' : ''}
+            ${s.semakan ? '<span class="lencana pratonton">Perubahan menunggu</span>' : ''}${s.catatan_semakan ? '<span class="lencana draf">Ada catatan admin</span>' : ''}
+            ${s.status === 'terbit' ? `<span class="kecil">${s.bil_khatam} pelajar khatam</span>` : ''}</div>
         </div>
         <div class="baris alat">
           <button class="kedua ikon" title="Naik" aria-label="Naikkan ${h(s.tajuk)}" data-act="alih" data-course="${id}" data-id="${s.id}" data-arah="-1" ${i === 0 ? 'disabled' : ''}>&uarr;</button>
@@ -147,36 +179,89 @@ async function butiranCourse(id) {
 
 async function borangSubject(cid, sid) {
   const c = await api('GET', `course/${cid}`);
-  const s = sid ? c.subject.find((x) => String(x.id) === String(sid)) : { tajuk: '', huraian: '', video_id: null, pratonton: false, status: 'draf' };
-  if (!s) throw new RalatApi({ ralat: 'tidak-dijumpai' }, 404);
+  const s0 = sid ? c.subject.find((x) => String(x.id) === String(sid)) : { tajuk: '', huraian: '', video_id: null, pratonton: false, status: 'draf', semakan: null };
+  if (!s0) throw new RalatApi({ ralat: 'tidak-dijumpai' }, 404);
+  const s = { ...s0, ...(s0.semakan || {}) }; // versi cadangan guru jika ada
   app.innerHTML = `
     <p><a href="#/course/${cid}">&larr; ${h(c.tajuk)}</a></p>
     <h1>${sid ? 'Sunting subject' : 'Subject baru'}</h1>
     <form class="kad" data-borang="subject" data-course="${cid}" data-id="${sid || ''}" novalidate>
       <div class="ralat" hidden></div>
+      ${kotakCatatan(s0)}${kotakSemakan(s0)}
       <label for="tajuk">Tajuk</label>
       <input type="text" id="tajuk" name="tajuk" maxlength="120" value="${h(s.tajuk)}" required>
       <label for="video">Pautan video YouTube</label>
       <input type="url" id="video" name="video" inputmode="url" placeholder="https://youtu.be/..." value="${s.video_id ? `https://youtu.be/${h(s.video_id)}` : ''}">
       <div class="bantuan">Tampal pautan dari butang Share di YouTube. Video sebaiknya <b>Unlisted</b>.</div>
-      ${s.video_id ? `<div class="subject" style="margin-top:8px">${gambarVideo(s.video_id)}<span class="kecil">Video semasa</span></div>` : ''}
+      ${s.video_id ? `<div class="subject" style="margin-top:8px">${gambarVideo(s.video_id)}<span class="kecil">Video ${s0.semakan && 'video_id' in s0.semakan ? 'dicadangkan' : 'semasa'}</span></div>` : ''}
       <label for="huraian">Huraian</label>
       <textarea id="huraian" name="huraian" maxlength="2000">${h(s.huraian)}</textarea>
       <label>Pratonton</label>
       <div class="pilihan"><label><input type="checkbox" name="pratonton" ${s.pratonton ? 'checked' : ''}> Percuma untuk semua (contoh: video intro)</label></div>
       ${c.akses === 'percuma' ? '<div class="bantuan">Course ini percuma, jadi semua subject sudah terbuka.</div>' : ''}
-      <label>Status</label>
-      <div class="pilihan">
-        <label><input type="radio" name="status" value="draf" ${s.status === 'draf' ? 'checked' : ''}> Draf</label>
-        <label><input type="radio" name="status" value="terbit" ${s.status === 'terbit' ? 'checked' : ''}> Terbit</label>
-      </div>
+      ${pilihanStatus(s0.status, 'subject')}
       <div class="tindakan">
         <button type="submit">Simpan</button>
-        ${sid ? `<button type="button" class="bahaya" data-act="padam-subject" data-course="${cid}" data-id="${sid}">Padam subject</button>` : ''}
+        ${sid && (ADMIN() || s0.status !== 'terbit') ? `<button type="button" class="bahaya" data-act="padam-subject" data-course="${cid}" data-id="${sid}">Padam subject</button>` : ''}
       </div>
     </form>
     <div class="kad" id="kad-nota" data-subject="${sid || ''}">${sid ? 'Memuatkan nota…' : '<h2>Nota PDF</h2><p class="bantuan">Simpan subject ini dahulu, kemudian buka semula untuk memuat naik nota.</p>'}</div>`;
   if (sid) segarNota(sid);
+}
+
+// ---------- kelulusan (admin) ----------
+
+const NAMA_MEDAN = { tajuk: 'Tajuk', huraian: 'Huraian', akses: 'Akses', video_id: 'Video', pratonton: 'Pratonton', tempoh_saat: 'Tempoh' };
+function nilaiMedan(k, v) {
+  if (k === 'video_id') return v ? `<a href="https://youtu.be/${h(v)}" target="_blank" rel="noopener">youtu.be/${h(v)}</a>` : '(tiada)';
+  if (k === 'pratonton') return v ? 'Ya' : 'Tidak';
+  if (k === 'akses') return v === 'percuma' ? 'Percuma' : 'Berbayar';
+  const t = String(v ?? '');
+  return t ? h(t.length > 400 ? t.slice(0, 400) + '…' : t) : '<i>(kosong)</i>';
+}
+const butangKelulusan = (jenis, id) => `<div class="baris" style="margin-top:12px">
+  <button data-act="lulus" data-jenis="${jenis}" data-id="${id}">Lulus</button>
+  <button class="bahaya" data-act="tolak" data-jenis="${jenis}" data-id="${id}">Tolak</button></div>`;
+
+async function halamanKelulusan() {
+  const q = await api('GET', 'kelulusan');
+  const bahagian = (tajuk, senarai, papar) => `<h2>${tajuk} (${senarai.length})</h2>${senarai.length ? senarai.map(papar).join('') : '<p class="kecil">Tiada.</p>'}`;
+  app.innerHTML = `
+    <p><a href="#/">&larr; Senarai course</a></p>
+    <h1>Kelulusan</h1>
+    <p class="kecil">Kandungan daripada guru hanya dipaparkan kepada pelajar selepas diluluskan. Tolak akan meminta catatan yang dilihat guru.</p>
+    ${bahagian('Course baru', q.course, (c) => `<div class="kad"><b>${h(c.tajuk)}</b> ${lencanaAkses(c.akses)}
+      <div class="kecil">Guru: ${h(c.guru_nama || '-')} · <a href="#/course/${c.id}">Lihat course</a></div>${c.huraian ? `<p>${h(c.huraian)}</p>` : ''}${butangKelulusan('course', c.id)}</div>`)}
+    ${bahagian('Kuliah baru', q.subject, (s) => `<div class="kad subject">${gambarVideo(s.video_id)}<div class="isi"><b>${h(s.tajuk)}</b>
+      <div class="kecil">${h(s.course_tajuk)} · Guru: ${h(s.guru_nama || '-')} · <a href="#/course/${s.course_id}/subject/${s.id}">Lihat</a>${s.video_id ? ` · <a href="https://youtu.be/${h(s.video_id)}" target="_blank" rel="noopener">Tonton</a>` : ''}</div>
+      ${butangKelulusan('subject', s.id)}</div></div>`)}
+    ${bahagian('Perubahan pada kandungan terbit', q.perubahan, (k) => `<div class="kad"><b>${k.jenis === 'course' ? 'Course' : 'Kuliah'}: ${h(k.tajuk)}</b>
+      <div class="kecil">Guru: ${h(k.guru_nama || '-')}</div>
+      <table class="beza"><thead><tr><th>Medan</th><th>Sekarang</th><th>Dicadangkan</th></tr></thead><tbody>
+      ${Object.keys(k.perubahan).map((m) => `<tr><td>${NAMA_MEDAN[m] || h(m)}</td><td>${nilaiMedan(m, k.semasa[m])}</td><td>${nilaiMedan(m, k.perubahan[m])}</td></tr>`).join('')}
+      </tbody></table>${butangKelulusan('perubahan', k.id)}</div>`)}
+    ${bahagian('Nota PDF', q.nota, (n) => `<div class="kad"><b>${h(n.nama)}</b> <span class="kecil">${saizTeks(n.saiz)}</span>
+      <div class="kecil">${h(n.course_tajuk)} · ${h(n.subject_tajuk)} · Guru: ${h(n.guru_nama || '-')} · <a href="/api/admin/nota/${n.id}" target="_blank" rel="noopener">Buka PDF</a></div>${butangKelulusan('nota', n.id)}</div>`)}`;
+}
+
+// ---------- guru (admin) ----------
+
+async function halamanGuru() {
+  const senarai = await api('GET', 'guru');
+  app.innerHTML = `
+    <p><a href="#/">&larr; Senarai course</a></p>
+    <h1>Guru</h1>
+    <form class="kad" data-borang="guru" novalidate>
+      <div class="ralat" hidden></div>
+      <label for="emel">Emel Google guru</label>
+      <input type="text" id="emel" name="emel" inputmode="email" maxlength="120" placeholder="nama@gmail.com">
+      <label for="nama">Nama paparan</label>
+      <input type="text" id="nama" name="nama" maxlength="80" placeholder="contoh: Ustaz Ali">
+      <div class="bantuan">Guru log masuk di <b>/panel/</b> dengan akaun Google emel ini. Nama paparan dilihat pelajar pada course guru. Untuk menukar nama, tambah semula emel yang sama.</div>
+      <div class="tindakan"><button type="submit">Simpan guru</button></div>
+    </form>
+    ${senarai.length ? senarai.map((g) => `<div class="kad"><div class="baris antara" style="margin:0"><div><b>${h(g.nama)}</b><div class="kecil">${h(g.emel)} · ${g.bil_course} course</div></div>
+      <button class="bahaya" data-act="buang-guru" data-emel="${h(g.emel)}">Buang</button></div></div>`).join('') : '<div class="kad kosong">Belum ada guru.</div>'}`;
 }
 
 // ---------- artikel ----------
@@ -320,11 +405,11 @@ async function segarNota(sid, ralat) {
   try { senarai = await api('GET', `subject/${sid}/nota`); } catch (e) { ralat = ralat || e.message; }
   kad.innerHTML = `<h2>Nota PDF</h2>
     <div class="ralat" ${ralat ? '' : 'hidden'}>${h(ralat || '')}</div>
-    ${senarai.length ? senarai.map((n) => `<div class="baris antara" style="margin:0 0 8px"><span><b>${h(n.nama)}</b> <span class="kecil">${saizTeks(n.saiz)}</span></span>
-      <button type="button" class="bahaya" data-act="padam-nota" data-subject="${sid}" data-id="${n.id}">Padam</button></div>`).join('') : '<p class="kecil">Belum ada nota.</p>'}
+    ${senarai.length ? senarai.map((n) => `<div class="baris antara" style="margin:0 0 8px"><span><b>${h(n.nama)}</b> <span class="kecil">${saizTeks(n.saiz)}</span> ${n.status === 'menunggu' ? lencanaStatus('menunggu') : ''}</span>
+      ${ADMIN() || n.status === 'menunggu' ? `<button type="button" class="bahaya" data-act="padam-nota" data-subject="${sid}" data-id="${n.id}">${ADMIN() ? 'Padam' : 'Tarik balik'}</button>` : ''}</div>`).join('') : '<p class="kecil">Belum ada nota.</p>'}
     <label for="failNota">Muat naik nota (PDF, maksimum 20 MB, sehingga 10 nota)</label>
     <input type="file" id="failNota" accept="application/pdf,.pdf" multiple data-nota-fail data-subject="${sid}">
-    <div class="bantuan" id="statusNota">Pelajar hanya boleh muat turun jika layak menonton kuliah ini dan sudah log masuk.</div>`;
+    <div class="bantuan" id="statusNota">${ADMIN() ? '' : 'Nota yang dimuat naik dipaparkan kepada pelajar selepas admin meluluskan. '}Pelajar hanya boleh muat turun jika layak menonton kuliah ini dan sudah log masuk.</div>`;
 }
 
 document.addEventListener('change', async (e) => {
@@ -362,7 +447,9 @@ const BORANG = {
   async course(b) {
     const d = new FormData(b);
     const urutan = String(d.get('urutan') ?? '').trim();
-    const badan = { tajuk: d.get('tajuk'), huraian: d.get('huraian'), akses: d.get('akses'), status: d.get('status'), urutan: urutan === '' ? null : Number(urutan) };
+    const badan = { tajuk: d.get('tajuk'), huraian: d.get('huraian'), akses: d.get('akses') };
+    if (d.get('status')) badan.status = d.get('status'); // guru: tiada pilihan status bila course sudah terbit
+    if (ADMIN()) { badan.urutan = urutan === '' ? null : Number(urutan); badan.guru_emel = d.get('guru_emel') || ''; }
     const id = b.dataset.id;
     const c = id ? await api('PUT', `course/${id}`, badan) : await api('POST', 'course', badan);
     pergi(`#/course/${c.id}`);
@@ -380,6 +467,11 @@ const BORANG = {
     await borangArtikel(id); // muat semula borang daripada data tersimpan (slug dikunci, pautan pratonton dikemas kini)
     const ok = document.getElementById('artikel-ok'); ok.hidden = false; ok.scrollIntoView({ block: 'center' });
   },
+  async guru(b) {
+    const d = new FormData(b);
+    await api('POST', 'guru', { emel: d.get('emel'), nama: d.get('nama') });
+    halamanGuru();
+  },
   async tetapan(b) {
     const d = new FormData(b);
     const badan = Object.fromEntries(MEDAN_TETAPAN.map(([k]) => [k, d.get(k) ?? '']));
@@ -390,7 +482,8 @@ const BORANG = {
   },
   async subject(b) {
     const d = new FormData(b);
-    const badan = { tajuk: d.get('tajuk'), huraian: d.get('huraian'), video: d.get('video'), pratonton: d.get('pratonton') === 'on', status: d.get('status') };
+    const badan = { tajuk: d.get('tajuk'), huraian: d.get('huraian'), video: d.get('video'), pratonton: d.get('pratonton') === 'on' };
+    if (d.get('status')) badan.status = d.get('status');
     const { course, id } = b.dataset;
     if (id) await api('PUT', `subject/${id}`, badan); else await api('POST', `course/${course}/subject`, badan);
     pergi(`#/course/${course}`);
@@ -407,6 +500,21 @@ const TINDAKAN = {
     if (!confirm('Padam artikel ini? Tindakan ini tidak boleh dibatalkan.')) return;
     await api('DELETE', `artikel/${el.dataset.id}`);
     pergi('#/artikel');
+  },
+  async lulus(el) {
+    await api('POST', `kelulusan/${el.dataset.jenis}/${el.dataset.id}/lulus`);
+    halamanKelulusan();
+  },
+  async tolak(el) {
+    const catatan = prompt('Sebab ditolak (dilihat guru):');
+    if (catatan === null) return;
+    await api('POST', `kelulusan/${el.dataset.jenis}/${el.dataset.id}/tolak`, { catatan });
+    halamanKelulusan();
+  },
+  async 'buang-guru'(el) {
+    if (!confirm(`Buang ${el.dataset.emel} sebagai guru? Course mereka kekal; guru tidak lagi boleh masuk panel.`)) return;
+    await api('DELETE', `guru/${encodeURIComponent(el.dataset.emel)}`);
+    halamanGuru();
   },
   async 'buang-logo'() {
     if (!confirm('Buang logo? Ikon lalai akan digunakan semula.')) return;
@@ -466,6 +574,8 @@ async function laluan() {
   try {
     if (!m.length) await senaraiCourse();
     else if (m[0] === 'tetapan') await borangTetapan();
+    else if (m[0] === 'kelulusan') await halamanKelulusan();
+    else if (m[0] === 'guru') await halamanGuru();
     else if (m[0] === 'artikel' && !m[1]) await senaraiArtikel();
     else if (m[0] === 'artikel' && m[1] === 'baru') await borangArtikel(null);
     else if (m[0] === 'artikel') await borangArtikel(m[1]);
@@ -492,9 +602,11 @@ async function mula() {
   const saya = await fetch('/api/saya');
   if (saya.ok) {
     const d = await saya.json();
-    kotakPengguna.innerHTML = `<a class="butang kedua" href="#/artikel">Artikel</a><a class="butang kedua" href="#/tetapan">Tetapan laman</a><a class="butang kedua" href="/">Laman pelajar</a><span class="kecil">${h(d.pengguna.emel)}</span><button class="kedua" data-act="keluar">Log keluar</button>`;
-    if (d.pengguna.peranan !== 'admin') {
-      app.innerHTML = `<div class="kad"><h1>Tiada akses</h1><p>Akaun <b>${h(d.pengguna.emel)}</b> bukan admin. Hubungi pemilik jika ini satu kesilapan.</p><p><a href="/">Ke laman utama</a></p></div>`;
+    PERANAN = d.pengguna.peranan;
+    const pautanAdmin = '<a class="butang kedua" href="#/kelulusan">Kelulusan</a><a class="butang kedua" href="#/guru">Guru</a><a class="butang kedua" href="#/artikel">Artikel</a><a class="butang kedua" href="#/tetapan">Tetapan laman</a>';
+    kotakPengguna.innerHTML = `${PERANAN === 'admin' ? pautanAdmin : '<span class="lencana pratonton">Guru</span>'}<a class="butang kedua" href="/">Laman pelajar</a><span class="kecil">${h(d.pengguna.emel)}</span><button class="kedua" data-act="keluar">Log keluar</button>`;
+    if (PERANAN !== 'admin' && PERANAN !== 'guru') {
+      app.innerHTML = `<div class="kad"><h1>Tiada akses</h1><p>Akaun <b>${h(d.pengguna.emel)}</b> bukan admin atau guru. Hubungi pemilik jika ini satu kesilapan.</p><p><a href="/">Ke laman utama</a></p></div>`;
       return;
     }
     if (!dengarLaluan) { window.addEventListener('hashchange', laluan); dengarLaluan = true; }

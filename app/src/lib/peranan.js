@@ -7,3 +7,11 @@ export function peranEfektif(env, pengguna) {
   if (adminEmel(env, pengguna.emel)) return 'admin';
   return pengguna.peranan === 'admin' ? 'pelajar' : pengguna.peranan;
 }
+
+// Peranan penuh: admin (ADMIN_EMELS) > guru (jadual guru, diurus admin di panel) > pelajar.
+// Jika jadual guru belum dicipta (migrasi 0007), semua bukan admin dianggap pelajar; log masuk tetap berfungsi.
+export async function perananPenuh(env, repo, pengguna) {
+  if (adminEmel(env, pengguna.emel)) return 'admin';
+  try { if (await repo.guruDariEmel(String(pengguna.emel).toLowerCase())) return 'guru'; } catch { /* jadual belum wujud */ }
+  return 'pelajar';
+}

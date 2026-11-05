@@ -84,7 +84,7 @@ function topbar(aktif) {
     <a class="brand" href="#/"><span class="mark sm">${MARK}</span><span class="brand-name">Kuliah Haraki</span></a>
     <div class="navpills" role="tablist" aria-label="Menu peserta">
       ${pil('utama', 'Utama', '#/', GRID)}${pil('kuliah', 'Kuliah saya', '#/kuliah')}
-      ${saya?.pengguna.peranan === 'admin' ? '<button role="tab" aria-selected="false" data-pergi="/panel/">Panel admin</button>' : ''}
+      ${['admin', 'guru'].includes(saya?.pengguna.peranan) ? `<button role="tab" aria-selected="false" data-pergi="/panel/">Panel ${saya.pengguna.peranan}</button>` : ''}
     </div>
     <div class="topbar-right" id="nav">${kanan}</div>
   </div>`;
@@ -150,7 +150,7 @@ function kadCourse(c, i) {
       <p class="course-level">${bebas ? 'Siri percuma' : 'Siri ahli penuh'}</p>
       <h3>${h(c.tajuk)}</h3>
       ${c.huraian ? `<p class="course-desc">${h(c.huraian)}</p>` : ''}
-      <div class="course-meta"><span>${c.bil_subject} kuliah video</span>${c.selesai != null ? `<span>${c.selesai} khatam</span>` : ''}</div>
+      <div class="course-meta">${c.guru ? `<span>Bersama ${h(c.guru)}</span>` : ''}<span>${c.bil_subject} kuliah video</span>${c.selesai != null ? `<span>${c.selesai} khatam</span>` : ''}</div>
     </div>
     <div class="course-foot">${kiri}${kanan}</div>
   </a>`;
@@ -501,7 +501,7 @@ async function halamanCourse(slug) {
     <div class="page-head">
       <nav class="crumb" style="margin-bottom:14px"><a href="#/">Utama</a><span>/</span><a href="#/kuliah">Kuliah saya</a><span>/</span><span style="color:var(--ink-2)">${h(d.course.tajuk)}</span></nav>
       <div class="page-head-top">
-        <div><h1>${h(d.course.tajuk)}</h1>${d.course.huraian ? `<p class="sub">${h(d.course.huraian)}</p>` : ''}</div>
+        <div><h1>${h(d.course.tajuk)}</h1>${d.course.guru ? `<p class="sub guru-siri">Bersama ${h(d.course.guru)}</p>` : ''}${d.course.huraian ? `<p class="sub">${h(d.course.huraian)}</p>` : ''}</div>
         ${d.log_masuk ? `<div class="head-stat"><b class="tnum">${pct(s, n)}%</b><span>${s} daripada ${n} selesai</span></div>` : ''}
       </div>
       <div class="pilltabs">
@@ -545,7 +545,7 @@ async function halamanSubject(id) {
     <div class="page-head">
       <nav class="crumb" style="margin-bottom:14px"><a href="#/">Utama</a><span>/</span><a href="#/kuliah">Kuliah saya</a><span>/</span><a href="#/course/${encodeURIComponent(d.course.slug)}">${h(d.course.tajuk)}</a></nav>
       <div class="page-head-top">
-        <div><h1>Kuliah ${dua(d.kedudukan)} · ${h(s.tajuk)}</h1><p class="sub">${h(d.course.tajuk)} · kuliah ${d.kedudukan} daripada ${d.jumlah}</p></div>
+        <div><h1>Kuliah ${dua(d.kedudukan)} · ${h(s.tajuk)}</h1><p class="sub">${h(d.course.tajuk)}${d.course.guru ? ` · ${h(d.course.guru)}` : ''} · kuliah ${d.kedudukan} daripada ${d.jumlah}</p></div>
         ${d.log_masuk ? `<div class="head-stat"><b class="tnum">${pct(khatam, n)}%</b><span>siri selesai</span></div>` : ''}
       </div>
       <div class="pilltabs">
@@ -629,7 +629,7 @@ function halamanAkaun() {
           <div class="row-item ${l.akses ? 'done' : 'info'}"><div class="rt"><b>Ahli penuh: ${STATUS_LANGGANAN[l.status]}${l.tarikh_tamat ? ` hingga ${h(l.tarikh_tamat)}` : ''}</b><small>Keahlian ${l.akses ? 'ahli penuh' : 'percuma'}</small></div></div>
         </div>
         ${notis}
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px">${saya.pengguna.peranan === 'admin' ? '<a class="btn outline" href="/panel/">Panel admin</a>' : ''}<button class="btn outline" data-act="keluar">Log keluar</button></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px">${['admin', 'guru'].includes(saya.pengguna.peranan) ? `<a class="btn outline" href="/panel/">Panel ${saya.pengguna.peranan}</a>` : ''}<button class="btn outline" data-act="keluar">Log keluar</button></div>
       </div></div>
       <aside class="lesson-side">${l.akses && !l.notis ? '' : kadLanggan()}</aside>
     </div></div>`);
