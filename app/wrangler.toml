@@ -11,8 +11,8 @@ run_worker_first = ["/api/*", "/auth/*", "/bcl/*", "/admin/*"]
 # Bukan rahsia. Rahsia (BCL_WEBHOOK_KEY, BCL_API_TOKEN, ADMIN_TOKEN) diset di dashboard Cloudflare.
 [vars]
 GOOGLE_CLIENT_ID = "369129694375-7so4q5csbho2qkdjgnesm2086d9l789j.apps.googleusercontent.com"
-BUY_URL = ""
-BCL_FORM_ID = ""
+BUY_URL = "https://kuliahharaki.bcl.my/form/langgan-advance"
+BCL_FORM_ID = "20826"
 TANGGUH_HARI = "3"
 ADMIN_EMELS = "annurprosolutions@gmail.com,farhan.sazali15@gmail.com"
 
