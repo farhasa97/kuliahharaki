@@ -104,6 +104,13 @@ Harga yang dipaparkan kepada pelajar datang dari `app/wrangler.toml`: `HARGA_TEK
 4. Konsol admin (B): `A('/admin/bayaran')` mesti tunjuk `status: diproses`.
 5. Buang item RM1.
 
+### A7. Domain kuliahharaki.com (07/11/2026)
+1. Dashboard Cloudflare, Workers & Pages, `kuliahharaki`, **Settings**, **Domains & Routes**, **Add**, **Custom domain**: masukkan `kuliahharaki.com`, kemudian ulang untuk `www.kuliahharaki.com`. Cloudflare cipta rekod DNS dan sijil HTTPS sendiri (tunggu beberapa minit).
+2. Google Cloud Console, Credentials, OAuth client, **Authorized JavaScript origins**: tambah `https://kuliahharaki.com` dan `https://www.kuliahharaki.com`. Kekalkan alamat `workers.dev` yang lama.
+3. BCL, borang `langgan-advance`, webhook `payment-success`: tukar hos kepada `https://kuliahharaki.com/bcl/<kunci>` (kunci sama). Alamat lama masih berfungsi, jadi tukar bila-bila selepas domain hidup.
+4. Pengguna dengan sesi lama di alamat `workers.dev` perlu log masuk semula di domain baru (kuki terikat pada hos).
+5. `SITE_URL` dalam `app/wrangler.toml` dipakai untuk canonical dan sitemap artikel.
+
 ## B. Konsol admin
 
 Buka URL Worker dalam Chrome, tekan F12, tab Console, tampal baris pertama dengan `ADMIN_TOKEN` kau (dalam pelayar kau sendiri, bukan chat):

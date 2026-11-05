@@ -17,6 +17,7 @@ TANGGUH_HARI = "3"
 HARGA_TEKS = "RM10 sebulan atau RM100 setahun" # dipaparkan kepada pelajar; ikut harga dalam borang BCL
 HARGA_BULANAN = "10"  # kad yuran; mesti sama dengan item ADVANCE BULANAN dalam borang BCL
 HARGA_TAHUNAN = "100" # kad yuran; mesti sama dengan item ADVANCE TAHUNAN dalam borang BCL
+SITE_URL = "https://kuliahharaki.com" # alamat utama (canonical, sitemap). Tukar di sini jika domain berubah
 ADMIN_EMELS = "annurprosolutions@gmail.com,farhan.sazali15@gmail.com"
 
 [[d1_databases]]
