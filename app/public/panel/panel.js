@@ -24,6 +24,14 @@ const RALAT = {
   'tidak-dijumpai': 'Tidak dijumpai. Mungkin sudah dipadam.',
   'asal-tidak-dibenarkan': 'Permintaan ditolak (asal laman tidak sah).',
   'bukan-pdf': 'Fail ini bukan PDF yang sah.',
+  'slug-tidak-sah': 'Slug hanya huruf kecil, nombor dan sempang (contoh hukum-solat-jamak), maksimum 80 aksara.',
+  'slug-sudah-ada': 'Slug ini sudah digunakan artikel lain.',
+  'slug-dikunci': 'Slug tidak boleh ditukar selepas artikel pernah diterbitkan (URL akan rosak).',
+  'ringkasan-diperlukan': 'Ringkasan wajib diisi sebelum diterbitkan (ia menjadi keterangan di Google).',
+  'ringkasan-tidak-sah': 'Ringkasan maksimum 200 aksara.',
+  'isi-diperlukan': 'Isi artikel wajib diisi sebelum diterbitkan.',
+  'isi-tidak-sah': 'Isi terlalu panjang.',
+  'badan-terlalu-besar': 'Kandungan terlalu besar.',
   'bukan-gambar': 'Logo mesti gambar PNG, JPG atau WEBP.',
   'logo-terlalu-besar': 'Logo terlalu besar. Maksimum 500 KB.',
   'terlalu-panjang': 'Teks terlalu panjang.',
@@ -171,6 +179,79 @@ async function borangSubject(cid, sid) {
   if (sid) segarNota(sid);
 }
 
+// ---------- artikel ----------
+
+const SASARAN = 2000;
+const kiraPerkataan = (isi) => String(isi || '').replace(/!\[([^\]]*)\]\([^)]*\)/g, ' $1 ').replace(/\[([^\]]+)\]\([^)]*\)/g, ' $1 ').replace(/[#>*_`]/g, ' ')
+  .split(/\s+/).filter((t) => /[\p{L}\p{N}]/u.test(t)).length;
+const tarikhMy = (iso) => { if (!iso) return ''; const d = new Date(Date.parse(iso) + 8 * 3600e3).toISOString().slice(0, 10); return `${d.slice(8)}/${d.slice(5, 7)}/${d.slice(0, 4)}`; };
+
+async function senaraiArtikel() {
+  const senarai = await api('GET', 'artikel');
+  app.innerHTML = `
+    <div class="baris antara"><h1>Artikel</h1><a class="butang" href="#/artikel/baru">Tambah artikel</a></div>
+    ${senarai.length ? senarai.map((a) => `<a class="kad" href="#/artikel/${a.id}">
+      <div class="baris antara" style="margin:0"><b>${h(a.tajuk)}</b>${lencanaStatus(a.status)}</div>
+      <div class="kecil" style="margin-top:6px">${a.bil_perkataan} perkataan${a.bil_perkataan < SASARAN ? ` (sasaran ${SASARAN})` : ''} · /artikel/${h(a.slug)}${a.diterbit_pada ? ' · terbit ' + tarikhMy(a.diterbit_pada) : ''}</div></a>`).join('')
+      : '<div class="kad kosong">Belum ada artikel. Tekan <b>Tambah artikel</b>.</div>'}`;
+}
+
+async function borangArtikel(id) {
+  const a = id ? await api('GET', `artikel/${id}`) : { tajuk: '', slug: '', ringkasan: '', isi: '', status: 'draf', diterbit_pada: null, bil_perkataan: 0 };
+  const dikunci = !!a.diterbit_pada;
+  app.innerHTML = `
+    <p><a href="#/artikel">&larr; Senarai artikel</a></p>
+    <h1>${id ? 'Sunting artikel' : 'Artikel baru'}</h1>
+    <form class="kad" data-borang="artikel" data-id="${id || ''}" novalidate>
+      <div class="ralat" hidden></div>
+      <div class="info" id="artikel-ok" hidden>Disimpan.</div>
+      <label for="tajuk">Tajuk (jadi tajuk H1 dan tajuk di Google)</label>
+      <input type="text" id="tajuk" name="tajuk" maxlength="120" value="${h(a.tajuk)}" required>
+      <label for="slug">Slug (alamat artikel)</label>
+      <input type="text" id="slug" name="slug" maxlength="80" value="${h(a.slug)}" placeholder="dijana daripada tajuk jika dikosongkan" ${dikunci ? 'readonly' : ''}>
+      <div class="bantuan">${dikunci ? 'Dikunci kerana artikel pernah diterbitkan.' : 'Hanya huruf kecil, nombor dan sempang. Tidak boleh ditukar selepas diterbitkan.'}${a.slug ? ` Alamat: <b>/artikel/${h(a.slug)}</b>` : ''}</div>
+      <label for="ringkasan">Ringkasan (keterangan di Google, elok 140 hingga 160 aksara)</label>
+      <textarea id="ringkasan" name="ringkasan" maxlength="200" style="min-height:70px">${h(a.ringkasan)}</textarea>
+      <div class="bantuan" id="kira-ringkasan"></div>
+      <label for="isi">Isi artikel</label>
+      <textarea id="isi" name="isi" style="min-height:420px;font-family:inherit;line-height:1.6">${h(a.isi)}</textarea>
+      <div class="bantuan" id="kira-isi"></div>
+      <details style="margin-top:10px"><summary class="kecil" style="cursor:pointer">Panduan format</summary>
+        <div class="bantuan" style="line-height:1.7">
+          <code>## Tajuk bahagian</code> · <code>### Tajuk kecil</code><br>
+          <code>**tebal**</code> · <code>*condong*</code><br>
+          <code>- senarai</code> · <code>1. senarai bernombor</code> · <code>&gt; petikan</code> · <code>---</code> garis<br>
+          <code>[teks pautan](https://contoh.com)</code> atau <code>[kuliah](/#/course/slug)</code><br>
+          <code>![penerangan gambar](https://contoh.com/gambar.png)</code> (https sahaja)<br>
+          Tinggalkan satu baris kosong antara perenggan. Jangan taip tajuk artikel sekali lagi dalam isi; tajuk di atas sudah menjadi H1.
+        </div></details>
+      <label>Status</label>
+      <div class="pilihan">
+        <label><input type="radio" name="status" value="draf" ${a.status === 'draf' ? 'checked' : ''}> Draf</label>
+        <label><input type="radio" name="status" value="terbit" ${a.status === 'terbit' ? 'checked' : ''}> Terbit</label>
+      </div>
+      <div class="tindakan">
+        <button type="submit">Simpan</button>
+        ${id ? `<a class="butang kedua" href="/artikel/${h(a.slug)}" target="_blank" rel="noopener">${a.status === 'terbit' ? 'Lihat di laman' : 'Pratonton draf'}</a>
+          <button type="button" class="bahaya" data-act="padam-artikel" data-id="${id}">Padam</button>` : ''}
+      </div>
+    </form>`;
+  kemaskiniKiraArtikel();
+}
+
+function kemaskiniKiraArtikel() {
+  const isi = document.getElementById('isi'), rg = document.getElementById('ringkasan');
+  if (!isi || !rg) return;
+  const n = kiraPerkataan(isi.value);
+  const k = document.getElementById('kira-isi');
+  k.textContent = `${n} perkataan${n >= SASARAN ? ' (sasaran 2000 dicapai)' : `, kurang ${SASARAN - n} untuk sasaran ${SASARAN}`}`;
+  k.style.color = n >= SASARAN ? 'var(--ok)' : '';
+  const l = rg.value.trim().length;
+  document.getElementById('kira-ringkasan').textContent = `${l} aksara${l > 160 ? ' (Google mungkin memotong selepas 160)' : ''}`;
+}
+
+document.addEventListener('input', (e) => { if (e.target.id === 'isi' || e.target.id === 'ringkasan') kemaskiniKiraArtikel(); });
+
 // ---------- tetapan laman ----------
 
 const MEDAN_TETAPAN = [
@@ -286,6 +367,19 @@ const BORANG = {
     const c = id ? await api('PUT', `course/${id}`, badan) : await api('POST', 'course', badan);
     pergi(`#/course/${c.id}`);
   },
+  async artikel(b) {
+    const d = new FormData(b);
+    const badan = { tajuk: d.get('tajuk'), ringkasan: d.get('ringkasan'), isi: d.get('isi'), status: d.get('status') };
+    const slug = String(d.get('slug') || '').trim();
+    if (slug && !b.querySelector('#slug').readOnly) badan.slug = slug;
+    const n = kiraPerkataan(badan.isi);
+    if (badan.status === 'terbit' && n < SASARAN && !confirm(`Artikel ini baru ${n} perkataan (sasaran ${SASARAN}). Terbitkan juga?`)) return;
+    const id = b.dataset.id;
+    const a = id ? await api('PUT', `artikel/${id}`, badan) : await api('POST', 'artikel', badan);
+    if (!id) return pergi(`#/artikel/${a.id}`);
+    await borangArtikel(id); // muat semula borang daripada data tersimpan (slug dikunci, pautan pratonton dikemas kini)
+    const ok = document.getElementById('artikel-ok'); ok.hidden = false; ok.scrollIntoView({ block: 'center' });
+  },
   async tetapan(b) {
     const d = new FormData(b);
     const badan = Object.fromEntries(MEDAN_TETAPAN.map(([k]) => [k, d.get(k) ?? '']));
@@ -308,6 +402,11 @@ const TINDAKAN = {
     if (!confirm('Padam course ini? Tindakan ini tidak boleh dibatalkan.')) return;
     await api('DELETE', `course/${el.dataset.id}`);
     pergi('#/');
+  },
+  async 'padam-artikel'(el) {
+    if (!confirm('Padam artikel ini? Tindakan ini tidak boleh dibatalkan.')) return;
+    await api('DELETE', `artikel/${el.dataset.id}`);
+    pergi('#/artikel');
   },
   async 'buang-logo'() {
     if (!confirm('Buang logo? Ikon lalai akan digunakan semula.')) return;
@@ -367,6 +466,9 @@ async function laluan() {
   try {
     if (!m.length) await senaraiCourse();
     else if (m[0] === 'tetapan') await borangTetapan();
+    else if (m[0] === 'artikel' && !m[1]) await senaraiArtikel();
+    else if (m[0] === 'artikel' && m[1] === 'baru') await borangArtikel(null);
+    else if (m[0] === 'artikel') await borangArtikel(m[1]);
     else if (m[0] === 'course' && m[1] === 'baru') await borangCourse(null);
     else if (m[0] === 'course' && m.length === 2) await butiranCourse(m[1]);
     else if (m[0] === 'course' && m[2] === 'sunting') await borangCourse(m[1]);
@@ -390,7 +492,7 @@ async function mula() {
   const saya = await fetch('/api/saya');
   if (saya.ok) {
     const d = await saya.json();
-    kotakPengguna.innerHTML = `<a class="butang kedua" href="#/tetapan">Tetapan laman</a><a class="butang kedua" href="/">Laman pelajar</a><span class="kecil">${h(d.pengguna.emel)}</span><button class="kedua" data-act="keluar">Log keluar</button>`;
+    kotakPengguna.innerHTML = `<a class="butang kedua" href="#/artikel">Artikel</a><a class="butang kedua" href="#/tetapan">Tetapan laman</a><a class="butang kedua" href="/">Laman pelajar</a><span class="kecil">${h(d.pengguna.emel)}</span><button class="kedua" data-act="keluar">Log keluar</button>`;
     if (d.pengguna.peranan !== 'admin') {
       app.innerHTML = `<div class="kad"><h1>Tiada akses</h1><p>Akaun <b>${h(d.pengguna.emel)}</b> bukan admin. Hubungi pemilik jika ini satu kesilapan.</p><p><a href="/">Ke laman utama</a></p></div>`;
       return;

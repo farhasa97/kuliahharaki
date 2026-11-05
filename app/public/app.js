@@ -36,6 +36,8 @@ const CHEV = '<svg class="chev" viewBox="0 0 12 12" fill="none" aria-hidden="tru
 
 const ART = (i) => `art art${(i % 6) + 1}`;
 const percuma = (c) => c.akses === 'percuma';
+// "2026-11-07T01:00:00.000Z" -> "07/11/2026" (waktu Malaysia)
+const tarikhMy = (iso) => { if (!iso) return ''; const d = new Date(Date.parse(iso) + 8 * 3600e3).toISOString().slice(0, 10); return `${d.slice(8)}/${d.slice(5, 7)}/${d.slice(0, 4)}`; };
 const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
 
 const NOTIS = {
@@ -167,11 +169,12 @@ async function lamanAwam() {
   }
   // video_id hanya diberi pelayan jika pengguna ini layak menonton (kuliah percuma atau pratonton).
   if (tonton) tonton.video_id = (await dapat('/api/subject/' + tonton.id).catch(() => null))?.subject?.video_id || '';
+  const artikel = (await dapat('/api/artikel').catch(() => [])).slice(0, 3);
   const hb = harga('bulan'), ht = harga('tahun');
   const butangLanggan = saya
     ? (konfig.buyUrl ? `<a class="btn primary block" href="${h(konfig.buyUrl)}" target="_blank" rel="noopener">Jadi ahli penuh</a>` : '')
     : '<a class="btn primary block" href="#/masuk">Jadi ahli penuh</a>';
-  const menu = `<a href="#/" class="active">Utama</a><a href="#/" data-act="gulung" data-sasaran="courses">Siri kuliah</a><a href="#/" data-act="gulung" data-sasaran="pricing">Yuran</a>`;
+  const menu = `<a href="#/" class="active">Utama</a><a href="#/" data-act="gulung" data-sasaran="courses">Siri kuliah</a>${artikel.length ? '<a href="/artikel">Artikel</a>' : ''}<a href="#/" data-act="gulung" data-sasaran="pricing">Yuran</a>`;
 
   akar.innerHTML = `<div class="halaman">
   <header class="site-header">
@@ -233,6 +236,14 @@ async function lamanAwam() {
         : '<div class="panel-card ralat-halaman"><p>Kandungan akan datang. Sila kembali tidak lama lagi.</p></div>'}
     </div>
   </section>
+
+  ${artikel.length ? `<section class="section" id="artikel">
+    <div class="wrap">
+      <div class="section-head"><div><p class="kicker">Artikel</p><h2 style="margin-top:10px">Bacaan terbaru</h2></div></div>
+      <div class="artikel-senarai">${artikel.map((a) => `<a class="artikel-kad" href="/artikel/${h(a.slug)}"><h2>${h(a.tajuk)}</h2><p>${h(a.ringkasan)}</p><span class="artikel-meta">${tarikhMy(a.diterbit_pada)}</span></a>`).join('')}</div>
+      <p style="margin-top:18px"><a class="btn outline" href="/artikel">Semua artikel</a></p>
+    </div>
+  </section>` : ''}
 
   <section class="section tint">
     <div class="wrap">
@@ -305,7 +316,7 @@ async function lamanAwam() {
           ${konfig.laman.emel_hubungan ? `<p>Hubungi: <a href="mailto:${h(konfig.laman.emel_hubungan)}">${h(konfig.laman.emel_hubungan)}</a></p>` : ''}
         </div>
         <div><h4>Siri kuliah</h4><ul>${senarai.slice(0, 5).map((c) => `<li><a href="#/course/${encodeURIComponent(c.slug)}">${h(c.tajuk)}</a></li>`).join('')}</ul></div>
-        <div><h4>Akaun</h4><ul><li><a href="#/masuk">Log masuk</a></li><li><a href="#/" data-act="gulung" data-sasaran="pricing">Yuran</a></li></ul></div>
+        <div><h4>Akaun</h4><ul><li><a href="#/masuk">Log masuk</a></li>${artikel.length ? '<li><a href="/artikel">Artikel</a></li>' : ''}<li><a href="#/" data-act="gulung" data-sasaran="pricing">Yuran</a></li></ul></div>
       </div>
       <div class="foot-bottom">
         <span>&copy; ${new Date().getFullYear()} ${h(konfig.laman.nama)}. Hak cipta terpelihara.</span>

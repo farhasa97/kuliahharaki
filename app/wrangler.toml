@@ -6,7 +6,7 @@ compatibility_date = "2026-10-01"
 [assets]
 directory = "./public"
 binding = "ASSETS"
-run_worker_first = ["/api/*", "/auth/*", "/bcl/*", "/admin/*"]
+run_worker_first = ["/api/*", "/auth/*", "/bcl/*", "/admin/*", "/artikel", "/artikel/*", "/sitemap.xml", "/robots.txt"]
 
 # Bukan rahsia. Rahsia (BCL_WEBHOOK_KEY, BCL_API_TOKEN, ADMIN_TOKEN) diset di dashboard Cloudflare.
 [vars]

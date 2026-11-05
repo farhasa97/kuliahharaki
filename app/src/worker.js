@@ -15,6 +15,7 @@ import { json } from './lib/http.js';
 import { adminEmel, peranEfektif } from './lib/peranan.js';
 import { adminApi } from './admin-api.js';
 import { pelajarApi } from './pelajar-api.js';
+import { halamanArtikel } from './artikel-halaman.js';
 import { tangguhHari } from './lib/konfig.js';
 import { gabungTetapan, urlLogo, LALAI } from './lib/tetapan.js';
 
@@ -99,6 +100,13 @@ export async function handle(req, env, opts = {}) {
     try { const g = gabungTetapan(await repo.semuaTetapan()); laman = { ...g.nilai, logo: urlLogo(g) }; } catch { /* lalai */ }
     return json({ googleClientId: env.GOOGLE_CLIENT_ID || '', buyUrl: env.BUY_URL || '', hargaTeks: env.HARGA_TEKS || '',
       hargaBulanan: env.HARGA_BULANAN || '', hargaTahunan: env.HARGA_TAHUNAN || '', laman });
+  }
+
+  if (p === '/artikel' || p.startsWith('/artikel/') || p === '/sitemap.xml' || p === '/robots.txt') return halamanArtikel(req, env, url, repo, now);
+
+  if (p === '/api/artikel' && req.method === 'GET') {
+    let a = []; try { a = await repo.senaraiArtikel(); } catch { /* jadual belum dicipta */ }
+    return json(a.slice(0, 20).map(({ slug, tajuk, ringkasan, diterbit_pada, bil_perkataan }) => ({ slug, tajuk, ringkasan, diterbit_pada, bil_perkataan })));
   }
 
   if (p === '/api/logo' && req.method === 'GET') {

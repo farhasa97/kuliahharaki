@@ -8,7 +8,7 @@ import { repoD1 } from '../src/repo.js';
 
 const proksi = await getPlatformProxy({ configPath: 'wrangler.toml', persist: false });
 const db = proksi.env.DB;
-const sql = ['migrations/0001_skema.sql', 'migrations/0002_video.sql', 'migrations/0003_kandungan.sql', 'migrations/0004_nota.sql', 'migrations/0005_tetapan.sql'].map((f) => readFileSync(f, 'utf8')).join(';').replace(/--[^\n]*/g, '');
+const sql = ['migrations/0001_skema.sql', 'migrations/0002_video.sql', 'migrations/0003_kandungan.sql', 'migrations/0004_nota.sql', 'migrations/0005_tetapan.sql', 'migrations/0006_artikel.sql'].map((f) => readFileSync(f, 'utf8')).join(';').replace(/--[^\n]*/g, '');
 await db.batch(sql.split(';').map((s) => s.trim()).filter(Boolean).map((s) => db.prepare(s)));
 const repo = repoD1(db);
 test.after(() => proksi.dispose());
@@ -201,6 +201,23 @@ test('progress: tanda selesai idempoten, kiraan hanya subject terbit, dikumpul i
   await repo.kemaskiniSubject(b.id, { status: 'draf' }, 't'); // subject ditarik balik tidak dikira
   assert.deepEqual(await kira(), { [c1.id]: 1, [c2.id]: 1 });
   await assert.rejects(repo.tandaSelesai(p.id, 987654, 't')); // kunci asing subject
+});
+
+test('artikel: cipta, slug unik, senarai tanpa isi, penapis draf, kemas kini lajur dibenarkan, padam', async () => {
+  const a = await repo.ciptaArtikel({ slug: 'uji', tajuk: 'Uji', ringkasan: 'r', isi: 'satu dua', bil_perkataan: 2, status: 'terbit' }, '2026-11-07T00:00:00.000Z');
+  const d = await repo.ciptaArtikel({ slug: 'draf', tajuk: 'Draf' }, '2026-11-08T00:00:00.000Z');
+  await assert.rejects(repo.ciptaArtikel({ slug: 'uji', tajuk: 'Salinan' }, 't')); // slug unik
+  assert.equal(await repo.slugArtikelUnik('uji'), 'uji-2');
+  assert.equal(a.diterbit_pada, '2026-11-07T00:00:00.000Z'); assert.equal(d.diterbit_pada, null);
+  assert.deepEqual((await repo.senaraiArtikel()).map((x) => x.slug), ['uji']);
+  const semua = await repo.senaraiArtikel({ termasukDraf: true });
+  assert.deepEqual(semua.map((x) => x.slug), ['draf', 'uji']);
+  assert.ok(!('isi' in semua[0]), 'senarai tidak memuatkan isi');
+  const k = await repo.kemaskiniArtikel(d.id, { tajuk: 'Draf 2', id: 999, dicipta_pada: 'x' }, 't9');
+  assert.deepEqual([k.id, k.tajuk, k.dicipta_pada, k.dikemas_kini_pada], [d.id, 'Draf 2', '2026-11-08T00:00:00.000Z', 't9']);
+  assert.equal((await repo.artikelDariSlug('uji')).id, a.id);
+  await repo.padamArtikel(d.id);
+  assert.equal(await repo.artikelDariId(d.id), null);
 });
 
 test('tetapan: simpan, timpa, nilai kosong memadam baris', async () => {

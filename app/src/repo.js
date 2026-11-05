@@ -1,6 +1,7 @@
 // Semua akses D1 di satu tempat. Ujian memakai repo dalam memori dengan antara muka yang sama (test/repo-palsu.js).
 
 const KOLUM_COURSE = ['tajuk', 'huraian', 'akses', 'status', 'urutan'];
+const KOLUM_ARTIKEL = ['slug', 'tajuk', 'ringkasan', 'isi', 'bil_perkataan', 'status', 'diterbit_pada'];
 const KOLUM_SUBJECT = ['tajuk', 'huraian', 'urutan', 'pratonton', 'status', 'video_id', 'tempoh_saat'];
 
 export function repoD1(db) {
@@ -115,6 +116,32 @@ export function repoD1(db) {
       db.prepare('DELETE FROM nota WHERE subject_id = ?').bind(id),
       db.prepare('DELETE FROM subject WHERE id = ?').bind(id),
     ]),
+
+    // ---- artikel ----
+    async senaraiArtikel({ termasukDraf = false } = {}) {
+      return (await db.prepare(`SELECT id, slug, tajuk, ringkasan, bil_perkataan, status, dicipta_pada, dikemas_kini_pada, diterbit_pada FROM artikel
+        ${termasukDraf ? '' : `WHERE status = 'terbit'`} ORDER BY COALESCE(diterbit_pada, dicipta_pada) DESC, id DESC`).all()).results;
+    },
+    artikelDariId: (id) => satu('SELECT * FROM artikel WHERE id = ?', id),
+    artikelDariSlug: (slug) => satu('SELECT * FROM artikel WHERE slug = ?', slug),
+    async slugArtikelUnik(asas) {
+      for (let n = 1; n <= 50; n++) {
+        const calon = n === 1 ? asas : `${asas}-${n}`;
+        if (!(await satu('SELECT 1 AS x FROM artikel WHERE slug = ?', calon))) return calon;
+      }
+      return `${asas}-${Date.now().toString(36)}`;
+    },
+    async ciptaArtikel(a, masa) {
+      const r = await jalan(`INSERT INTO artikel (slug, tajuk, ringkasan, isi, bil_perkataan, status, dicipta_pada, dikemas_kini_pada, diterbit_pada)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, a.slug, a.tajuk, a.ringkasan ?? '', a.isi ?? '', a.bil_perkataan ?? 0, a.status ?? 'draf', masa, masa, a.status === 'terbit' ? masa : null);
+      return satu('SELECT * FROM artikel WHERE id = ?', r.meta.last_row_id);
+    },
+    async kemaskiniArtikel(id, nilai, masa) {
+      const k = Object.keys(nilai).filter((x) => KOLUM_ARTIKEL.includes(x));
+      if (k.length) await jalan(`UPDATE artikel SET ${k.map((x) => x + ' = ?').join(', ')}, dikemas_kini_pada = ? WHERE id = ?`, ...k.map((x) => nilai[x]), masa, id);
+      return satu('SELECT * FROM artikel WHERE id = ?', id);
+    },
+    padamArtikel: (id) => jalan('DELETE FROM artikel WHERE id = ?', id),
 
     // ---- tetapan laman ----
     async semuaTetapan() { return (await db.prepare('SELECT kunci, nilai FROM tetapan').all()).results; },

@@ -5,6 +5,7 @@ import { json } from './lib/http.js';
 import { bacaKuki, hashToken } from './lib/sesi.js';
 import { peranEfektif } from './lib/peranan.js';
 import { sahkanCourse, sahkanSubject, buatSlug } from './lib/kandungan.js';
+import { sahkanArtikel, slugArtikel, MAKS_ISI } from './lib/artikel.js';
 import { MAKS_LOGO, sahkanTetapan, gabungTetapan, jenisGambar, urlLogo, LALAI } from './lib/tetapan.js';
 import { MAKS_SAIZ, MAKS_SETIAP_SUBJECT, namaNota, adaPdf, kunciBaru } from './lib/nota.js';
 
@@ -13,10 +14,10 @@ const MAKS_BADAN = 50_000;
 const luarCourse = (c) => ({ ...c });
 const luarSubject = (s) => ({ ...s, pratonton: !!s.pratonton });
 
-async function bacaJson(req) {
+async function bacaJson(req, maks = MAKS_BADAN) {
   if (!(req.headers.get('content-type') || '').includes('application/json')) return { gagal: json({ ralat: 'JSON sahaja' }, 415) };
   const teks = await req.text();
-  if (teks.length > MAKS_BADAN) return { gagal: json({ ralat: 'badan-terlalu-besar' }, 413) };
+  if (teks.length > maks) return { gagal: json({ ralat: 'badan-terlalu-besar' }, 413) };
   try { return { nilai: JSON.parse(teks) }; } catch { return { gagal: json({ ralat: 'JSON tidak sah' }, 400) }; }
 }
 
@@ -39,6 +40,46 @@ export async function adminApi(req, env, url, repo, now) {
   const bahagian = url.pathname.replace(/^\/api\/admin\//, '').split('/');
   const [sumber, idMentah, anak] = bahagian;
   const id = idDari(idMentah);
+
+  // Artikel SEO. Slug dikunci selepas pernah diterbitkan supaya URL tidak berubah.
+  if (sumber === 'artikel') {
+    const luar = (a) => ({ ...a });
+    if (bahagian.length === 1) {
+      if (req.method === 'GET') return json(await repo.senaraiArtikel({ termasukDraf: true }));
+      if (req.method === 'POST') {
+        const b = await bacaJson(req, MAKS_ISI + 5000); if (b.gagal) return b.gagal;
+        const v = sahkanArtikel(b.nilai); if (!v.ok) return ralatSah(v);
+        if (v.nilai.status === 'terbit' && (!v.nilai.isi || !v.nilai.ringkasan)) return json({ ralat: !v.nilai.ringkasan ? 'ringkasan-diperlukan' : 'isi-diperlukan', medan: !v.nilai.ringkasan ? 'ringkasan' : 'isi' }, 400);
+        if (v.nilai.slug && await repo.artikelDariSlug(v.nilai.slug)) return json({ ralat: 'slug-sudah-ada', medan: 'slug' }, 409);
+        const slug = v.nilai.slug || await repo.slugArtikelUnik(slugArtikel(v.nilai.tajuk));
+        return json(luar(await repo.ciptaArtikel({ ...v.nilai, slug }, masa)), 201);
+      }
+      return json({ ralat: 'kaedah-tidak-disokong' }, 405);
+    }
+    if (bahagian.length === 2) {
+      if (!id) return json({ ralat: 'id-tidak-sah' }, 400);
+      const a = await repo.artikelDariId(id);
+      if (!a) return json({ ralat: 'tidak-dijumpai' }, 404);
+      if (req.method === 'GET') return json(luar(a));
+      if (req.method === 'DELETE') { await repo.padamArtikel(id); return json({ ok: true }); }
+      if (req.method === 'PUT') {
+        const b = await bacaJson(req, MAKS_ISI + 5000); if (b.gagal) return b.gagal;
+        const v = sahkanArtikel(b.nilai, { separa: true }); if (!v.ok) return ralatSah(v);
+        const akhir = { ...a, ...v.nilai };
+        if (v.nilai.slug && v.nilai.slug !== a.slug) {
+          if (a.diterbit_pada) return json({ ralat: 'slug-dikunci', medan: 'slug' }, 409);
+          if (await repo.artikelDariSlug(v.nilai.slug)) return json({ ralat: 'slug-sudah-ada', medan: 'slug' }, 409);
+        }
+        if (akhir.status === 'terbit') {
+          if (!akhir.ringkasan) return json({ ralat: 'ringkasan-diperlukan', medan: 'ringkasan' }, 400);
+          if (!akhir.isi) return json({ ralat: 'isi-diperlukan', medan: 'isi' }, 400);
+          if (!a.diterbit_pada) v.nilai.diterbit_pada = masa; // tarikh terbit pertama kekal walaupun ditarik balik kemudian
+        }
+        return json(luar(await repo.kemaskiniArtikel(id, v.nilai, masa)));
+      }
+    }
+    return json({ ralat: 'kaedah-tidak-disokong' }, 405);
+  }
 
   // Tetapan laman: teks (JSON) dan logo (gambar mentah, disimpan dalam R2).
   if (sumber === 'tetapan') {

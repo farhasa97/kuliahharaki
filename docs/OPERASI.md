@@ -60,6 +60,24 @@ CREATE TABLE tetapan ( kunci TEXT PRIMARY KEY, nilai TEXT NOT NULL );
 
 Panel admin, butang **Tetapan laman**: nama laman, tagline, tajuk dan teks hero, teks footer, emel hubungan, dan logo (PNG, JPG atau WEBP, maksimum 500 KB, disimpan dalam R2). Medan dikosongkan = kembali ke teks lalai. Ikon PWA pada skrin utama telefon ialah fail statik dan tidak ikut logo ini.
 
+### A1e. Artikel untuk SEO (07/11/2026)
+Jalankan sekali dalam Console D1 `kuliahharaki`, satu pernyataan setiap kali. Selagi belum dijalankan, `/artikel` kosong dan panel artikel tidak boleh menyimpan:
+
+```sql
+CREATE TABLE artikel ( id INTEGER PRIMARY KEY AUTOINCREMENT, slug TEXT NOT NULL UNIQUE, tajuk TEXT NOT NULL, ringkasan TEXT NOT NULL DEFAULT '', isi TEXT NOT NULL DEFAULT '', bil_perkataan INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'draf', dicipta_pada TEXT NOT NULL, dikemas_kini_pada TEXT NOT NULL, diterbit_pada TEXT );
+```
+```sql
+CREATE INDEX artikel_status ON artikel(status, diterbit_pada);
+```
+
+Panel admin, butang **Artikel**: tulis tajuk, ringkasan (keterangan di Google, elok 140 hingga 160 aksara) dan isi dalam Markdown ringkas (panduan ada dalam borang). Pembilang perkataan menunjuk sasaran 2000; menerbitkan artikel kurang daripada itu menunjuk amaran, tetapi boleh diteruskan. **Pratonton draf** hanya boleh dibuka admin yang log masuk.
+
+Peraturan SEO yang dijaga oleh sistem:
+- Halaman `/artikel/<slug>` ialah HTML penuh dari pelayan (bukan JavaScript), dengan title, meta description, canonical, Open Graph dan data berstruktur Article. `/sitemap.xml` dan `/robots.txt` dihasilkan automatik.
+- Slug dikunci selepas artikel pernah diterbitkan supaya URL tidak berubah.
+- Halaman hanya boleh diindeks di hos `SITE_URL` (`kuliahharaki.com`). Di `workers.dev` semua halaman `noindex` dan `robots.txt` melarang semua.
+- Selepas artikel pertama terbit, hantar `https://kuliahharaki.com/sitemap.xml` di Google Search Console (Sitemaps).
+
 ### A2. Worker dari GitHub
 Workers & Pages, Create, import repository `farhasa97/kuliahharaki`:
 - Project name: `kuliahharaki` (mesti sama dengan `name` dalam `app/wrangler.toml`)

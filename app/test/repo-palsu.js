@@ -2,7 +2,7 @@
 export function repoPalsu() {
   const bayaran = new Map(), langganan = new Map(), pengguna = new Map(), sesi = new Map();
   const pesanan = new Map(), itemPesanan = new Map(), akses = new Map();
-  const courses = new Map(), subjects = new Map(), progress = new Map(), notas = new Map(), tetapan = new Map(); let idC = 1, idS = 1, idN = 1;
+  const courses = new Map(), subjects = new Map(), progress = new Map(), notas = new Map(), tetapan = new Map(), artikel = new Map(); let idC = 1, idS = 1, idN = 1, idA = 1;
   let idSeterusnya = 1;
   return {
     _bayaran: bayaran, _langganan: langganan, _pengguna: pengguna, _sesi: sesi, _pesanan: pesanan, _akses: akses, _course: courses, _subject: subjects, _progress: progress,
@@ -107,6 +107,24 @@ export function repoPalsu() {
       subjects.delete(id); for (const k of [...progress.keys()]) if (k.endsWith('|' + id)) progress.delete(k);
       for (const [k, n] of notas) if (n.subject_id === id) notas.delete(k);
     },
+    async senaraiArtikel({ termasukDraf = false } = {}) {
+      return [...artikel.values()].filter((a) => termasukDraf || a.status === 'terbit').map(({ isi, ...r }) => r)
+        .sort((a, b) => String(b.diterbit_pada ?? b.dicipta_pada).localeCompare(String(a.diterbit_pada ?? a.dicipta_pada)) || b.id - a.id);
+    },
+    async artikelDariId(id) { return artikel.get(id) ?? null; },
+    async artikelDariSlug(s) { return [...artikel.values()].find((a) => a.slug === s) ?? null; },
+    async slugArtikelUnik(asas) { let c = asas, n = 1; while ([...artikel.values()].some((a) => a.slug === c)) c = `${asas}-${++n}`; return c; },
+    async ciptaArtikel(a, masa) {
+      const b = { id: idA++, slug: a.slug, tajuk: a.tajuk, ringkasan: a.ringkasan ?? '', isi: a.isi ?? '', bil_perkataan: a.bil_perkataan ?? 0, status: a.status ?? 'draf',
+        dicipta_pada: masa, dikemas_kini_pada: masa, diterbit_pada: a.status === 'terbit' ? masa : null };
+      artikel.set(b.id, b); return b;
+    },
+    async kemaskiniArtikel(id, nilai, masa) {
+      const a = artikel.get(id);
+      for (const k of ['slug', 'tajuk', 'ringkasan', 'isi', 'bil_perkataan', 'status', 'diterbit_pada']) if (k in nilai) a[k] = nilai[k];
+      a.dikemas_kini_pada = masa; return a;
+    },
+    async padamArtikel(id) { artikel.delete(id); },
     async semuaTetapan() { return [...tetapan].map(([kunci, nilai]) => ({ kunci, nilai })); },
     async simpanTetapan(nilai) { for (const [k, v] of Object.entries(nilai)) { if (v === '') tetapan.delete(k); else tetapan.set(k, v); } },
     async senaraiNota(sid) { return [...notas.values()].filter((n) => n.subject_id === sid).map(({ id, nama, saiz }) => ({ id, nama, saiz })); },

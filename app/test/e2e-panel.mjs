@@ -204,6 +204,63 @@ try {
     await page.locator('h1', { hasText: 'Course' }).waitFor();
   });
 
+  await langkah('artikel: cipta draf, pratonton, terbit dengan amaran perkataan, slug dikunci, muncul di laman awam dan sitemap', async () => {
+    await page.getByRole('link', { name: 'Artikel', exact: true }).click();
+    await page.getByText('Belum ada artikel').waitFor();
+    await page.getByRole('link', { name: 'Tambah artikel' }).click();
+    await page.fill('#tajuk', 'Adab Menuntut Ilmu <img src=x onerror=alert(1)>');
+    await page.fill('#ringkasan', 'Adab asas penuntut ilmu.');
+    await page.fill('#isi', '## Niat\n\nIkhlas **penting** dalam menuntut ilmu.\n\n- satu\n- dua');
+    await page.locator('#kira-isi').getByText(/kurang \d+ untuk sasaran 2000/).waitFor();
+    await simpan();
+    await page.waitForFunction(() => /#\/artikel\/1$/.test(location.hash) && document.getElementById('slug')?.value); // selepas cipta, borang sunting dibuka
+    assert.match(page.url(), /#\/artikel\/1$/);
+    const slug = await page.inputValue('#slug');
+    assert.equal(slug, 'adab-menuntut-ilmu-img-src-x-onerror-alert-1');
+    // draf: awam 404, admin boleh pratonton
+    const baru = await ctx.newPage();
+    assert.equal((await baru.request.get(`${B}/artikel/${slug}`)).status(), 200); // ctx admin berkuki
+    const awam = await pelayar.newContext({ serviceWorkers: 'block' });
+    assert.equal((await awam.request.get(`${B}/artikel/${slug}`)).status(), 404);
+    // terbit: amaran kurang 2000 perkataan
+    let amaran = '';
+    page.once('dialog', (d) => { amaran = d.message(); }); // pendengar sedia ada menerima confirm
+    await page.check('input[name=status][value=terbit]');
+    await simpan();
+    await page.locator('#artikel-ok').waitFor({ state: 'visible' });
+    assert.match(amaran, /baru \d+ perkataan \(sasaran 2000\)/);
+    assert.equal(await page.locator('#slug').getAttribute('readonly'), '');
+    // awam: halaman penuh, tajuk sebagai teks, canonical, tiada skrip suntikan
+    const r = await awam.request.get(`${B}/artikel/${slug}`);
+    assert.equal(r.status(), 200);
+    const html = await r.text();
+    assert.ok(html.includes('<h2>Niat</h2>') && html.includes('<strong>penting</strong>'));
+    assert.ok(html.includes('&lt;img src=x onerror=alert(1)&gt;') && !html.includes('<img src=x'));
+    assert.ok(html.includes(`<link rel="canonical" href="https://kuliahharaki.com/artikel/${slug}">`)); // SITE_URL
+    assert.ok(html.includes('noindex')); // hos localhost bukan hos SITE_URL
+    assert.ok((await (await awam.request.get(`${B}/sitemap.xml`)).text()).includes(`/artikel/${slug}`));
+    // laman utama pelawat memaparkan artikel terbaru dan pautan menu
+    const pv = await awam.newPage();
+    await pv.route('**/*', (rt) => (rt.request().url().startsWith(B) ? rt.continue() : rt.abort()));
+    await pv.goto(B + '/');
+    await pv.locator('#artikel .artikel-kad h2', { hasText: 'Adab Menuntut Ilmu' }).waitFor();
+    assert.equal(await pv.locator('#artikel img').count(), 0);
+    await pv.locator('#artikel .artikel-kad').first().click();
+    await pv.locator('.artikel-isi h2', { hasText: 'Niat' }).waitFor();
+    await skrin('05-artikel');
+    if (SKRIN) await pv.screenshot({ path: `${SKRIN}/06-artikel-awam.png`, fullPage: true });
+    if (SKRIN) await pv.screenshot({ path: `${SKRIN}/07-artikel-awam-skrin-pertama.png` });
+    await awam.close();
+    await baru.close();
+    // kembali ke senarai; padam
+    await page.goto(B + '/panel/#/artikel');
+    await page.locator('.kad', { hasText: 'Adab Menuntut Ilmu' }).waitFor();
+    await page.locator('.kad', { hasText: 'Adab Menuntut Ilmu' }).click();
+    await page.getByRole('button', { name: 'Padam' }).click();
+    await page.getByText('Belum ada artikel').waitFor();
+    assert.deepEqual(amaranXss, []);
+  });
+
   await langkah('tiada ralat JavaScript sepanjang sesi admin', async () => {
     assert.deepEqual(ralatHalaman, []);
   });
