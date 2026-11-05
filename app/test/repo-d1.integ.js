@@ -8,7 +8,7 @@ import { repoD1 } from '../src/repo.js';
 
 const proksi = await getPlatformProxy({ configPath: 'wrangler.toml', persist: false });
 const db = proksi.env.DB;
-const sql = readFileSync('migrations/0001_skema.sql', 'utf8').replace(/--[^\n]*/g, '');
+const sql = ['migrations/0001_skema.sql', 'migrations/0002_video.sql'].map((f) => readFileSync(f, 'utf8')).join(';').replace(/--[^\n]*/g, '');
 await db.batch(sql.split(';').map((s) => s.trim()).filter(Boolean).map((s) => db.prepare(s)));
 const repo = repoD1(db);
 test.after(() => proksi.dispose());
@@ -61,4 +61,65 @@ test('admin: tetapkan, senarai, padam langganan', async () => {
   assert.ok((await repo.senaraiLangganan()).some((l) => l.emel === 'm@gmail.com'));
   await repo.padamLangganan('m@gmail.com');
   assert.equal(await repo.langganan('m@gmail.com'), null);
+});
+
+// ---- pesanan video: SQL sebenar, termasuk tuntutan atomik dengan changes() = 1 ----
+const aksesBaru = [{ subject_id: 1, tarikh_tamat: '2026-12-05', hari_labuh: 5 }, { subject_id: 2, tarikh_tamat: '2026-12-05', hari_labuh: 5 }];
+
+test('simpanPesanan, pesanan, itemPesanan dan nombor bertembung ditolak', async () => {
+  await repo.simpanPesanan({ order_number: 'KHA1', emel: 'v@gmail.com', jumlah_sen: 400, saluran: 'qr', dicipta_pada: 't' },
+    [{ subject_id: 2, harga_sen: 200 }, { subject_id: 1, harga_sen: 200 }]);
+  const p = await repo.pesanan('KHA1');
+  assert.deepEqual([p.status, p.jumlah_sen, p.saluran, p.dibayar_pada], ['menunggu', 400, 'qr', null]);
+  assert.deepEqual(await repo.itemPesanan('KHA1'), [{ subject_id: 1, harga_sen: 200 }, { subject_id: 2, harga_sen: 200 }]);
+  await assert.rejects(repo.simpanPesanan({ order_number: 'KHA1', emel: 'x@y.my', jumlah_sen: 1, dicipta_pada: 't' }, []));
+  assert.equal(await repo.pesanan('TIADA'), null);
+});
+
+test('bayarPesanan: permintaan pertama menuntut dan melanjut akses', async () => {
+  assert.equal(await repo.bayarPesanan('KHA1', 'v@gmail.com', aksesBaru, 't1'), true);
+  assert.equal((await repo.pesanan('KHA1')).status, 'dibayar');
+  assert.equal((await repo.pesanan('KHA1')).dibayar_pada, 't1');
+  const a = await repo.aksesVideoBanyak('v@gmail.com', [1, 2, 3]);
+  assert.deepEqual(a.map((x) => [x.subject_id, x.tarikh_tamat, x.hari_labuh]), [[1, '2026-12-05', 5], [2, '2026-12-05', 5]]);
+});
+
+test('bayarPesanan: permintaan kedua tidak menuntut dan TIDAK mengubah akses (changes() = 0)', async () => {
+  const lain = [{ subject_id: 1, tarikh_tamat: '2027-06-30', hari_labuh: 30 }, { subject_id: 2, tarikh_tamat: '2027-06-30', hari_labuh: 30 }];
+  assert.equal(await repo.bayarPesanan('KHA1', 'v@gmail.com', lain, 't2'), false);
+  const a = await repo.aksesVideoBanyak('v@gmail.com', [1, 2]);
+  assert.deepEqual(a.map((x) => x.tarikh_tamat), ['2026-12-05', '2026-12-05']);
+  assert.equal((await repo.pesanan('KHA1')).dibayar_pada, 't1');
+});
+
+test('bayarPesanan: pesanan tidak wujud tidak memasukkan akses', async () => {
+  assert.equal(await repo.bayarPesanan('TIADA', 'z@gmail.com', aksesBaru, 't'), false);
+  assert.deepEqual(await repo.aksesVideoBanyak('z@gmail.com', [1, 2]), []);
+});
+
+test('bayarPesanan: pesanan gagal tidak dituntut; tamat_masa dituntut', async () => {
+  await repo.simpanPesanan({ order_number: 'KHG', emel: 'g@gmail.com', jumlah_sen: 200, dicipta_pada: 't' }, [{ subject_id: 1, harga_sen: 200 }]);
+  await db.prepare(`UPDATE pesanan SET status = 'gagal' WHERE order_number = 'KHG'`).run();
+  assert.equal(await repo.bayarPesanan('KHG', 'g@gmail.com', aksesBaru.slice(0, 1), 't'), false);
+  assert.deepEqual(await repo.aksesVideoBanyak('g@gmail.com', [1]), []);
+  await repo.simpanPesanan({ order_number: 'KHT', emel: 't@gmail.com', jumlah_sen: 200, dicipta_pada: 't' }, [{ subject_id: 1, harga_sen: 200 }]);
+  await db.prepare(`UPDATE pesanan SET status = 'tamat_masa' WHERE order_number = 'KHT'`).run();
+  assert.equal(await repo.bayarPesanan('KHT', 't@gmail.com', aksesBaru.slice(0, 1), 't'), true);
+});
+
+test('bayarPesanan: akses sedia ada dilanjutkan (upsert), akses lain pengguna tidak disentuh', async () => {
+  await repo.simpanPesanan({ order_number: 'KHU', emel: 'u2@gmail.com', jumlah_sen: 200, dicipta_pada: 't' }, [{ subject_id: 1, harga_sen: 200 }]);
+  await db.prepare(`INSERT INTO akses_video (emel, subject_id, tarikh_tamat, hari_labuh, dikemas_kini_pada) VALUES ('u2@gmail.com', 1, '2026-11-20', 20, 'x'), ('u2@gmail.com', 7, '2026-11-25', 25, 'x')`).run();
+  assert.equal(await repo.bayarPesanan('KHU', 'u2@gmail.com', [{ subject_id: 1, tarikh_tamat: '2026-12-20', hari_labuh: 20 }], 't3'), true);
+  const a = await repo.aksesVideoSaya('u2@gmail.com');
+  assert.deepEqual(a.map((x) => [x.subject_id, x.tarikh_tamat]).sort(), [[1, '2026-12-20'], [7, '2026-11-25']]);
+});
+
+test('bayarPesanan: sehingga 20 item dalam satu batch', async () => {
+  const ids = Array.from({ length: 20 }, (_, i) => i + 100);
+  await repo.simpanPesanan({ order_number: 'KH20', emel: 'b@gmail.com', jumlah_sen: 4000, dicipta_pada: 't' }, ids.map((id) => ({ subject_id: id, harga_sen: 200 })));
+  const akses = ids.map((id) => ({ subject_id: id, tarikh_tamat: '2026-12-05', hari_labuh: 5 }));
+  assert.equal(await repo.bayarPesanan('KH20', 'b@gmail.com', akses, 't'), true);
+  assert.equal((await repo.aksesVideoSaya('b@gmail.com')).length, 20);
+  assert.equal((await repo.aksesVideoBanyak('b@gmail.com', ids)).length, 20);
 });

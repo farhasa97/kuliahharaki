@@ -20,6 +20,15 @@ CREATE TABLE bayaran ( id INTEGER PRIMARY KEY AUTOINCREMENT, rujukan_bcl TEXT NO
 CREATE INDEX bayaran_emel ON bayaran(emel);
 ```
 
+**Tambahan 05/11/2026 (beli satu video).** Jalankan SQL ini dalam Console yang sama, selepas SQL di atas. Ia hanya menambah tiga jadual baru dan tidak mengubah yang sedia ada. Selepas itu `/tables` patut tunjuk 7 jadual: `pengguna`, `sesi`, `langganan`, `bayaran`, `pesanan`, `pesanan_item`, `akses_video`.
+
+```sql
+CREATE TABLE pesanan ( order_number TEXT PRIMARY KEY, emel TEXT NOT NULL, jumlah_sen INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'menunggu', saluran TEXT, dicipta_pada TEXT NOT NULL, dibayar_pada TEXT );
+CREATE INDEX pesanan_emel ON pesanan(emel);
+CREATE TABLE pesanan_item ( order_number TEXT NOT NULL REFERENCES pesanan(order_number), subject_id INTEGER NOT NULL, harga_sen INTEGER NOT NULL, PRIMARY KEY (order_number, subject_id) );
+CREATE TABLE akses_video ( emel TEXT NOT NULL, subject_id INTEGER NOT NULL, tarikh_tamat TEXT NOT NULL, hari_labuh INTEGER NOT NULL, dikemas_kini_pada TEXT NOT NULL, PRIMARY KEY (emel, subject_id) );
+```
+
 ### A2. Worker dari GitHub
 Workers & Pages, Create, import repository `farhasa97/kuliahharaki`:
 - Project name: `kuliahharaki` (mesti sama dengan `name` dalam `app/wrangler.toml`)

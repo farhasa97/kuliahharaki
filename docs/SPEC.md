@@ -1,10 +1,10 @@
 # Kuliah Haraki LMS: Spec v0.1 (draf untuk kelulusan)
 
-Tarikh: 29/10/2026, kemas kini 02/11/2026 (keputusan micro-saas-builder dikunci). Status: teras langganan dibina dalam `app/`. Prototaip lama (`index.html`) kekal sebagai rujukan UI dan tidak disentuh.
+Tarikh: 29/10/2026, kemas kini 05/11/2026 (model: langganan Advance dan beli satu video). Status: teras langganan dibina dalam `app/`, teras akses video sedang dibina. Prototaip lama (`index.html`) kekal sebagai rujukan UI dan tidak disentuh.
 
 ## 1. Tujuan
 
-Platform pembelajaran untuk satu kuliah (single-tenant). Pelajar tonton video percuma, dan langgan bulanan untuk buka course advance. Sasaran: 300 pelajar, 5 guru, 1 hingga 2 admin. Mesti boleh dijaga sendiri oleh pemilik dan admin selama sekurang-kurangnya 3 tahun.
+Platform pembelajaran untuk satu kuliah (single-tenant). Pelajar tonton video percuma, dan buka video berbayar dengan dua cara: langgan Advance (semua video premium) atau beli satu video (akses 30 hari). Sasaran: 300 pelajar, 5 guru, 1 hingga 2 admin. Kandungan: 10 course, setiap course maksimum 20 video (lebih kurang 200 subject). Mesti boleh dijaga sendiri oleh pemilik dan admin selama sekurang-kurangnya 3 tahun.
 
 ## 2. Keputusan yang sudah dikunci
 
@@ -14,6 +14,8 @@ Platform pembelajaran untuk satu kuliah (single-tenant). Pelajar tonton video pe
 | Struktur | Course mengandungi banyak Subject. Satu Subject ialah satu unit pembelajaran (video + nota PDF + komen) |
 | Sijil | Dikeluarkan bila semua Subject dalam satu Course selesai |
 | Tier | Percuma (tiada bayaran) dan Advance: bulanan RM10, tahunan RM100. Kuantiti dibenarkan (bayar beberapa bulan sekali gus). Harga diubah di borang BCL |
+| Beli satu video | RM2 untuk akses 30 hari ke satu subject. Langganan Advance kekal sebagai pilihan. Dikunci 05/11/2026 (permintaan klien) |
+| Tempoh akses video | Satu bulan kalendar berlabuh, sama seperti langganan (andaian: "30 hari" bermaksud bulanan). Beli semula semasa masih aktif melanjutkan dari tarikh tamat. **Tiada tempoh tangguh** untuk video |
 | Bila harga diubah | Pelanggan sedia ada kekal harga lama sehingga renew. Harga baru untuk pelanggan baru dan renewal berikutnya |
 | Tempoh tangguh | 3 hari selepas langganan tamat. Diubah melalui var `TANGGUH_HARI` (`app/wrangler.toml`) |
 | Komuniti | Komen dan soal jawab di bawah setiap Subject |
@@ -24,14 +26,17 @@ Platform pembelajaran untuk satu kuliah (single-tenant). Pelajar tonton video pe
 | Kiraan tempoh | Bulan kalendar berlabuh pada hari bayaran pertama (31 Jan + 1 = 28/29 Feb, kemudian 31 Mac). Pembaharuan awal dilanjut dari tarikh tamat |
 | Percubaan percuma | Tiada. Course percuma dan subject pratonton berfungsi sebagai percubaan |
 | Teknologi | JavaScript biasa tanpa build step, Workers static assets + D1. Dikunci 02/11/2026 |
-| Bayaran | **BCL** (borang bayaran bcl.my + webhook `payment-success`) yang mengutip melalui Bayarcash. Dipilih 31/10/2026, mengikut corak sistem lesen Jadual Sekolah pemilik. Tiada auto-debit |
+| Bayaran langganan | **BCL** (borang bayaran bcl.my + webhook `payment-success`) yang mengutip melalui Bayarcash. Dipilih 31/10/2026, mengikut corak sistem lesen Jadual Sekolah pemilik. Tiada auto-debit |
 
 ## 3. Belum disahkan (aku cadang, kau lulus)
 
 - Bendera percuma/ahli diletak di peringkat **Course**. Beberapa Subject dalam course berbayar boleh ditanda `pratonton` (percuma).
 - Advance membuka **semua** course berbayar.
 - Sijil kekal milik pelajar walaupun langganan tamat. Progress juga kekal.
-- Saluran bayaran: DuitNow QR dan FPX pada borang BCL (QR lebih murah, lihat 16).
+- Saluran bayaran langganan: DuitNow QR dan FPX pada borang BCL (QR lebih murah, lihat 16).
+- Beli video, saluran: **DuitNow QR dan e-wallet sahaja** untuk jumlah di bawah RM10. FPX dibenarkan bila jumlah pesanan RM10 ke atas. Sebabnya yuran tetap FPX RM1.08 ialah 54% daripada RM2 (lihat 16).
+- Beli video, pesanan: beberapa video dalam satu pesanan (maksimum 20) supaya yuran dan langkah bayar dijimatkan. Pengguna yang sedang berlangganan Advance tak dibenarkan membeli video.
+- Pek course (semua video satu course pada harga tetap): tidak dibina sekarang, boleh ditambah kemudian jika jualan video tunggal rendah.
 
 ## 4. Peranan
 
@@ -43,7 +48,7 @@ Platform pembelajaran untuk satu kuliah (single-tenant). Pelajar tonton video pe
 
 **Awam:** halaman utama (banner), senarai course, halaman course (senarai subject, ada pratonton), harga, daftar dan log masuk.
 
-**Pelajar:** Course saya (progress %), pemain subject (video, nota, komen, Sebelum/Seterusnya, Tandakan selesai), Langganan (status, tarikh tamat, bayar/renew), Sijil, Profil.
+**Pelajar:** Course saya (progress %), pemain subject (video, nota, komen, Sebelum/Seterusnya, Tandakan selesai), Langganan (status, tarikh tamat, bayar/renew), Video saya (video yang dibeli dan tarikh tamat), butang Beli video RM2 pada subject berbayar (dengan cadangan Advance bila jumlah pilihan mencecah RM10), Sijil, Profil.
 
 **Guru/Admin:** CRUD course dan subject, upload nota PDF, urus komen, senarai pengguna, langganan (lanjut/beri akses manual), log bayaran, Tetapan laman (harga, tempoh tangguh, banner, warna, teks).
 
@@ -53,12 +58,15 @@ Semua wang disimpan dalam sen (integer). Semua masa dalam UTC, dipaparkan GMT+8.
 
 - `pengguna`: id, emel (unik, dari Google), google_sub (unik), nama, peranan (`pelajar|guru|admin`), dicipta_pada. Admin awal ditetapkan melalui var `ADMIN_EMELS`
 - `course`: id, tajuk, slug, huraian, akses (`percuma|ahli`), status (`draf|terbit`), guru_id, urutan
-- `subject`: id, course_id, tajuk, huraian, urutan, pratonton (bool), video_sumber (`youtube|bunny`), video_id, tempoh_saat
+- `subject`: id, course_id, tajuk, huraian, urutan, pratonton (bool), video_sumber (`youtube|bunny`), video_id, tempoh_saat, harga_sen (null = harga video lalai RM2)
 - `nota`: id, subject_id, nama_fail, kunci_r2, saiz
 - `progress`: pengguna_id, subject_id, selesai_pada (unik pada pasangan)
 - `komen`: id, subject_id, pengguna_id, induk_id (null jika komen atas), isi, dicipta_pada
 - `langganan`: **satu baris setiap emel** (bukan pengguna_id, supaya bayaran sebelum daftar tetap terpakai): emel, pelan (`bulanan|tahunan|manual`), tarikh_tamat (tarikh Malaysia), hari_labuh, dikemas_kini_pada
 - `bayaran`: id, rujukan_bcl (unik, `record_id` BCL), order_number, emel, bulan, jumlah_sen, status (`memproses|diproses|ditolak`), sebab, tarikh_tamat_baru, dicipta_pada
+- `pesanan`: order_number (kunci, maksimum 30 aksara, dijana oleh kita), emel, jumlah_sen, status (`menunggu|dibayar|gagal|tamat_masa`), saluran, dicipta_pada, dibayar_pada
+- `pesanan_item`: order_number, subject_id, harga_sen (harga dibekukan semasa pesanan dibuat)
+- `akses_video`: emel, subject_id (unik pada pasangan), tarikh_tamat, hari_labuh, dikemas_kini_pada. Dikunci pada emel seperti `langganan`
 - `sijil`: id, pengguna_id, course_id, kod_pengesahan (unik), dikeluarkan_pada
 - `tetapan`: kunci, nilai (banner, warna, teks laman)
 - `sesi`: token_hash (SHA-256), pengguna_id, tamat_pada
@@ -69,7 +77,22 @@ Jadual `pelan` dibuang: harga dan item berada di borang BCL, dan bulan dikira da
 
 **Status** dikira, bukan diandaikan: `aktif` jika hari ini (GMT+8) <= tarikh_tamat. `tangguh` jika hari ini <= tarikh_tamat + `TANGGUH_HARI` (3). Selain itu `tamat`. Dilaksanakan dalam `app/src/lib/langganan.js`.
 
-**Akses premium** (video, nota, komen eksklusif jika ada) hanya jika status `aktif` atau `tangguh`. Semakan dibuat di server pada setiap permintaan. Course percuma dan subject pratonton sentiasa terbuka.
+**Akses subject** (video, nota, komen eksklusif jika ada), disemak di server pada setiap permintaan, ikut urutan ini. Dilaksanakan dalam `app/src/lib/akses.js`:
+1. Subject belum diterbitkan: tiada akses (kecuali guru dan admin).
+2. Course percuma atau subject pratonton: terbuka.
+3. Langganan Advance berstatus `aktif` atau `tangguh`: terbuka.
+4. `akses_video` untuk subject itu dengan tarikh_tamat belum lepas (tiada tangguh): terbuka.
+5. Selain itu: perlu bayar.
+
+**Pesanan video (tanpa bergantung pada gateway):**
+1. Pelajar memilih satu atau lebih subject (maksimum 20) lalu tekan Beli. Server semak setiap subject: diterbitkan, berbayar, bukan pratonton, dan pengguna tidak berlangganan. Harga diambil daripada pangkalan data (bukan daripada pelayar), jumlah dikira dalam sen, kemudian `pesanan` dan `pesanan_item` disimpan dengan nombor pesanan baru.
+2. Pelajar dibawa ke halaman bayar gateway untuk jumlah itu.
+3. Bayaran disahkan melalui API gateway (bukan melalui query atau badan webhook). Jumlah mesti sama dengan `pesanan.jumlah_sen`.
+4. `pesanan` ditukar `menunggu` ke `dibayar` dan `akses_video` dilanjutkan dalam satu batch D1. Hanya satu permintaan boleh menuntut pesanan, jadi webhook berulang, halaman pulang dan semakan manual tidak menggandakan akses.
+
+**Laluan gateway untuk pesanan video: belum diputuskan.** Borang BCL tak tahu video mana yang dibeli, jadi perlu pautan bayaran yang dijana oleh LMS bagi setiap pesanan. Dua pilihan:
+- **API Bayarcash v3 terus (cadangan).** Cipta bayaran dengan `order_number`, `amount` dan emel pengguna yang sedang log masuk, serta `payment_channel` dihadkan kepada QR atau e-wallet. Sudah terbukti di sandbox: cipta bayaran (201), semakan checksum halaman pulang, dan carian transaksi melalui API. Callback sandbox tak pernah sampai, jadi pengesahan guna halaman pulang, butang semak status, dan cron harian.
+- **API pautan bayaran BCL.** Dokumentasi Bayarcash menyebut plugin BCL Payment Link menjana pautan melalui API BCL dengan token Read dan Write, tetapi laluan API, dan sama ada webhook dihantar untuk pautan, tak dapat disahkan (`docs.bcl.my` disekat dari sesi pembangunan, dan tiada sandbox BCL).
 
 **Aliran bayaran (BCL):**
 1. Pelajar tekan Langgan. LMS bawa pelajar ke borang BCL (produk "Advance bulanan"). Borang ada medan wajib "E-mel akaun Kuliah Haraki". Jika BCL membenarkan isian awal melalui URL, LMS isikan emel pelajar (belum disahkan).
@@ -87,7 +110,8 @@ Jadual `pelan` dibuang: harga dan item berada di borang BCL, dan bulan dikira da
 - Setiap subject simpan `video_sumber` dan `video_id`. Fasa awal semua `youtube`.
 - Pemain guna YouTube IFrame API. Peristiwa video tamat menanda subject selesai. Ini dilaporkan oleh browser, jadi boleh dipalsukan. Diterima untuk kes guna ini.
 - Server hanya menyerahkan `video_id` subject premium kepada pelajar yang layak. Pelajar bukan pelanggan tak nampak ID tersebut.
-- **Had yang diketahui:** YouTube unlisted tak boleh dikunci. Pelajar yang layak boleh salin link dan kongsi, atau simpan dan tonton selepas langganan tamat. Penyelesaian: migrasi premium ke Bunny Stream dengan embed token. Struktur data dah sedia, hanya video perlu diupload semula.
+- **Had yang diketahui:** YouTube unlisted tak boleh dikunci. Pelajar yang layak boleh salin link dan kongsi, atau simpan dan tonton selepas langganan atau akses video tamat. Penyelesaian: migrasi premium ke Bunny Stream dengan embed token. Struktur data dah sedia, hanya video perlu diupload semula.
+- **Kesan model beli satu video:** satu pembelian RM2 boleh dikongsi kepada ramai melalui pautan, jadi risiko bocor lebih tinggi daripada langganan. Perlu diputuskan sebelum pelancaran: terima risiko ini pada fasa awal, atau guna Bunny untuk video yang dijual per video. Kadar Bunny belum disahkan.
 
 ## 9. Nota PDF
 
@@ -105,7 +129,7 @@ Bila semua subject dalam course selesai, cipta rekod `sijil` dengan kod pengesah
 
 ## 12. Tetapan laman
 
-Harga Advance diubah di borang BCL, bukan di panel LMS. Admin ubah dari panel: hari tangguh, banner halaman utama (gambar di R2), warna jenama (disimpan sebagai CSS variable, terpakai pada seluruh laman), teks hero dan footer. Tiada CMS berasingan.
+Harga Advance diubah di borang BCL, bukan di panel LMS. Harga video lalai (RM2) ditetapkan dalam konfigurasi dan boleh ditimpa pada setiap subject. Admin ubah dari panel: hari tangguh, banner halaman utama (gambar di R2), warna jenama (disimpan sebagai CSS variable, terpakai pada seluruh laman), teks hero dan footer. Tiada CMS berasingan.
 
 ## 13. Stack
 
@@ -127,14 +151,14 @@ Sumber: dokumentasi Cloudflare (Workers limits, D1 limits). Angka cron dan R2 pi
 - 50 subrequest dan 50 query D1 setiap invokasi (`db.batch()` dikira satu). Cron reminder wajib hantar kelompok atau dipecah. Tidak boleh satu panggilan emel setiap pelajar.
 - D1: 500MB setiap database, 5GB setiap akaun, 100,000 tulis dan 5 juta baca setiap hari. Melebihi had, query gagal (berkuat kuasa sejak 01/09/2026). Tulisan progress mesti dihadkan, bukan setiap saat.
 - Restore D1 (Time Travel) 7 hari pada plan percuma. Tambah eksport harian ke R2 sebagai sandaran.
-- 
 
 ## 15. Fasa
 
 - **Fasa 0, asas dan ujian:** selesai 02/11/2026 (`docs/FASA0.md`).
 - **Teras langganan (dibina 02/11/2026, `app/`):** skema D1, log masuk Google dan sesi, webhook BCL dengan pengesahan API, logik langganan, admin API, halaman log masuk sementara. Ujian: 24 unit, 5 integrasi D1.
+- **Teras akses video (05/11/2026, `app/`):** jadual `pesanan`, `pesanan_item`, `akses_video`; keputusan akses subject; semakan dan penciptaan pesanan; penyelesaian pesanan yang atomik dan idempoten. Belum ada laluan gateway atau UI.
 - **Fasa 1, kandungan percuma:** course, subject, pemain YouTube, progress, nota PDF (perlu R2), panel admin dan guru, halaman awam.
-- **Fasa 2, langganan dalam UI:** kunci kandungan premium ikut status, notis, halaman langganan, ujian RM1 sebenar.
+- **Fasa 2, bayaran dalam UI:** kunci kandungan premium ikut keputusan akses, notis, halaman langganan, Beli video dan Video saya, laluan gateway pesanan video, ujian RM1 sebenar.
 - **Fasa 3, komuniti dan sijil:** komen, sijil dan pengesahan, tetapan laman (banner, warna, teks), manual dan video tutorial.
 - **Kemudian:** migrasi premium ke Bunny, auto-debit, kod emel untuk pelajar tanpa Google, naik ke tier Murah bila had hampir.
 
@@ -149,6 +173,16 @@ Yuran bayaran (jadual rasmi Bayarcash, payout-calculator, kadar standard; SST 8%
 | DuitNow QR | RM0.17 (1.6%, minimum RM0.15) | 1.7% |
 | FPX B2C | RM1.08 | 10.8% |
 
+Pada harga satu video RM2 (anggaran aku atas jadual yang sama):
+
+| Saluran | Yuran + SST | Kos |
+|---|---|---|
+| DuitNow QR | RM0.16 (minimum RM0.15 menguasai) | 8% |
+| E-wallet | lebih kurang RM0.03 (1.5%) | 1.5%, perlu dipohon berasingan dan minimum tak disenaraikan |
+| FPX B2C | RM1.08 | 54% |
+
+Lima video dalam satu pesanan (RM10) melalui QR kos 1.7%, sama seperti satu langganan. Hasil: lima video sebulan = RM10 = harga Advance, jadi pelajar aktif secara semula jadi beralih ke Advance.
+
 Yuran BCL sendiri (jika ada, di atas yuran Bayarcash) **belum diketahui**.
 
 ## 17. Perkara terbuka
@@ -158,4 +192,6 @@ Yuran BCL sendiri (jika ada, di atas yuran Bayarcash) **belum diketahui**.
 3. API BCL untuk rekonsiliasi harian (cari transaksi ikut tarikh atau order).
 4. R2: subscription perlu kelulusan pemilik akaun Cloudflare (diperlukan untuk nota PDF dalam Fasa 1).
 5. Tarikh sasaran pelancaran dan musim pendaftaran pelajar.
-6. Lulus semua item di bahagian 3.
+6. **Laluan gateway untuk pesanan video** (bahagian 7): API Bayarcash v3 terus (cadangan) atau API pautan bayaran BCL. Kalau Bayarcash terus, perlukan PAT, API Secret Key dan Portal Key **production** daripada akaun Bayarcash pemilik.
+7. Risiko pautan YouTube dikongsi untuk video yang dijual per video (bahagian 8).
+8. Lulus semua item di bahagian 3.

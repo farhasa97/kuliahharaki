@@ -47,5 +47,42 @@ export function repoD1(db) {
              hari_labuh = excluded.hari_labuh, dikemas_kini_pada = excluded.dikemas_kini_pada`,
         emel, l.pelan, l.tarikh_tamat, l.hari_labuh, masa),
     padamLangganan: (emel) => jalan('DELETE FROM langganan WHERE emel = ?', emel),
+
+    // ---- pesanan video ----
+    async simpanPesanan(p, items) {
+      await db.batch([
+        db.prepare('INSERT INTO pesanan (order_number, emel, jumlah_sen, status, saluran, dicipta_pada) VALUES (?, ?, ?, ?, ?, ?)')
+          .bind(p.order_number, p.emel, p.jumlah_sen, 'menunggu', p.saluran ?? null, p.dicipta_pada),
+        ...items.map((i) => db.prepare('INSERT INTO pesanan_item (order_number, subject_id, harga_sen) VALUES (?, ?, ?)')
+          .bind(p.order_number, i.subject_id, i.harga_sen)),
+      ]);
+    },
+    pesanan: (order) => satu('SELECT * FROM pesanan WHERE order_number = ?', order),
+    async itemPesanan(order) {
+      return (await db.prepare('SELECT subject_id, harga_sen FROM pesanan_item WHERE order_number = ? ORDER BY subject_id').bind(order).all()).results;
+    },
+    async aksesVideoBanyak(emel, ids) {
+      if (!ids.length) return [];
+      const tanda = ids.map(() => '?').join(',');
+      return (await db.prepare(`SELECT * FROM akses_video WHERE emel = ? AND subject_id IN (${tanda})`).bind(emel, ...ids).all()).results;
+    },
+    async aksesVideoSaya(emel) {
+      return (await db.prepare('SELECT * FROM akses_video WHERE emel = ? ORDER BY tarikh_tamat DESC').bind(emel).all()).results;
+    },
+    // Tuntut pesanan dan lanjut akses dalam satu batch (transaksi). `changes() = 1` memastikan akses hanya
+    // dilanjutkan jika kenyataan UPDATE pertama benar-benar menukar status: permintaan kedua menukar 0 baris,
+    // jadi tiada akses digandakan. Pulangkan true hanya untuk permintaan yang menuntut.
+    async bayarPesanan(order, emel, akses, masa) {
+      const hasil = await db.batch([
+        db.prepare(`UPDATE pesanan SET status = 'dibayar', dibayar_pada = ? WHERE order_number = ? AND status IN ('menunggu', 'tamat_masa')`).bind(masa, order),
+        ...akses.map((a) => db.prepare(
+          `INSERT INTO akses_video (emel, subject_id, tarikh_tamat, hari_labuh, dikemas_kini_pada)
+           SELECT ?, ?, ?, ?, ? WHERE changes() = 1
+           ON CONFLICT(emel, subject_id) DO UPDATE SET tarikh_tamat = excluded.tarikh_tamat,
+             hari_labuh = excluded.hari_labuh, dikemas_kini_pada = excluded.dikemas_kini_pada`)
+          .bind(emel, a.subject_id, a.tarikh_tamat, a.hari_labuh, masa)),
+      ]);
+      return hasil[0].meta.changes === 1;
+    },
   };
 }

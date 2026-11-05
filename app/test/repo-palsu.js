@@ -1,9 +1,10 @@
 // Repo dalam memori dengan antara muka yang sama seperti repoD1 (src/repo.js).
 export function repoPalsu() {
   const bayaran = new Map(), langganan = new Map(), pengguna = new Map(), sesi = new Map();
+  const pesanan = new Map(), itemPesanan = new Map(), akses = new Map();
   let idSeterusnya = 1;
   return {
-    _bayaran: bayaran, _langganan: langganan, _pengguna: pengguna, _sesi: sesi,
+    _bayaran: bayaran, _langganan: langganan, _pengguna: pengguna, _sesi: sesi, _pesanan: pesanan, _akses: akses,
     async tuntutBayaran(rid, order, masa) {
       if (bayaran.has(rid)) return false;
       bayaran.set(rid, { rujukan_bcl: rid, order_number: order, status: 'memproses', dicipta_pada: masa });
@@ -33,6 +34,22 @@ export function repoPalsu() {
     async senaraiLangganan() { return [...langganan.values()]; },
     async senaraiBayaran() { return [...bayaran.values()]; },
     async tetapkanLangganan(emel, l, masa) { langganan.set(emel, { emel, ...l, dikemas_kini_pada: masa }); },
+    async simpanPesanan(p, items) {
+      if (pesanan.has(p.order_number)) throw new Error('UNIQUE');
+      pesanan.set(p.order_number, { ...p, status: 'menunggu', dibayar_pada: null });
+      itemPesanan.set(p.order_number, items.map((i) => ({ ...i })));
+    },
+    async pesanan(order) { return pesanan.get(order) ?? null; },
+    async itemPesanan(order) { return (itemPesanan.get(order) ?? []).slice().sort((a, b) => a.subject_id - b.subject_id); },
+    async aksesVideoBanyak(emel, ids) { return ids.map((id) => akses.get(emel + '|' + id)).filter(Boolean); },
+    async aksesVideoSaya(emel) { return [...akses.values()].filter((a) => a.emel === emel); },
+    async bayarPesanan(order, emel, baru, masa) {
+      const p = pesanan.get(order);
+      if (!p || !['menunggu', 'tamat_masa'].includes(p.status)) return false;
+      Object.assign(p, { status: 'dibayar', dibayar_pada: masa });
+      for (const a of baru) akses.set(emel + '|' + a.subject_id, { emel, ...a, dikemas_kini_pada: masa });
+      return true;
+    },
     async padamLangganan(emel) { langganan.delete(emel); },
   };
 }
