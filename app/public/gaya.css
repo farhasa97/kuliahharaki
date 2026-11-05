@@ -1,79 +1,112 @@
-/* Gaya bersama Kuliah Haraki (panel dan halaman pelajar). Warna jenama sementara; tetapan laman datang kemudian. */
-:root {
-  --latar: #f6f5f1; --kad: #fff; --teks: #1d1d1b; --redup: #5f5f5a; --garis: #e3e1da;
-  --jenama: #1f6f4a; --jenama-gelap: #17573a; --lembut: #eaf3ee;
-  --amaran: #8a5200; --amaran-latar: #fff6e6; --bahaya: #a12b2b; --bahaya-latar: #fdf0f0;
-  --jejari: 12px;
-}
-* { box-sizing: border-box; }
-body { margin: 0; font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--latar); color: var(--teks); }
-a { color: var(--jenama); }
-h1 { font-size: 1.5rem; margin: 0; line-height: 1.25; }
-h2 { font-size: 1.15rem; margin: 0 0 8px; }
-.bekas { max-width: 880px; margin: 0 auto; padding: 0 16px; }
-main.bekas { padding-top: 20px; padding-bottom: 48px; }
-.atas { background: var(--kad); border-bottom: 1px solid var(--garis); }
-.atas .bekas { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; flex-wrap: wrap; }
-.jenama { font-weight: 700; color: var(--teks); text-decoration: none; }
-.jenama span { font-weight: 500; color: var(--redup); }
-.baris { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.antara { justify-content: space-between; margin-bottom: 16px; }
-.kad { display: block; background: var(--kad); border: 1px solid var(--garis); border-radius: var(--jejari); padding: 16px; margin-bottom: 12px; color: inherit; text-decoration: none; }
-a.kad:hover { border-color: var(--jenama); }
-.kecil { font-size: 0.875rem; color: var(--redup); }
-.kosong { text-align: center; color: var(--redup); padding: 32px 16px; }
-.butang, button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 8px 14px; border-radius: 8px;
-  border: 1px solid var(--jenama); background: var(--jenama); color: #fff; font: inherit; font-weight: 600; text-decoration: none; cursor: pointer; }
-.butang:hover, button:hover { background: var(--jenama-gelap); }
-.butang.kedua, button.kedua { background: transparent; color: var(--jenama); }
-.butang.kedua:hover, button.kedua:hover { background: var(--lembut); }
-button.bahaya { background: transparent; color: var(--bahaya); border-color: var(--bahaya); }
-button.bahaya:hover { background: var(--bahaya-latar); }
-button.ikon { min-width: 40px; padding: 8px; }
-button:disabled { opacity: 0.55; cursor: wait; }
-.lencana { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--lembut); color: var(--jenama-gelap); white-space: nowrap; }
-.lencana.draf { background: #eeece6; color: var(--redup); }
-.lencana.ahli { background: #e9eefb; color: #2b4a8f; }
-.lencana.pratonton { background: var(--amaran-latar); color: var(--amaran); }
-label { display: block; font-weight: 600; margin: 14px 0 6px; }
-input[type=text], input[type=url], input[type=number], textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--garis); border-radius: 8px; font: inherit; background: #fff; }
-textarea { min-height: 96px; resize: vertical; }
-input:focus, textarea:focus { outline: 2px solid var(--jenama); outline-offset: 1px; border-color: var(--jenama); }
-.salah { border-color: var(--bahaya) !important; }
-.pilihan { display: flex; gap: 16px; flex-wrap: wrap; font-weight: 400; }
-.pilihan label { font-weight: 400; margin: 0; display: flex; align-items: center; gap: 6px; }
-.bantuan { font-size: 0.875rem; color: var(--redup); margin-top: 4px; }
-.ralat { background: var(--bahaya-latar); color: var(--bahaya); border-radius: 8px; padding: 10px 12px; margin: 12px 0; }
-.info { background: var(--amaran-latar); color: var(--amaran); border-radius: 8px; padding: 10px 12px; margin: 12px 0; }
-.tindakan { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 20px; }
-.subject { display: flex; gap: 12px; align-items: center; }
-.subject img, .subject .tiada-video { width: 96px; height: 54px; object-fit: cover; border-radius: 6px; background: #eeece6; flex: none; }
-.subject .tiada-video { display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: var(--redup); }
-.subject .isi { flex: 1; min-width: 0; }
-.subject .isi b { display: block; overflow-wrap: anywhere; }
-@media (max-width: 560px) {
-  .subject { flex-wrap: wrap; }
-  .subject .baris.alat { width: 100%; }
+/* Tambahan di atas tema.css (prototaip pemilik): gerakan, komponen yang tiada dalam prototaip, dan panel admin.
+   Warna dan bentuk menggunakan pemboleh ubah tema supaya tetapan laman kelak boleh menukarnya di satu tempat. */
+
+/* ---------- gerakan: halaman meluncur masuk ikut arah navigasi ---------- */
+.halaman{animation:kh-masuk .42s cubic-bezier(.2,.7,.2,1) both}
+.halaman.dari-kiri{animation-name:kh-masuk-kiri}
+@keyframes kh-masuk{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:none}}
+@keyframes kh-masuk-kiri{from{opacity:0;transform:translateX(-28px)}to{opacity:1;transform:none}}
+.muncul>*{animation:kh-naik .5s cubic-bezier(.2,.7,.2,1) both;animation-delay:calc(var(--i,0) * 60ms)}
+@keyframes kh-naik{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.streaks .streak{animation:kh-cahaya 7s ease-in-out infinite alternate}
+.streaks .streak:nth-child(3n){animation-duration:9s}
+.streaks .streak:nth-child(4n){animation-duration:11s;animation-delay:-3s}
+@keyframes kh-cahaya{from{opacity:.55}to{opacity:1}}
+.mobile-menu{animation:kh-turun .22s ease both}
+@keyframes kh-turun{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){
+  .halaman,.muncul>*,.streaks .streak,.mobile-menu{animation:none !important}
 }
 
-/* ---- halaman pelajar ---- */
-.wira { padding: 8px 0 20px; }
-.wira p { color: var(--redup); margin: 8px 0 0; max-width: 560px; }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
-.grid .kad { margin: 0; display: flex; flex-direction: column; gap: 8px; }
-.kemajuan { height: 8px; background: #eeece6; border-radius: 999px; overflow: hidden; }
-.kemajuan > i { display: block; height: 100%; background: var(--jenama); border-radius: 999px; }
-.senarai-subject { list-style: none; padding: 0; margin: 0; }
-.senarai-subject a { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--kad); border: 1px solid var(--garis);
-  border-radius: var(--jejari); margin-bottom: 8px; color: inherit; text-decoration: none; }
-.senarai-subject a:hover { border-color: var(--jenama); }
-.senarai-subject .no { width: 28px; height: 28px; flex: none; border-radius: 999px; background: #eeece6; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; }
-.senarai-subject .selesai .no { background: var(--jenama); color: #fff; }
-.senarai-subject .tajuk { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.pemain { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: var(--jejari); overflow: hidden; }
-.pemain > iframe, .pemain > div { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
-.kunci { text-align: center; padding: 28px 16px; }
-.kunci h2 { margin-bottom: 4px; }
-.navigasi { display: flex; justify-content: space-between; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
-.navigasi .butang { flex: 1 1 140px; }
-.lencana.selesai { background: var(--jenama); color: #fff; }
+/* ---------- pelarasan kecil kerana pautan menggantikan butang prototaip ---------- */
+a.course{color:inherit}
+a.btn{text-decoration:none}
+.stage>#pemain,.stage>iframe{position:absolute;inset:0;width:100%;height:100%;border:0;z-index:2}
+.stage-kunci{position:absolute;inset:0;z-index:3;display:grid;place-items:center}
+.stage-kunci span{width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.14);display:grid;place-items:center;color:#fff;backdrop-filter:blur(4px)}
+.course-foot .kemajuan-kecil{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-3)}
+.bar-mini{width:72px;height:6px;border-radius:999px;background:var(--line);overflow:hidden}
+.bar-mini i{display:block;height:100%;background:var(--ok);border-radius:999px}
+.navigasi{display:flex;justify-content:space-between;gap:10px;margin-top:16px;flex-wrap:wrap}
+.navigasi .btn{flex:1 1 160px}
+.notes .kosong-nota{color:var(--ink-3);font-size:14px}
+.kad-langganan{text-align:center}
+.kad-langganan .plan-price{justify-content:center}
+.kad-langganan .baris-butang{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:18px}
+.kad-langganan p{color:var(--ink-2);max-width:48ch;margin:8px auto 0}
+.gsi{display:flex;justify-content:center;margin:22px 0 6px;min-height:44px}
+.auth-card .nota-gsi{font-size:13px;color:#93A0B8;text-align:center;margin-top:14px}
+.ralat-halaman{text-align:center;padding:40px 20px}
+.ralat-halaman p{color:var(--ink-2);margin-bottom:16px}
+.tiada-isi{color:var(--ink-3);font-size:14px;padding:6px 0}
+.menu a.active,.mobile-menu a.active{color:var(--ink)}
+.topbar .brand{color:var(--ink)}
+.topbar-right .btn{height:38px}
+@media (max-width:620px){
+  .topbar .navpills{order:3;width:100%;margin:6px 0 0;overflow-x:auto}
+  .topbar{flex-wrap:wrap}
+  .topbar-right .role-chip .rc-text small{display:none}
+}
+
+/* ============================================================
+   PANEL ADMIN (/panel/): diskop di bawah .p-admin supaya tidak menyentuh komponen tema
+   ============================================================ */
+.p-admin{background:var(--app-bg)}
+.p-admin .atas{position:sticky;top:0;z-index:40;padding:16px 16px 0}
+.p-admin .atas .bekas{display:flex;align-items:center;gap:16px;flex-wrap:wrap;background:var(--surface);border-radius:18px;padding:11px 14px;box-shadow:var(--shadow-card);max-width:1100px;margin:0 auto}
+.p-admin .jenama{display:flex;align-items:center;gap:10px;font-weight:700;color:var(--ink)}
+.p-admin .jenama small{font-weight:600;color:var(--ink-3);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.p-admin #pengguna{margin-left:auto}
+.p-admin .bekas{max-width:1100px;margin:0 auto;padding:0 16px}
+.p-admin main.bekas{padding-top:20px;padding-bottom:48px}
+.p-admin h1{font-size:1.6rem;line-height:1.2;margin:0}
+.p-admin h2{font-size:1.15rem;margin:0 0 10px}
+.p-admin .baris{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.p-admin .antara{justify-content:space-between;margin-bottom:16px}
+.p-admin .kad{display:block;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px;margin-bottom:12px;box-shadow:var(--shadow-card);color:inherit}
+.p-admin a.kad{transition:border-color .16s,transform .16s}
+.p-admin a.kad:hover{border-color:var(--line-strong);transform:translateY(-2px)}
+.p-admin .kecil{font-size:13.5px;color:var(--ink-3)}
+.p-admin .kosong{text-align:center;color:var(--ink-3);padding:32px 16px}
+.p-admin p a,.p-admin .kad p a{color:var(--accent);font-weight:600}
+.p-admin .butang,.p-admin button{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:40px;padding:0 16px;border-radius:var(--r-md);
+  border:1px solid var(--accent);background:var(--accent);color:#fff;font:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:background .15s,border-color .15s}
+.p-admin .butang:hover,.p-admin button:hover{background:var(--accent-strong);border-color:var(--accent-strong)}
+.p-admin .butang.kedua,.p-admin button.kedua{background:var(--surface);color:var(--ink);border-color:var(--line-strong)}
+.p-admin .butang.kedua:hover,.p-admin button.kedua:hover{background:var(--surface-2)}
+.p-admin button.bahaya{background:var(--surface);color:var(--bad);border-color:var(--bad)}
+.p-admin button.bahaya:hover{background:var(--bad-soft)}
+.p-admin button.ikon{min-width:40px;padding:0}
+.p-admin button:disabled{opacity:.5;cursor:not-allowed}
+.p-admin .lencana{display:inline-flex;align-items:center;height:22px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:0 9px;border-radius:999px;border:1px solid #CBE7D8;background:var(--ok-soft);color:var(--ok);white-space:nowrap}
+.p-admin .lencana.draf{background:#EEF1F7;color:var(--ink-2);border-color:var(--line)}
+.p-admin .lencana.ahli{background:var(--vip-soft);color:var(--vip);border-color:var(--vip-line)}
+.p-admin .lencana.pratonton{background:var(--accent-soft);color:var(--accent-strong);border-color:var(--line-strong)}
+.p-admin label{display:block;font-weight:600;font-size:14px;margin:16px 0 6px}
+.p-admin input[type=text],.p-admin input[type=url],.p-admin input[type=number],.p-admin textarea{width:100%;height:46px;padding:0 14px;border:1px solid var(--line-strong);border-radius:var(--r-md);font:inherit;background:var(--surface)}
+.p-admin textarea{height:auto;min-height:100px;padding:12px 14px;resize:vertical}
+.p-admin input:focus,.p-admin textarea:focus{outline:3px solid var(--accent-soft);border-color:var(--accent)}
+.p-admin .salah{border-color:var(--bad) !important}
+.p-admin .pilihan{display:flex;gap:18px;flex-wrap:wrap}
+.p-admin .pilihan label{font-weight:400;margin:0;display:flex;align-items:center;gap:7px}
+.p-admin .bantuan{font-size:13px;color:var(--ink-3);margin-top:5px}
+.p-admin .ralat{background:var(--bad-soft);color:var(--bad);border-radius:var(--r-md);padding:11px 14px;margin:12px 0}
+.p-admin .info{background:var(--warn-soft);color:var(--warn);border-radius:var(--r-md);padding:11px 14px;margin:12px 0}
+.p-admin .tindakan{display:flex;gap:8px;flex-wrap:wrap;margin-top:22px}
+.p-admin .subject{display:flex;gap:14px;align-items:center}
+.p-admin .subject img,.p-admin .subject .tiada-video{width:104px;height:58px;object-fit:cover;border-radius:9px;background:var(--surface-2);flex:none}
+.p-admin .subject .tiada-video{display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--ink-3)}
+.p-admin .subject .isi{flex:1;min-width:0}
+.p-admin .subject .isi b{display:block;overflow-wrap:anywhere;margin-bottom:4px}
+@media (max-width:560px){
+  .p-admin .subject{flex-wrap:wrap}
+  .p-admin .subject .baris.alat{width:100%}
+}
+
+/* Grid papan pemuka: lajur boleh mengecil di telefon (elak halaman terlebih lebar) */
+.dash-grid>*{min-width:0}
+@media (max-width:1100px){.dash-grid{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:520px){
+  .focus-now{flex-wrap:wrap}
+  .focus-now .btn{width:100%}
+}

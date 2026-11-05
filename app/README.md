@@ -6,7 +6,10 @@ Worker Cloudflare dengan static assets dan D1. JavaScript biasa, tiada build ste
 |---|---|---|
 | `public/` | `index.html`, `app.js` | Halaman pelajar: course, pemain, kemajuan, log masuk, akaun (laluan hash) |
 | `public/panel/` | `index.html`, `panel.js` | Panel admin: course dan subject (laluan hash, tiada build step) |
-| `public/gaya.css` | | Gaya bersama |
+| `public/tema.css` | | Tema daripada prototaip pemilik (`annurprosolutions-cell/kuliahharaki`), disalin tanpa ubah |
+| `public/gaya.css` | | Tambahan atas tema: gerakan luncur, komponen tambahan, gaya panel admin (`.p-admin`) |
+| `public/manifest.webmanifest`, `public/sw.js`, `public/ikon/` | | PWA: boleh dipasang ke skrin utama. Service worker tidak mencache `/api`, `/auth`, `/bcl`, `/admin`. Naikkan `VERSI` dalam `sw.js` bila ubah fail statik |
+| `tools/jana-ikon.mjs` | | Jana semula ikon PWA (Playwright) |
 | `src/worker.js` | | API: `/auth/google`, `/auth/keluar`, `/api/saya`, `/api/konfig`, `/bcl/<kunci>`, `/admin/*` |
 | `src/lib/langganan.js` | | Tarikh Malaysia, bulan berlabuh, status aktif/tangguh/tamat, notis |
 | `src/lib/bcl.js` | | Webhook BCL: pengesahan API, idempotensi, emel akaun, bulan dari item |

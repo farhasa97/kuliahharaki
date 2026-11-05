@@ -130,6 +130,7 @@ test('tanda selesai dari asal lain ditolak', async () => {
 });
 
 test('konfig memaparkan teks harga', async () => {
-  const r = await handle(new Request(B + '/api/konfig'), { ...env, HARGA_TEKS: 'RM10 sebulan' }, { repo: repoPalsu(), now: NOW });
-  assert.equal((await r.json()).hargaTeks, 'RM10 sebulan');
+  const r = await handle(new Request(B + '/api/konfig'), { ...env, HARGA_TEKS: 'RM10 sebulan', HARGA_BULANAN: '10', HARGA_TAHUNAN: '100' }, { repo: repoPalsu(), now: NOW });
+  const k = await r.json();
+  assert.deepEqual([k.hargaTeks, k.hargaBulanan, k.hargaTahunan], ['RM10 sebulan', '10', '100']);
 });

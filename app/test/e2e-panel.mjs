@@ -24,7 +24,10 @@ let lulus = 0;
 const langkah = async (nama, fn) => { await fn(); lulus++; console.log('ok', lulus, '-', nama); };
 
 try {
-  const ctx = await pelayar.newContext({ viewport: { width: 390, height: 844 } });
+  const ctx = await pelayar.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+  // lakaran kecil YouTube diberi gambar palsu supaya ujian tidak bergantung pada rangkaian luar
+  const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+  await ctx.route('https://i.ytimg.com/**', (r) => r.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
   await ctx.addCookies([{ name: 'kh_sesi', value: tokenAdmin, domain: 'localhost', path: '/', httpOnly: true, secure: false, sameSite: 'Lax' }]);
   const page = await ctx.newPage();
   page.setDefaultTimeout(10_000);

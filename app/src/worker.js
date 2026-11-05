@@ -93,7 +93,8 @@ export async function handle(req, env, opts = {}) {
   if (p.startsWith('/admin/')) return admin(req, env, url, repo, now);
 
   if (p === '/api/konfig' && req.method === 'GET') {
-    return json({ googleClientId: env.GOOGLE_CLIENT_ID || '', buyUrl: env.BUY_URL || '', hargaTeks: env.HARGA_TEKS || '' });
+    return json({ googleClientId: env.GOOGLE_CLIENT_ID || '', buyUrl: env.BUY_URL || '', hargaTeks: env.HARGA_TEKS || '',
+      hargaBulanan: env.HARGA_BULANAN || '', hargaTahunan: env.HARGA_TAHUNAN || '' });
   }
 
   if (p.startsWith('/api/course') || p.startsWith('/api/subject')) return pelajarApi(req, env, url, repo, now);

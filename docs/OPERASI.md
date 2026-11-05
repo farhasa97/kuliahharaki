@@ -75,7 +75,7 @@ Kemudian di BCL, webhook borang: acara **Payment Success**, URL `https://kuliahh
 
 Letak emel admin dalam `ADMIN_EMELS` (dipisah koma) dalam `app/wrangler.toml`.
 
-Teks harga yang dipaparkan kepada pelajar ialah `HARGA_TEKS` dalam `app/wrangler.toml`. Bila harga dalam borang BCL berubah, ubah teks ini juga.
+Harga yang dipaparkan kepada pelajar datang dari `app/wrangler.toml`: `HARGA_TEKS` (ayat ringkas), `HARGA_BULANAN` dan `HARGA_TAHUNAN` (nombor RM untuk kad Yuran di laman utama). Bila harga dalam borang BCL berubah, ubah ketiga-tiganya juga.
 
 ### A6. Ujian RM1 sebelum pelancaran
 1. Tambah item sementara `ADVANCE BULANAN UJIAN` RM1.00 (kekalkan perkataan BULANAN).

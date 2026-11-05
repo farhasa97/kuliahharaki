@@ -250,6 +250,8 @@ async function laluan() {
     else pergi('#/');
     window.scrollTo(0, 0);
   } catch (e) { paparRalat(e); }
+  // gerakan luncur setiap pertukaran skrin (gaya.css .halaman)
+  app.classList.remove('halaman'); void app.offsetWidth; app.classList.add('halaman');
 }
 
 async function logMasukGoogle(res) {
@@ -263,7 +265,7 @@ async function mula() {
   const saya = await fetch('/api/saya');
   if (saya.ok) {
     const d = await saya.json();
-    kotakPengguna.innerHTML = `<span class="kecil">${h(d.pengguna.emel)}</span><button class="kedua" data-act="keluar">Log keluar</button>`;
+    kotakPengguna.innerHTML = `<a class="butang kedua" href="/">Laman pelajar</a><span class="kecil">${h(d.pengguna.emel)}</span><button class="kedua" data-act="keluar">Log keluar</button>`;
     if (d.pengguna.peranan !== 'admin') {
       app.innerHTML = `<div class="kad"><h1>Tiada akses</h1><p>Akaun <b>${h(d.pengguna.emel)}</b> bukan admin. Hubungi pemilik jika ini satu kesilapan.</p><p><a href="/">Ke laman utama</a></p></div>`;
       return;
