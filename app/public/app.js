@@ -157,6 +157,8 @@ async function lamanAwam() {
     const s = d?.subject.find((x) => x.boleh_tonton);
     if (s) { tonton = { id: s.id, tajuk: s.tajuk, course: c }; break; }
   }
+  // video_id hanya diberi pelayan jika pengguna ini layak menonton (kuliah percuma atau pratonton).
+  if (tonton) tonton.video_id = (await dapat('/api/subject/' + tonton.id).catch(() => null))?.subject?.video_id || '';
   const hb = harga('bulan'), ht = harga('tahun');
   const butangLanggan = saya
     ? (konfig.buyUrl ? `<a class="btn primary block" href="${h(konfig.buyUrl)}" target="_blank" rel="noopener">Jadi ahli penuh</a>` : '')
@@ -195,12 +197,14 @@ async function lamanAwam() {
           <div><b class="tnum">${bilPercuma}</b><span>siri percuma</span></div>
         </div>
       </div>
-      ${tonton ? `<a class="preview-card" href="#/subject/${tonton.id}" style="display:block">
-        <div class="preview-head"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span>${h(tonton.course.tajuk)} · ${h(tonton.tajuk)}</span></div>
-        <div class="preview-stage"><div class="art art1"></div><div class="stage-veil"></div><span class="play"></span></div>
+      ${tonton ? `<div class="preview-card">
+        <div class="preview-head"><i class="dot"></i><i class="dot"></i><i class="dot"></i><a href="#/subject/${tonton.id}">${h(tonton.course.tajuk)} · ${h(tonton.tajuk)}</a></div>
+        ${tonton.video_id
+          ? `<div class="preview-stage"><iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(tonton.video_id)}?rel=0&modestbranding=1&playsinline=1" title="${h(tonton.tajuk)}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>`
+          : `<a class="preview-stage" href="#/subject/${tonton.id}" style="display:block"><div class="art art1"></div><div class="stage-veil"></div><span class="play"></span></a>`}
         <div class="preview-notes"><i></i><i></i><i></i></div>
         <div class="preview-foot"><small>${tonton.course.bil_subject} kuliah video</small><span class="badge free">PERCUMA</span></div>
-      </a>` : ''}
+      </div>` : ''}
     </div>
   </section>
 

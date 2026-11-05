@@ -87,6 +87,8 @@ try {
     assert.deepEqual(await p.locator('.hero-stats b').allTextContents(), ['3', '5', '2']); // 3 siri, 5 video terbit, 2 siri percuma
     await p.locator('#nav').getByRole('link', { name: 'Daftar percuma' }).waitFor(); // 'Log masuk' ada dalam menu telefon
     assert.equal(await p.locator('.course', { hasText: 'Fiqh Advance' }).locator('.badge').textContent(), 'AHLI PENUH');
+    // video percuma pertama terus dimainkan dalam kad hero (bukan pautan ke halaman lain)
+    assert.match(await p.locator('.preview-stage iframe').getAttribute('src'), new RegExp(`youtube-nocookie\\.com/embed/${V.a1}`));
     await skrin(p, '10-pelawat-utama');
   });
 

@@ -110,3 +110,8 @@ a.btn{text-decoration:none}
   .focus-now{flex-wrap:wrap}
   .focus-now .btn{width:100%}
 }
+
+/* Kad pratonton hero: video percuma dimainkan terus di laman utama */
+.preview-stage iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.preview-head a{margin-left:6px;font-size:12px;color:#A9B4CA;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.preview-head a:hover{color:#fff;text-decoration:underline}
