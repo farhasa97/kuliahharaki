@@ -11,22 +11,19 @@ import { sahkanIdToken } from './lib/google.js';
 import { hariIni, lanjut, status, notis, tambahBulan } from './lib/langganan.js';
 import { tokenBaru, hashToken, bacaKuki, kukiSesi, kukiPadam, samaMasaTetap, HARI_SESI } from './lib/sesi.js';
 import { repoD1 } from './repo.js';
-
-const json = (o, s = 200, h = {}) =>
-  new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...h } });
+import { json } from './lib/http.js';
+import { adminEmel, peranEfektif } from './lib/peranan.js';
+import { adminApi } from './admin-api.js';
 
 const tangguhHari = (env) => {
   const n = Number(env.TANGGUH_HARI);
   return Number.isFinite(n) && env.TANGGUH_HARI !== '' && env.TANGGUH_HARI != null ? n : 3;
 };
 
-const adminEmel = (env, emel) =>
-  String(env.ADMIN_EMELS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean).includes(emel);
-
 async function profil(repo, env, p, now) {
   const st = status(await repo.langganan(p.emel), hariIni(now), tangguhHari(env));
   return {
-    pengguna: { emel: p.emel, nama: p.nama, peranan: p.peranan },
+    pengguna: { emel: p.emel, nama: p.nama, peranan: peranEfektif(env, p) },
     langganan: { ...st, notis: notis(st) },
     buyUrl: env.BUY_URL || '',
   };
@@ -95,6 +92,7 @@ export async function handle(req, env, opts = {}) {
     return json(await kerja);
   }
 
+  if (p.startsWith('/api/admin/')) return adminApi(req, env, url, repo, now);
   if (p.startsWith('/admin/')) return admin(req, env, url, repo, now);
 
   if (p === '/api/konfig' && req.method === 'GET') {

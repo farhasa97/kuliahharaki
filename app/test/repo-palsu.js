@@ -2,9 +2,10 @@
 export function repoPalsu() {
   const bayaran = new Map(), langganan = new Map(), pengguna = new Map(), sesi = new Map();
   const pesanan = new Map(), itemPesanan = new Map(), akses = new Map();
+  const courses = new Map(), subjects = new Map(); let idC = 1, idS = 1;
   let idSeterusnya = 1;
   return {
-    _bayaran: bayaran, _langganan: langganan, _pengguna: pengguna, _sesi: sesi, _pesanan: pesanan, _akses: akses,
+    _bayaran: bayaran, _langganan: langganan, _pengguna: pengguna, _sesi: sesi, _pesanan: pesanan, _akses: akses, _course: courses, _subject: subjects,
     async tuntutBayaran(rid, order, masa) {
       if (bayaran.has(rid)) return false;
       bayaran.set(rid, { rujukan_bcl: rid, order_number: order, status: 'memproses', dicipta_pada: masa });
@@ -50,6 +51,51 @@ export function repoPalsu() {
       for (const a of baru) akses.set(emel + '|' + a.subject_id, { emel, ...a, dikemas_kini_pada: masa });
       return true;
     },
+    // ---- kandungan ----
+    async senaraiCourse({ termasukDraf = false } = {}) {
+      return [...courses.values()].filter((c) => termasukDraf || c.status === 'terbit').sort((a, b) => a.urutan - b.urutan || a.id - b.id)
+        .map((c) => { const ss = [...subjects.values()].filter((s) => s.course_id === c.id);
+          return { ...c, bil_subject: ss.length, bil_subject_terbit: ss.filter((s) => s.status === 'terbit').length }; });
+    },
+    async courseDariId(id) { return courses.get(id) ?? null; },
+    async courseDariSlug(slug) { return [...courses.values()].find((c) => c.slug === slug) ?? null; },
+    async slugUnik(asas) {
+      const ada = (x) => [...courses.values()].some((c) => c.slug === x);
+      for (let n = 1; n <= 50; n++) { const calon = n === 1 ? asas : `${asas}-${n}`; if (!ada(calon)) return calon; }
+      return asas + '-x';
+    },
+    async ciptaCourse(c, masa) {
+      const urutan = c.urutan ?? Math.max(0, ...[...courses.values()].map((x) => x.urutan)) + 1;
+      const baris = { id: idC++, tajuk: c.tajuk, slug: c.slug, huraian: c.huraian ?? null, akses: c.akses, status: c.status, urutan, dicipta_pada: masa, dikemas_kini_pada: masa };
+      courses.set(baris.id, baris);
+      return baris;
+    },
+    async kemaskiniCourse(id, nilai, masa) {
+      const c = courses.get(id);
+      for (const k of ['tajuk', 'huraian', 'akses', 'status', 'urutan']) if (k in nilai) c[k] = nilai[k];
+      c.dikemas_kini_pada = masa;
+      return c;
+    },
+    async padamCourse(id) { courses.delete(id); },
+    async bilanganSubject(courseId) { return [...subjects.values()].filter((s) => s.course_id === courseId).length; },
+    async senaraiSubject(courseId, { termasukDraf = false } = {}) {
+      return [...subjects.values()].filter((s) => s.course_id === courseId && (termasukDraf || s.status === 'terbit')).sort((a, b) => a.urutan - b.urutan || a.id - b.id);
+    },
+    async subjectDariId(id) { return subjects.get(id) ?? null; },
+    async ciptaSubject(courseId, v, masa) {
+      const urutan = v.urutan ?? Math.max(0, ...[...subjects.values()].filter((s) => s.course_id === courseId).map((s) => s.urutan)) + 1;
+      const baris = { id: idS++, course_id: courseId, tajuk: v.tajuk, huraian: v.huraian ?? null, urutan, pratonton: v.pratonton ?? 0, status: v.status ?? 'draf',
+        video_sumber: 'youtube', video_id: v.video_id ?? null, tempoh_saat: v.tempoh_saat ?? null, dicipta_pada: masa, dikemas_kini_pada: masa };
+      subjects.set(baris.id, baris);
+      return baris;
+    },
+    async kemaskiniSubject(id, nilai, masa) {
+      const s = subjects.get(id);
+      for (const k of ['tajuk', 'huraian', 'urutan', 'pratonton', 'status', 'video_id', 'tempoh_saat']) if (k in nilai) s[k] = nilai[k];
+      s.dikemas_kini_pada = masa;
+      return s;
+    },
+    async padamSubject(id) { subjects.delete(id); },
     async padamLangganan(emel) { langganan.delete(emel); },
   };
 }

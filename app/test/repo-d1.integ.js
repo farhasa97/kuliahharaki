@@ -8,7 +8,7 @@ import { repoD1 } from '../src/repo.js';
 
 const proksi = await getPlatformProxy({ configPath: 'wrangler.toml', persist: false });
 const db = proksi.env.DB;
-const sql = ['migrations/0001_skema.sql', 'migrations/0002_video.sql'].map((f) => readFileSync(f, 'utf8')).join(';').replace(/--[^\n]*/g, '');
+const sql = ['migrations/0001_skema.sql', 'migrations/0002_video.sql', 'migrations/0003_kandungan.sql'].map((f) => readFileSync(f, 'utf8')).join(';').replace(/--[^\n]*/g, '');
 await db.batch(sql.split(';').map((s) => s.trim()).filter(Boolean).map((s) => db.prepare(s)));
 const repo = repoD1(db);
 test.after(() => proksi.dispose());
@@ -122,4 +122,62 @@ test('bayarPesanan: sehingga 20 item dalam satu batch', async () => {
   assert.equal(await repo.bayarPesanan('KH20', 'b@gmail.com', akses, 't'), true);
   assert.equal((await repo.aksesVideoSaya('b@gmail.com')).length, 20);
   assert.equal((await repo.aksesVideoBanyak('b@gmail.com', ids)).length, 20);
+});
+
+// ---- kandungan: SQL sebenar ----
+test('course: cipta, urutan automatik, slug unik, penapis draf', async () => {
+  const a = await repo.ciptaCourse({ tajuk: 'Fiqh', slug: await repo.slugUnik('fiqh'), akses: 'ahli', status: 'terbit' }, 't');
+  const b = await repo.ciptaCourse({ tajuk: 'Fiqh 2', slug: await repo.slugUnik('fiqh'), akses: 'percuma', status: 'draf', huraian: 'h' }, 't');
+  assert.deepEqual([a.slug, b.slug, b.urutan - a.urutan], ['fiqh', 'fiqh-2', 1]);
+  assert.equal((await repo.courseDariSlug('fiqh-2')).id, b.id);
+  assert.deepEqual((await repo.senaraiCourse()).map((c) => c.slug), ['fiqh']);
+  assert.deepEqual((await repo.senaraiCourse({ termasukDraf: true })).map((c) => c.slug), ['fiqh', 'fiqh-2']);
+  await assert.rejects(repo.ciptaCourse({ tajuk: 'X', slug: 'fiqh', akses: 'ahli', status: 'draf' }, 't')); // slug UNIQUE
+});
+
+test('course: kemas kini hanya lajur dibenarkan (slug dan id tidak boleh ditukar)', async () => {
+  const c = await repo.courseDariSlug('fiqh');
+  const u = await repo.kemaskiniCourse(c.id, { tajuk: 'Fiqh Asas', slug: 'dirampas', id: 9999, status: 'draf' }, 't2');
+  assert.deepEqual([u.tajuk, u.slug, u.id, u.status, u.dikemas_kini_pada], ['Fiqh Asas', 'fiqh', c.id, 'draf', 't2']);
+  assert.equal((await repo.kemaskiniCourse(c.id, {}, 't3')).tajuk, 'Fiqh Asas');
+  await repo.kemaskiniCourse(c.id, { status: 'terbit' }, 't');
+});
+
+test('subject: cipta, urutan automatik, kunci asing menolak course tiada, kiraan dalam senarai course', async () => {
+  const c = await repo.courseDariSlug('fiqh');
+  const s1 = await repo.ciptaSubject(c.id, { tajuk: 'Intro', video_id: 'dQw4w9WgXcQ', pratonton: 1, status: 'terbit' }, 't');
+  const s2 = await repo.ciptaSubject(c.id, { tajuk: 'Bab 1' }, 't');
+  assert.deepEqual([s1.urutan, s2.urutan, s1.pratonton, s2.status, s2.video_id, s1.video_sumber], [1, 2, 1, 'draf', null, 'youtube']);
+  await assert.rejects(repo.ciptaSubject(987654, { tajuk: 'Yatim' }, 't'));
+  assert.equal(await repo.bilanganSubject(c.id), 2);
+  assert.deepEqual((await repo.senaraiSubject(c.id)).map((s) => s.tajuk), ['Intro']);
+  assert.deepEqual((await repo.senaraiSubject(c.id, { termasukDraf: true })).map((s) => s.tajuk), ['Intro', 'Bab 1']);
+  const dalamSenarai = (await repo.senaraiCourse()).find((x) => x.id === c.id);
+  assert.deepEqual([dalamSenarai.bil_subject, dalamSenarai.bil_subject_terbit], [2, 1]);
+});
+
+test('subject: kemas kini lajur dibenarkan sahaja, course_id tidak boleh dipindah', async () => {
+  const c = await repo.courseDariSlug('fiqh');
+  const s = (await repo.senaraiSubject(c.id, { termasukDraf: true }))[1];
+  const u = await repo.kemaskiniSubject(s.id, { tajuk: 'Bab 1 (baru)', video_id: 'abcdefghijk', status: 'terbit', course_id: 12345, urutan: 5 }, 't9');
+  assert.deepEqual([u.tajuk, u.video_id, u.status, u.course_id, u.urutan], ['Bab 1 (baru)', 'abcdefghijk', 'terbit', c.id, 5]);
+});
+
+test('padamSubject memadam progress yang merujuknya dalam satu batch (kunci asing)', async () => {
+  const c = await repo.courseDariSlug('fiqh');
+  const s = await repo.ciptaSubject(c.id, { tajuk: 'Akan dipadam' }, 't');
+  const p = await repo.simpanPengguna({ emel: 'prog@gmail.com', sub: 'sp', nama: 'P' }, 't');
+  await db.prepare('INSERT INTO progress (pengguna_id, subject_id, selesai_pada) VALUES (?, ?, ?)').bind(p.id, s.id, 't').run();
+  await assert.rejects(db.prepare('INSERT INTO progress (pengguna_id, subject_id, selesai_pada) VALUES (?, ?, ?)').bind(p.id, s.id, 't').run()); // PK pasangan
+  await repo.padamSubject(s.id);
+  assert.equal(await repo.subjectDariId(s.id), null);
+  assert.equal((await db.prepare('SELECT COUNT(*) AS c FROM progress WHERE subject_id = ?').bind(s.id).first()).c, 0);
+});
+
+test('padamCourse dengan subject ditolak oleh kunci asing; course kosong boleh dipadam', async () => {
+  const c = await repo.courseDariSlug('fiqh');
+  await assert.rejects(repo.padamCourse(c.id));
+  const kosong = await repo.ciptaCourse({ tajuk: 'Kosong', slug: 'kosong', akses: 'ahli', status: 'draf' }, 't');
+  await repo.padamCourse(kosong.id);
+  assert.equal(await repo.courseDariId(kosong.id), null);
 });

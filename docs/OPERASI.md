@@ -20,13 +20,24 @@ CREATE TABLE bayaran ( id INTEGER PRIMARY KEY AUTOINCREMENT, rujukan_bcl TEXT NO
 CREATE INDEX bayaran_emel ON bayaran(emel);
 ```
 
-**Tambahan 05/11/2026 (beli satu video).** Jalankan SQL ini dalam Console yang sama, selepas SQL di atas. Ia hanya menambah tiga jadual baru dan tidak mengubah yang sedia ada. Selepas itu `/tables` patut tunjuk 7 jadual: `pengguna`, `sesi`, `langganan`, `bayaran`, `pesanan`, `pesanan_item`, `akses_video`.
+**DITANGGUH 06/11/2026 (beli satu video): JANGAN jalankan SQL di bawah ini buat masa ini.** Beli video RM2 ditangguh dan jadualnya tidak diperlukan. Ia dikekalkan di sini untuk rujukan sahaja. (Asal: Jalankan SQL ini dalam Console yang sama, selepas SQL di atas.) Ia hanya menambah tiga jadual baru dan tidak mengubah yang sedia ada. Selepas itu `/tables` patut tunjuk 7 jadual: `pengguna`, `sesi`, `langganan`, `bayaran`, `pesanan`, `pesanan_item`, `akses_video`.
 
 ```sql
 CREATE TABLE pesanan ( order_number TEXT PRIMARY KEY, emel TEXT NOT NULL, jumlah_sen INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'menunggu', saluran TEXT, dicipta_pada TEXT NOT NULL, dibayar_pada TEXT );
 CREATE INDEX pesanan_emel ON pesanan(emel);
 CREATE TABLE pesanan_item ( order_number TEXT NOT NULL REFERENCES pesanan(order_number), subject_id INTEGER NOT NULL, harga_sen INTEGER NOT NULL, PRIMARY KEY (order_number, subject_id) );
 CREATE TABLE akses_video ( emel TEXT NOT NULL, subject_id INTEGER NOT NULL, tarikh_tamat TEXT NOT NULL, hari_labuh INTEGER NOT NULL, dikemas_kini_pada TEXT NOT NULL, PRIMARY KEY (emel, subject_id) );
+```
+
+### A1b. Jadual kandungan (Fasa 1, tambahan 06/11/2026)
+Jalankan dalam Console D1 `kuliahharaki`, **selepas** SQL asas di A1 (dan abaikan SQL video yang ditangguh di atas). Ia menambah tiga jadual baru dan tidak mengubah yang sedia ada. Selepas itu `/tables` patut tunjuk `course`, `subject` dan `progress` bersama empat jadual asal.
+
+```sql
+CREATE TABLE course ( id INTEGER PRIMARY KEY AUTOINCREMENT, tajuk TEXT NOT NULL, slug TEXT NOT NULL UNIQUE, huraian TEXT, akses TEXT NOT NULL DEFAULT 'ahli', status TEXT NOT NULL DEFAULT 'draf', urutan INTEGER NOT NULL DEFAULT 0, dicipta_pada TEXT NOT NULL, dikemas_kini_pada TEXT NOT NULL );
+CREATE TABLE subject ( id INTEGER PRIMARY KEY AUTOINCREMENT, course_id INTEGER NOT NULL REFERENCES course(id), tajuk TEXT NOT NULL, huraian TEXT, urutan INTEGER NOT NULL DEFAULT 0, pratonton INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'draf', video_sumber TEXT NOT NULL DEFAULT 'youtube', video_id TEXT, tempoh_saat INTEGER, dicipta_pada TEXT NOT NULL, dikemas_kini_pada TEXT NOT NULL );
+CREATE INDEX subject_course ON subject(course_id, urutan);
+CREATE TABLE progress ( pengguna_id INTEGER NOT NULL REFERENCES pengguna(id), subject_id INTEGER NOT NULL REFERENCES subject(id), selesai_pada TEXT NOT NULL, PRIMARY KEY (pengguna_id, subject_id) );
+CREATE INDEX progress_subject ON progress(subject_id);
 ```
 
 ### A2. Worker dari GitHub
@@ -97,3 +108,18 @@ const A = (p, o = {}) => fetch(p, Object.assign({ headers: { authorization: 'Bea
 **Kes "dah bayar tapi belum aktif":** semak transaksi di BCL, kemudian Webhook Logs (hantar semula), kemudian `A('/admin/bayaran')` untuk sebab. Kalau emel tersalah taip, guna pindah langganan di atas.
 
 **Tahunan:** perbaharui token API BCL sebelum tamat, tukar `ADMIN_TOKEN`, perbaharui domain.
+
+## D. Memasukkan kandungan (API admin)
+
+Panel admin (UI) sedang dibina. Sehingga siap, kandungan boleh dimasukkan melalui konsol pelayar selepas log masuk sebagai admin (emel dalam `ADMIN_EMELS`), tanpa token. Buka laman Kuliah Haraki, F12, tab Console:
+
+```js
+const A = (m, p, b) => fetch('/api/admin/' + p, { method: m, headers: { 'content-type': 'application/json' }, body: b ? JSON.stringify(b) : undefined }).then((r) => r.json()).then((x) => (console.log(x), x));
+A('POST', 'course', { tajuk: 'Fiqh Asas', akses: 'ahli', status: 'terbit' });                 // cipta course (akses: percuma | ahli)
+A('POST', 'course/1/subject', { tajuk: 'Pengenalan', video: 'https://youtu.be/XXXXXXXXXXX', pratonton: true, status: 'terbit' });
+A('GET', 'course');                                                                          // senarai semua course
+A('GET', 'course/1');                                                                        // course dan semua subject
+A('PUT', 'subject/1', { status: 'terbit' });                                                 // kemas kini separa
+```
+
+Peraturan: `video` boleh pautan YouTube biasa atau ID; subject `terbit` mesti ada video; course yang ada subject tak boleh dipadam (padam subject dahulu); `pratonton: true` menjadikan subject terbuka kepada semua walaupun course berbayar. Admin ditentukan oleh `ADMIN_EMELS` sahaja: dibuang dari senarai itu, kuasanya hilang serta-merta.

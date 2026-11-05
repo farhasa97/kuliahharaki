@@ -11,8 +11,11 @@ Worker Cloudflare dengan static assets dan D1. JavaScript biasa, tiada build ste
 | `src/lib/akses.js` | | Keputusan akses subject (percuma, langganan, video), semakan pesanan video |
 | `src/lib/pesanan.js` | | Cipta pesanan video, selesaikan pesanan (atomik, idempoten) |
 | `src/lib/google.js`, `src/lib/sesi.js` | | Pengesahan ID token Google, kuki sesi |
+| `src/admin-api.js` | | API panel admin `/api/admin/*` (sesi, peranan admin, semakan asal) |
+| `src/lib/kandungan.js` | | Pengesahan course dan subject, ekstrak ID YouTube, slug |
+| `src/lib/peranan.js`, `src/lib/http.js` | | Peranan efektif (ADMIN_EMELS), pembantu respons JSON |
 | `src/repo.js` | | Semua SQL D1 |
-| `migrations/` | | Skema D1 (`0001_skema.sql` teras, `0002_video.sql` beli satu video) |
+| `migrations/` | | Skema D1 (`0001_skema.sql` teras, `0002_video.sql` beli satu video, DITANGGUH, `0003_kandungan.sql` course, subject, progress) |
 
 Ujian:
 

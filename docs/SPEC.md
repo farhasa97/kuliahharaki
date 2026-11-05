@@ -57,8 +57,8 @@ Platform pembelajaran untuk satu kuliah (single-tenant). Pelajar tonton video pe
 Semua wang disimpan dalam sen (integer). Semua masa dalam UTC, dipaparkan GMT+8.
 
 - `pengguna`: id, emel (unik, dari Google), google_sub (unik), nama, peranan (`pelajar|guru|admin`), dicipta_pada. Admin awal ditetapkan melalui var `ADMIN_EMELS`
-- `course`: id, tajuk, slug, huraian, akses (`percuma|ahli`), status (`draf|terbit`), guru_id, urutan
-- `subject`: id, course_id, tajuk, huraian, urutan, pratonton (bool), video_sumber (`youtube|bunny`), video_id, tempoh_saat, harga_sen (null = harga video lalai RM2)
+- `course`: id, tajuk, slug (unik, tidak berubah selepas dicipta), huraian, akses (`percuma|ahli`), status (`draf|terbit`), urutan, dicipta_pada, dikemas_kini_pada. `guru_id` ditambah bila peranan guru dibina
+- `subject`: id, course_id, tajuk, huraian, urutan, pratonton (bool), status (`draf|terbit`, subject hanya kelihatan jika course dan subject kedua-duanya terbit), video_sumber (`youtube|bunny`), video_id, tempoh_saat. `harga_sen` ditambah bila beli video dibuka
 - `nota`: id, subject_id, nama_fail, kunci_r2, saiz
 - `progress`: pengguna_id, subject_id, selesai_pada (unik pada pasangan)
 - `komen`: id, subject_id, pengguna_id, induk_id (null jika komen atas), isi, dicipta_pada
@@ -157,7 +157,12 @@ Sumber: dokumentasi Cloudflare (Workers limits, D1 limits). Angka cron dan R2 pi
 - **Fasa 0, asas dan ujian:** selesai 02/11/2026 (`docs/FASA0.md`).
 - **Teras langganan (dibina 02/11/2026, `app/`):** skema D1, log masuk Google dan sesi, webhook BCL dengan pengesahan API, logik langganan, admin API, halaman log masuk sementara. Ujian: 24 unit, 5 integrasi D1.
 - **Teras akses video (05/11/2026, `app/`):** jadual `pesanan`, `pesanan_item`, `akses_video`; keputusan akses subject; semakan dan penciptaan pesanan; penyelesaian pesanan yang atomik dan idempoten. Belum ada laluan gateway atau UI.
-- **Fasa 1, kandungan percuma:** course, subject, pemain YouTube, progress, nota PDF (perlu R2), panel admin dan guru, halaman awam.
+- **Fasa 1, kandungan (sasaran buka kepada pelajar November 2026; keputusan 06/11/2026):** kandungan awal 3 course dan 6 video, satu video intro percuma (pratonton) dalam course berbayar. Admin sahaja mengisi kandungan semasa buka (peranan guru kemudian). Nota PDF ditangguh sehingga R2 diluluskan. Domain ditangguh, guna `workers.dev`. Urutan:
+  1. Kandungan dan API admin (**siap 06/11/2026**: jadual `course`, `subject`, `progress`; `/api/admin/*` dengan sesi dan peranan admin; pengesahan pautan YouTube; 68 unit dan 18 integrasi D1).
+  2. Panel admin (UI).
+  3. Halaman pelajar: senarai course, halaman course, pemain subject.
+  4. Kunci akses di server dan progress.
+  5. Kemas, uji di telefon, Google OAuth ke Production, padam Worker spike.
 - **Fasa 2, bayaran dalam UI:** kunci kandungan premium ikut keputusan akses, notis, halaman langganan, Beli video dan Video saya, laluan gateway pesanan video, ujian RM1 sebenar.
 - **Fasa 3, komuniti dan sijil:** komen, sijil dan pengesahan, tetapan laman (banner, warna, teks), manual dan video tutorial.
 - **Kemudian:** migrasi premium ke Bunny, auto-debit, kod emel untuk pelajar tanpa Google, naik ke tier Murah bila had hampir.

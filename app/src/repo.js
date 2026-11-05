@@ -1,5 +1,8 @@
 // Semua akses D1 di satu tempat. Ujian memakai repo dalam memori dengan antara muka yang sama (test/repo-palsu.js).
 
+const KOLUM_COURSE = ['tajuk', 'huraian', 'akses', 'status', 'urutan'];
+const KOLUM_SUBJECT = ['tajuk', 'huraian', 'urutan', 'pratonton', 'status', 'video_id', 'tempoh_saat'];
+
 export function repoD1(db) {
   const satu = (sql, ...p) => db.prepare(sql).bind(...p).first();
   const jalan = (sql, ...p) => db.prepare(sql).bind(...p).run();
@@ -47,6 +50,59 @@ export function repoD1(db) {
              hari_labuh = excluded.hari_labuh, dikemas_kini_pada = excluded.dikemas_kini_pada`,
         emel, l.pelan, l.tarikh_tamat, l.hari_labuh, masa),
     padamLangganan: (emel) => jalan('DELETE FROM langganan WHERE emel = ?', emel),
+
+    // ---- kandungan (course, subject) ----
+    async senaraiCourse({ termasukDraf = false } = {}) {
+      const sql = `SELECT c.*,
+          (SELECT COUNT(*) FROM subject s WHERE s.course_id = c.id) AS bil_subject,
+          (SELECT COUNT(*) FROM subject s WHERE s.course_id = c.id AND s.status = 'terbit') AS bil_subject_terbit
+        FROM course c ${termasukDraf ? '' : `WHERE c.status = 'terbit'`} ORDER BY c.urutan, c.id`;
+      return (await db.prepare(sql).all()).results;
+    },
+    courseDariId: (id) => satu('SELECT * FROM course WHERE id = ?', id),
+    courseDariSlug: (slug) => satu('SELECT * FROM course WHERE slug = ?', slug),
+    async slugUnik(asas) {
+      for (let n = 1; n <= 50; n++) {
+        const calon = n === 1 ? asas : `${asas}-${n}`;
+        if (!(await satu('SELECT 1 AS x FROM course WHERE slug = ?', calon))) return calon;
+      }
+      return `${asas}-${Date.now().toString(36)}`;
+    },
+    async ciptaCourse(c, masa) {
+      const r = await jalan(
+        `INSERT INTO course (tajuk, slug, huraian, akses, status, urutan, dicipta_pada, dikemas_kini_pada)
+         VALUES (?, ?, ?, ?, ?, COALESCE(?, (SELECT COALESCE(MAX(urutan), 0) + 1 FROM course)), ?, ?)`,
+        c.tajuk, c.slug, c.huraian ?? null, c.akses, c.status, c.urutan ?? null, masa, masa);
+      return satu('SELECT * FROM course WHERE id = ?', r.meta.last_row_id);
+    },
+    async kemaskiniCourse(id, nilai, masa) {
+      const k = Object.keys(nilai).filter((x) => KOLUM_COURSE.includes(x));
+      if (k.length) await jalan(`UPDATE course SET ${k.map((x) => x + ' = ?').join(', ')}, dikemas_kini_pada = ? WHERE id = ?`, ...k.map((x) => nilai[x]), masa, id);
+      return satu('SELECT * FROM course WHERE id = ?', id);
+    },
+    padamCourse: (id) => jalan('DELETE FROM course WHERE id = ?', id),
+    async bilanganSubject(courseId) { return (await satu('SELECT COUNT(*) AS c FROM subject WHERE course_id = ?', courseId)).c; },
+    async senaraiSubject(courseId, { termasukDraf = false } = {}) {
+      return (await db.prepare(`SELECT * FROM subject WHERE course_id = ? ${termasukDraf ? '' : `AND status = 'terbit'`} ORDER BY urutan, id`).bind(courseId).all()).results;
+    },
+    subjectDariId: (id) => satu('SELECT * FROM subject WHERE id = ?', id),
+    async ciptaSubject(courseId, v, masa) {
+      const r = await jalan(
+        `INSERT INTO subject (course_id, tajuk, huraian, urutan, pratonton, status, video_sumber, video_id, tempoh_saat, dicipta_pada, dikemas_kini_pada)
+         VALUES (?, ?, ?, COALESCE(?, (SELECT COALESCE(MAX(urutan), 0) + 1 FROM subject WHERE course_id = ?)), ?, ?, 'youtube', ?, ?, ?, ?)`,
+        courseId, v.tajuk, v.huraian ?? null, v.urutan ?? null, courseId, v.pratonton ?? 0, v.status ?? 'draf', v.video_id ?? null, v.tempoh_saat ?? null, masa, masa);
+      return satu('SELECT * FROM subject WHERE id = ?', r.meta.last_row_id);
+    },
+    async kemaskiniSubject(id, nilai, masa) {
+      const k = Object.keys(nilai).filter((x) => KOLUM_SUBJECT.includes(x));
+      if (k.length) await jalan(`UPDATE subject SET ${k.map((x) => x + ' = ?').join(', ')}, dikemas_kini_pada = ? WHERE id = ?`, ...k.map((x) => nilai[x]), masa, id);
+      return satu('SELECT * FROM subject WHERE id = ?', id);
+    },
+    // Padam subject dan progress yang merujuknya dalam satu batch (kunci asing).
+    padamSubject: (id) => db.batch([
+      db.prepare('DELETE FROM progress WHERE subject_id = ?').bind(id),
+      db.prepare('DELETE FROM subject WHERE id = ?').bind(id),
+    ]),
 
     // ---- pesanan video ----
     async simpanPesanan(p, items) {
