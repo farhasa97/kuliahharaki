@@ -1,7 +1,7 @@
 // Semua akses D1 di satu tempat. Ujian memakai repo dalam memori dengan antara muka yang sama (test/repo-palsu.js).
 
 const KOLUM_COURSE = ['tajuk', 'huraian', 'akses', 'status', 'urutan', 'guru_emel', 'catatan_semakan'];
-const KOLUM_ARTIKEL = ['slug', 'tajuk', 'ringkasan', 'isi', 'bil_perkataan', 'status', 'diterbit_pada'];
+const KOLUM_ARTIKEL = ['slug', 'tajuk', 'ringkasan', 'meta_description', 'gambar', 'gambar_alt', 'isi', 'bil_perkataan', 'status', 'diterbit_pada'];
 const KOLUM_SUBJECT = ['tajuk', 'huraian', 'urutan', 'pratonton', 'status', 'video_id', 'tempoh_saat', 'catatan_semakan'];
 
 export function repoD1(db) {
@@ -146,7 +146,7 @@ export function repoD1(db) {
 
     // ---- artikel ----
     async senaraiArtikel({ termasukDraf = false } = {}) {
-      return (await db.prepare(`SELECT id, slug, tajuk, ringkasan, bil_perkataan, status, dicipta_pada, dikemas_kini_pada, diterbit_pada FROM artikel
+      return (await db.prepare(`SELECT id, slug, tajuk, ringkasan, gambar, gambar_alt, bil_perkataan, status, dicipta_pada, dikemas_kini_pada, diterbit_pada FROM artikel
         ${termasukDraf ? '' : `WHERE status = 'terbit'`} ORDER BY COALESCE(diterbit_pada, dicipta_pada) DESC, id DESC`).all()).results;
     },
     artikelDariId: (id) => satu('SELECT * FROM artikel WHERE id = ?', id),
@@ -159,8 +159,9 @@ export function repoD1(db) {
       return `${asas}-${Date.now().toString(36)}`;
     },
     async ciptaArtikel(a, masa) {
-      const r = await jalan(`INSERT INTO artikel (slug, tajuk, ringkasan, isi, bil_perkataan, status, dicipta_pada, dikemas_kini_pada, diterbit_pada)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, a.slug, a.tajuk, a.ringkasan ?? '', a.isi ?? '', a.bil_perkataan ?? 0, a.status ?? 'draf', masa, masa, a.status === 'terbit' ? masa : null);
+      const r = await jalan(`INSERT INTO artikel (slug, tajuk, ringkasan, meta_description, gambar, gambar_alt, isi, bil_perkataan, status, dicipta_pada, dikemas_kini_pada, diterbit_pada)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, a.slug, a.tajuk, a.ringkasan ?? '', a.meta_description ?? '', a.gambar ?? null, a.gambar_alt ?? '',
+        a.isi ?? '', a.bil_perkataan ?? 0, a.status ?? 'draf', masa, masa, a.status === 'terbit' ? masa : null);
       return satu('SELECT * FROM artikel WHERE id = ?', r.meta.last_row_id);
     },
     async kemaskiniArtikel(id, nilai, masa) {

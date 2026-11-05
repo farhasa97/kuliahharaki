@@ -100,6 +100,20 @@ Cara kerja:
 - **Pemilik course**: admin boleh menetapkan guru pada mana-mana course (borang course, medan Guru). Buang guru: course kekal, guru tidak lagi boleh masuk panel.
 - Guru nampak bilangan pelajar yang khatam setiap kuliah, tanpa nama atau emel pelajar.
 
+### A1g. Meta description dan gambar artikel (07/11/2026)
+Jalankan dalam Console D1 `kuliahharaki` **sejurus selepas deploy** (sebelum ini, senarai artikel di laman kosong sementara):
+
+```sql
+ALTER TABLE artikel ADD COLUMN meta_description TEXT NOT NULL DEFAULT '';
+ALTER TABLE artikel ADD COLUMN gambar TEXT;
+ALTER TABLE artikel ADD COLUMN gambar_alt TEXT NOT NULL DEFAULT '';
+```
+
+- **Meta description**: teks di bawah tajuk dalam hasil carian Google (sasaran 120 hingga 160 aksara; pembilang memberi amaran). Kosong = ringkasan digunakan. **Ringkasan** kini hanya untuk kad artikel di laman.
+- **Gambar utama**: dipaparkan di atas artikel, pada kad artikel, dan sebagai gambar pratonton bila dikongsi (WhatsApp, Facebook). Isi **teks alt** (penerangan gambar) untuk SEO.
+- **Gambar dalam isi**: butang **Masukkan gambar** di atas kotak isi; gambar dimuat naik dan disisip di kedudukan kursor.
+- Semua gambar dikecilkan dalam pelayar sebelum dimuat naik (lebar maksimum 1600px, WEBP atau JPEG, had 2 MB), disimpan dalam R2 di `media/` dan dihidang di `/media/<nama>`. Hanya PNG, JPEG, WEBP diterima (bukan SVG).
+
 ### A2. Worker dari GitHub
 Workers & Pages, Create, import repository `farhasa97/kuliahharaki`:
 - Project name: `kuliahharaki` (mesti sama dengan `name` dalam `app/wrangler.toml`)

@@ -1,7 +1,7 @@
 // Service worker Kuliah Haraki (PWA). Naikkan VERSI pada setiap keluaran supaya peranti memuat fail baharu.
 // Strategi: navigasi = rangkaian dahulu, cache jika luar talian; fail statik = cache dahulu sambil dikemas kini.
 // API, log masuk, webhook, admin dan semua asal lain (YouTube, Google, fon) TIDAK pernah dicache.
-const VERSI = 'kh-v6';
+const VERSI = 'kh-v7';
 const ASAS = ['./', '/app.js', '/tema.css', '/gaya.css', '/manifest.webmanifest', '/ikon/ikon-192.png', '/ikon/ikon-512.png'];
 const TIDAK_DICACHE = /^\/(api|auth|bcl|admin)\//;
 

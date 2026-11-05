@@ -169,3 +169,13 @@ a.btn{text-decoration:none}
 .artikel-kad .artikel-meta{margin:0}
 .artikel-bekas .crumb{font-size:13.5px}
 .page-head .guru-siri{font-weight:600;color:var(--accent)}
+.artikel-kulit{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;border-radius:18px;margin:0 0 28px;background:var(--surface-2)}
+.artikel-kad.ada-gambar{display:grid;grid-template-columns:180px 1fr;column-gap:18px;align-items:start}
+.artikel-kad.ada-gambar>*:not(img){grid-column:2}
+.artikel-kad-gambar{grid-row:1 / span 3;width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:12px;background:var(--surface-2)}
+@media (max-width:620px){
+  .artikel-kad.ada-gambar{grid-template-columns:1fr}
+  .artikel-kad.ada-gambar>*:not(img){grid-column:1}
+  .artikel-kad-gambar{grid-row:auto;margin-bottom:12px}
+}
+.p-admin .gambar-utama{display:block;width:100%;max-width:480px;aspect-ratio:16/9;object-fit:cover;border-radius:12px;border:1px solid var(--line);background:var(--surface-2)}

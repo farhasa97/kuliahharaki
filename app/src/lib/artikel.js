@@ -7,6 +7,9 @@ import { buatSlug } from './kandungan.js';
 export const SASARAN_PERKATAAN = 2000;
 export const MAKS_ISI = 100_000;
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+// Gambar yang dimuat naik melalui panel (POST /api/admin/media) sahaja.
+export const URL_MEDIA = /^\/media\/[0-9a-f]{20}\.(webp|png|jpg)$/;
+export const MAKS_META = 200;
 
 export const slugArtikel = (tajuk) => {
   const s = buatSlug(tajuk);
@@ -36,6 +39,19 @@ export function sahkanArtikel(m, { separa = false } = {}) {
   if (ada('ringkasan')) {
     if (typeof m.ringkasan !== 'string' || m.ringkasan.trim().length > 200) return gagal('ringkasan-tidak-sah', 'ringkasan');
     n.ringkasan = m.ringkasan.trim().replace(/\s+/g, ' ');
+  }
+  if (ada('meta_description')) {
+    if (typeof m.meta_description !== 'string' || m.meta_description.trim().length > MAKS_META) return gagal('meta-tidak-sah', 'meta_description');
+    n.meta_description = m.meta_description.trim().replace(/\s+/g, ' ');
+  }
+  if (ada('gambar')) {
+    if (m.gambar == null || m.gambar === '') n.gambar = null;
+    else if (typeof m.gambar !== 'string' || !URL_MEDIA.test(m.gambar)) return gagal('gambar-tidak-sah', 'gambar');
+    else n.gambar = m.gambar;
+  }
+  if (ada('gambar_alt')) {
+    if (typeof m.gambar_alt !== 'string' || m.gambar_alt.trim().length > 150) return gagal('alt-tidak-sah', 'gambar_alt');
+    n.gambar_alt = m.gambar_alt.trim().replace(/\s+/g, ' ');
   }
   if (ada('isi')) {
     if (typeof m.isi !== 'string' || m.isi.length > MAKS_ISI) return gagal('isi-tidak-sah', 'isi');

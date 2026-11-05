@@ -13,6 +13,7 @@ import { MAKS_LOGO, sahkanTetapan, gabungTetapan, jenisGambar, urlLogo, LALAI } 
 import { MAKS_SAIZ, MAKS_SETIAP_SUBJECT, namaNota, adaPdf, kunciBaru } from './lib/nota.js';
 
 const MAKS_BADAN = 50_000;
+const MAKS_MEDIA = 2 * 1024 * 1024; // selepas dikecilkan di pelayar, gambar biasanya < 300 KB
 const EMEL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 // Medan yang perubahannya pada kandungan terbit memerlukan kelulusan (urutan subject dikecualikan: susunan sahaja).
 const MEDAN_SEMAK = { course: ['tajuk', 'huraian', 'akses'], subject: ['tajuk', 'huraian', 'video_id', 'pratonton', 'tempoh_saat'] };
@@ -190,6 +191,20 @@ export async function adminApi(req, env, url, repo, now) {
       }
     }
     return json({ ralat: 'kaedah-tidak-disokong' }, 405);
+  }
+
+  // ---------------- media (gambar artikel, admin) ----------------
+  // Gambar mentah PNG/JPEG/WEBP (panel mengecilkannya dahulu). Nama rawak; dihidang awam di /media/<nama>.
+  if (sumber === 'media' && bahagian.length === 1 && req.method === 'POST') {
+    if (!env.NOTA) return json({ ralat: 'r2-belum-sedia' }, 503);
+    if (Number(req.headers.get('content-length') || 0) > MAKS_MEDIA) return json({ ralat: 'gambar-terlalu-besar' }, 413);
+    const bait = await req.arrayBuffer();
+    if (bait.byteLength > MAKS_MEDIA) return json({ ralat: 'gambar-terlalu-besar' }, 413);
+    const jenis = jenisGambar(bait);
+    if (!jenis) return json({ ralat: 'bukan-gambar' }, 415);
+    const nama = [...crypto.getRandomValues(new Uint8Array(10))].map((x) => x.toString(16).padStart(2, '0')).join('') + { 'image/webp': '.webp', 'image/png': '.png', 'image/jpeg': '.jpg' }[jenis];
+    await env.NOTA.put('media/' + nama, bait, { httpMetadata: { contentType: jenis } });
+    return json({ url: '/media/' + nama }, 201);
   }
 
   // ---------------- tetapan laman (admin) ----------------

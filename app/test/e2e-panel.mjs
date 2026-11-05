@@ -218,6 +218,13 @@ try {
     await page.fill('#ringkasan', 'Adab asas penuntut ilmu.');
     await page.fill('#isi', '## Niat\n\nIkhlas **penting** dalam menuntut ilmu.\n\n- satu\n- dua');
     await page.locator('#kira-isi').getByText(/kurang \d+ untuk sasaran 2000/).waitFor();
+    await page.fill('#meta_description', 'Panduan adab menuntut ilmu untuk pelajar baharu.');
+    await page.locator('#kira-meta').getByText('agak pendek').waitFor();
+    await page.setInputFiles('#failGambar', { name: 'kulit.png', mimeType: 'image/png', buffer: PNG });
+    await page.locator('#pratonton-gambar img').waitFor();
+    await page.fill('#gambar_alt', 'Kitab di atas rehal');
+    await page.locator('[data-gambar-isi]').setInputFiles({ name: 'rajah satu.png', mimeType: 'image/png', buffer: PNG });
+    await page.waitForFunction(() => /!\[rajah satu\]\(\/media\/[0-9a-f]{20}\.(webp|jpg|png)\)/.test(document.getElementById('isi').value));
     await simpan();
     await page.waitForFunction(() => /#\/artikel\/1$/.test(location.hash) && document.getElementById('slug')?.value); // selepas cipta, borang sunting dibuka
     assert.match(page.url(), /#\/artikel\/1$/);
@@ -241,6 +248,14 @@ try {
     assert.equal(r.status(), 200);
     const html = await r.text();
     assert.ok(html.includes('<h2>Niat</h2>') && html.includes('<strong>penting</strong>'));
+    assert.ok(html.includes('<meta name="description" content="Panduan adab menuntut ilmu untuk pelajar baharu.">'));
+    const kulit = html.match(/<img class="artikel-kulit" src="(\/media\/[0-9a-f]{20}\.(?:webp|jpg|png))" alt="Kitab di atas rehal"/);
+    assert.ok(kulit, 'gambar utama');
+    assert.ok(html.includes(`<meta property="og:image" content="https://kuliahharaki.com${kulit[1]}">`));
+    assert.match(html, /<img src="\/media\/[0-9a-f]{20}\.(webp|jpg|png)" alt="rajah satu" loading="lazy">/);
+    const gmb = await awam.request.get(B + kulit[1]);
+    assert.equal(gmb.status(), 200);
+    assert.match(gmb.headers()['content-type'], /^image\/(webp|jpeg|png)$/);
     assert.ok(html.includes('&lt;img src=x onerror=alert(1)&gt;') && !html.includes('<img src=x'));
     assert.ok(html.includes(`<link rel="canonical" href="https://kuliahharaki.com/artikel/${slug}">`)); // SITE_URL
     assert.ok(html.includes('noindex')); // hos localhost bukan hos SITE_URL
@@ -250,7 +265,8 @@ try {
     await pv.route('**/*', (rt) => (rt.request().url().startsWith(B) ? rt.continue() : rt.abort()));
     await pv.goto(B + '/');
     await pv.locator('#artikel .artikel-kad h2', { hasText: 'Adab Menuntut Ilmu' }).waitFor();
-    assert.equal(await pv.locator('#artikel img').count(), 0);
+    assert.equal(await pv.locator('#artikel img[src="x"]').count(), 0); // tajuk suntikan kekal teks
+    assert.equal(await pv.locator('#artikel img.artikel-kad-gambar').count(), 1);
     await pv.locator('#artikel .artikel-kad').first().click();
     await pv.locator('.artikel-isi h2', { hasText: 'Niat' }).waitFor();
     await skrin('05-artikel');

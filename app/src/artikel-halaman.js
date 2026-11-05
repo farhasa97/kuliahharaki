@@ -18,9 +18,9 @@ async function muatLaman(repo) {
   try { const g = gabungTetapan(await repo.semuaTetapan()); return { ...g.nilai, logo: urlLogo(g) }; } catch { return { ...LALAI, logo: null }; }
 }
 
-function bingkai({ laman, tapak, tajuk, deskripsi, kanonik, noindex, jsonld, jenisOg = 'website', badan }) {
+function bingkai({ laman, tapak, tajuk, deskripsi, kanonik, noindex, jsonld, jenisOg = 'website', gambar = null, badan }) {
   const logo = laman.logo ? `<span class="mark ada-logo"><img class="logo-img" src="${h(laman.logo)}" alt=""></span>` : '<span class="mark"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5.2" y="5.2" width="13.6" height="13.6" rx="1.6" stroke="currentColor" stroke-width="1.6"/><rect x="5.2" y="5.2" width="13.6" height="13.6" rx="1.6" stroke="currentColor" stroke-width="1.6" transform="rotate(45 12 12)"/></svg></span>';
-  const gambarOg = tapak + (laman.logo ? '/api/logo' : '/ikon/ikon-512.png');
+  const gambarOg = tapak + (gambar || (laman.logo ? '/api/logo' : '/ikon/ikon-512.png'));
   const brand = `<a class="brand" href="/">${logo}<span><span class="brand-name">${h(laman.nama)}</span>${laman.tagline ? `<span class="brand-sub">${h(laman.tagline)}</span>` : ''}</span></a>`;
   return `<!doctype html>
 <html lang="ms">
@@ -37,7 +37,7 @@ ${noindex ? '<meta name="robots" content="noindex, nofollow">' : '<meta name="ro
 <meta property="og:description" content="${h(deskripsi)}">
 <meta property="og:url" content="${h(kanonik)}">
 <meta property="og:image" content="${h(gambarOg)}">
-<meta name="twitter:card" content="summary">
+<meta name="twitter:card" content="${gambar ? 'summary_large_image' : 'summary'}">
 <meta name="theme-color" content="#0B6B4F">
 <link rel="icon" href="/ikon/ikon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="/ikon/apple-touch-icon.png">
@@ -99,8 +99,8 @@ export async function halamanArtikel(req, env, url, repo, now) {
   const laman = await muatLaman(repo);
 
   if (p === '/artikel') {
-    const kad = senarai.slice(0, MAKS_SENARAI).map((a) => `<a class="artikel-kad" href="/artikel/${h(a.slug)}">
-        <h2>${h(a.tajuk)}</h2><p>${h(a.ringkasan)}</p><span class="artikel-meta">${tarikhMy(a.diterbit_pada)} · ${Math.max(1, Math.round(a.bil_perkataan / 200))} minit bacaan</span></a>`).join('\n');
+    const kad = senarai.slice(0, MAKS_SENARAI).map((a) => `<a class="artikel-kad${a.gambar ? ' ada-gambar' : ''}" href="/artikel/${h(a.slug)}">
+        ${a.gambar ? `<img class="artikel-kad-gambar" src="${h(a.gambar)}" alt="${h(a.gambar_alt)}" loading="lazy">` : ''}<h2>${h(a.tajuk)}</h2><p>${h(a.ringkasan)}</p><span class="artikel-meta">${tarikhMy(a.diterbit_pada)} · ${Math.max(1, Math.round(a.bil_perkataan / 200))} minit bacaan</span></a>`).join('\n');
     return keluarHtml(bingkai({
       laman, tapak, tajuk: `Artikel · ${laman.nama}`, deskripsi: `Artikel dan panduan ilmu daripada ${laman.nama}.`, kanonik: tapak + '/artikel', noindex: !boleh,
       badan: `<section class="section"><div class="wrap artikel-bekas"><p class="kicker">Artikel</p><h1>Bacaan untuk menambah ilmu</h1>
@@ -123,16 +123,18 @@ export async function halamanArtikel(req, env, url, repo, now) {
   if (!a) return tidakJumpa(laman, tapak);
 
   const kanonik = `${tapak}/artikel/${a.slug}`;
-  const jsonld = { '@context': 'https://schema.org', '@type': 'Article', headline: a.tajuk, description: a.ringkasan, inLanguage: 'ms',
+  const jsonld = { '@context': 'https://schema.org', '@type': 'Article', headline: a.tajuk, description: a.meta_description || a.ringkasan, inLanguage: 'ms',
     mainEntityOfPage: kanonik, datePublished: a.diterbit_pada || a.dicipta_pada, dateModified: a.dikemas_kini_pada,
+    ...(a.gambar ? { image: [tapak + a.gambar] } : {}),
     author: { '@type': 'Organization', name: laman.nama }, publisher: { '@type': 'Organization', name: laman.nama, ...(laman.logo ? { logo: { '@type': 'ImageObject', url: tapak + '/api/logo' } } : {}) } };
   return keluarHtml(bingkai({
-    laman, tapak, tajuk: `${a.tajuk} · ${laman.nama}`, deskripsi: a.ringkasan || a.tajuk, kanonik, noindex: pratonton || !boleh, jsonld, jenisOg: 'article',
+    laman, tapak, tajuk: `${a.tajuk} · ${laman.nama}`, deskripsi: a.meta_description || a.ringkasan || a.tajuk, kanonik, noindex: pratonton || !boleh, jsonld, jenisOg: 'article', gambar: a.gambar,
     badan: `<article class="section"><div class="wrap artikel-bekas">
       ${pratonton ? '<div class="artikel-draf">Pratonton draf. Hanya admin boleh melihat halaman ini.</div>' : ''}
       <nav class="crumb" style="margin-bottom:14px"><a href="/">Utama</a><span>/</span><a href="/artikel">Artikel</a></nav>
       <h1>${h(a.tajuk)}</h1>
       <p class="artikel-meta">${pratonton ? 'Draf' : tarikhMy(a.diterbit_pada)} · ${Math.max(1, Math.round(a.bil_perkataan / 200))} minit bacaan</p>
+      ${a.gambar ? `<img class="artikel-kulit" src="${h(a.gambar)}" alt="${h(a.gambar_alt || a.tajuk)}" fetchpriority="high">` : ''}
       <div class="artikel-isi">${paparMarkdown(a.isi)}</div>
       <div class="artikel-cta"><h3>Mahu menuntut ilmu secara berstruktur?</h3><p>Ikuti kuliah video bersiri. Mulakan dengan kuliah percuma.</p><a class="btn primary" href="/#/masuk">Daftar percuma</a></div>
     </div></article>`,

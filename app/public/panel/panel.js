@@ -34,6 +34,10 @@ const RALAT = {
   'isi-diperlukan': 'Isi artikel wajib diisi sebelum diterbitkan.',
   'isi-tidak-sah': 'Isi terlalu panjang.',
   'badan-terlalu-besar': 'Kandungan terlalu besar.',
+  'gambar-terlalu-besar': 'Gambar terlalu besar walaupun selepas dikecilkan (maksimum 2 MB).',
+  'meta-tidak-sah': 'Meta description maksimum 200 aksara.',
+  'gambar-tidak-sah': 'Gambar tidak sah. Muat naik semula.',
+  'alt-tidak-sah': 'Teks alt maksimum 150 aksara.',
   'bukan-gambar': 'Logo mesti gambar PNG, JPG atau WEBP.',
   'logo-terlalu-besar': 'Logo terlalu besar. Maksimum 500 KB.',
   'terlalu-panjang': 'Teks terlalu panjang.',
@@ -282,7 +286,7 @@ async function senaraiArtikel() {
 }
 
 async function borangArtikel(id) {
-  const a = id ? await api('GET', `artikel/${id}`) : { tajuk: '', slug: '', ringkasan: '', isi: '', status: 'draf', diterbit_pada: null, bil_perkataan: 0 };
+  const a = id ? await api('GET', `artikel/${id}`) : { tajuk: '', slug: '', ringkasan: '', meta_description: '', gambar: null, gambar_alt: '', isi: '', status: 'draf', diterbit_pada: null, bil_perkataan: 0 };
   const dikunci = !!a.diterbit_pada;
   app.innerHTML = `
     <p><a href="#/artikel">&larr; Senarai artikel</a></p>
@@ -295,10 +299,24 @@ async function borangArtikel(id) {
       <label for="slug">Slug (alamat artikel)</label>
       <input type="text" id="slug" name="slug" maxlength="80" value="${h(a.slug)}" placeholder="dijana daripada tajuk jika dikosongkan" ${dikunci ? 'readonly' : ''}>
       <div class="bantuan">${dikunci ? 'Dikunci kerana artikel pernah diterbitkan.' : 'Hanya huruf kecil, nombor dan sempang. Tidak boleh ditukar selepas diterbitkan.'}${a.slug ? ` Alamat: <b>/artikel/${h(a.slug)}</b>` : ''}</div>
-      <label for="ringkasan">Ringkasan (keterangan di Google, elok 140 hingga 160 aksara)</label>
+      <label for="ringkasan">Ringkasan (dipaparkan pada kad artikel di laman)</label>
       <textarea id="ringkasan" name="ringkasan" maxlength="200" style="min-height:70px">${h(a.ringkasan)}</textarea>
       <div class="bantuan" id="kira-ringkasan"></div>
-      <label for="isi">Isi artikel</label>
+      <label for="meta_description">Meta description (teks di bawah tajuk dalam hasil carian Google)</label>
+      <textarea id="meta_description" name="meta_description" maxlength="200" style="min-height:70px" placeholder="Kosongkan untuk guna ringkasan">${h(a.meta_description)}</textarea>
+      <div class="bantuan" id="kira-meta"></div>
+      <label>Gambar utama</label>
+      <input type="hidden" name="gambar" id="gambar" value="${h(a.gambar || '')}">
+      <div id="pratonton-gambar"></div>
+      <div class="baris" style="margin-top:8px">
+        <input type="file" id="failGambar" accept="image/png,image/jpeg,image/webp" data-gambar-utama>
+        <button type="button" class="kedua" data-act="buang-gambar" id="butangBuangGambar" hidden>Buang gambar</button>
+      </div>
+      <div class="bantuan">Dikecilkan automatik (lebar maksimum 1600px). Nisbah 16:9 paling sesuai. Gambar ini juga dipaparkan bila artikel dikongsi di WhatsApp dan Facebook.</div>
+      <label for="gambar_alt">Teks alt gambar utama (penerangan gambar untuk Google)</label>
+      <input type="text" id="gambar_alt" name="gambar_alt" maxlength="150" value="${h(a.gambar_alt)}" placeholder="contoh: Pelajar menadah kitab di masjid">
+      <div class="baris antara" style="margin-top:16px"><label for="isi" style="margin:0">Isi artikel</label>
+        <label class="butang kedua" style="margin:0;font-weight:600">Masukkan gambar<input type="file" accept="image/png,image/jpeg,image/webp" data-gambar-isi hidden></label></div>
       <textarea id="isi" name="isi" style="min-height:420px;font-family:inherit;line-height:1.6">${h(a.isi)}</textarea>
       <div class="bantuan" id="kira-isi"></div>
       <details style="margin-top:10px"><summary class="kecil" style="cursor:pointer">Panduan format</summary>
@@ -307,7 +325,7 @@ async function borangArtikel(id) {
           <code>**tebal**</code> · <code>*condong*</code><br>
           <code>- senarai</code> · <code>1. senarai bernombor</code> · <code>&gt; petikan</code> · <code>---</code> garis<br>
           <code>[teks pautan](https://contoh.com)</code> atau <code>[kuliah](/#/course/slug)</code><br>
-          <code>![penerangan gambar](https://contoh.com/gambar.png)</code> (https sahaja)<br>
+          Gambar: tekan <b>Masukkan gambar</b> di atas kotak isi (dimuat naik dan disisip di kedudukan kursor). Tukar teks dalam <code>![...]</code> kepada penerangan gambar.<br>
           Tinggalkan satu baris kosong antara perenggan. Jangan taip tajuk artikel sekali lagi dalam isi; tajuk di atas sudah menjadi H1.
         </div></details>
       <label>Status</label>
@@ -322,6 +340,7 @@ async function borangArtikel(id) {
       </div>
     </form>`;
   kemaskiniKiraArtikel();
+  paparGambarUtama(a.gambar);
 }
 
 function kemaskiniKiraArtikel() {
@@ -332,10 +351,66 @@ function kemaskiniKiraArtikel() {
   k.textContent = `${n} perkataan${n >= SASARAN ? ' (sasaran 2000 dicapai)' : `, kurang ${SASARAN - n} untuk sasaran ${SASARAN}`}`;
   k.style.color = n >= SASARAN ? 'var(--ok)' : '';
   const l = rg.value.trim().length;
-  document.getElementById('kira-ringkasan').textContent = `${l} aksara${l > 160 ? ' (Google mungkin memotong selepas 160)' : ''}`;
+  document.getElementById('kira-ringkasan').textContent = `${l} aksara`;
+  const m = document.getElementById('meta_description').value.trim().length;
+  const km = document.getElementById('kira-meta');
+  km.textContent = !m ? 'Kosong: ringkasan akan digunakan sebagai meta description.'
+    : `${m} aksara${m > 160 ? ' (terlalu panjang: Google biasanya memotong selepas kira-kira 155 hingga 160)' : m < 70 ? ' (agak pendek: sasaran 120 hingga 160)' : ' (baik)'}`;
+  km.style.color = m > 160 ? 'var(--warn)' : '';
 }
 
-document.addEventListener('input', (e) => { if (e.target.id === 'isi' || e.target.id === 'ringkasan') kemaskiniKiraArtikel(); });
+// ---------- gambar artikel: dikecilkan di pelayar, kemudian dimuat naik ke /api/admin/media ----------
+
+async function kecilkanGambar(fail) {
+  try {
+    const bmp = await createImageBitmap(fail);
+    const skala = Math.min(1, 1600 / bmp.width);
+    const kanvas = document.createElement('canvas');
+    kanvas.width = Math.round(bmp.width * skala); kanvas.height = Math.round(bmp.height * skala);
+    kanvas.getContext('2d').drawImage(bmp, 0, 0, kanvas.width, kanvas.height);
+    for (const [jenis, mutu] of [['image/webp', 0.82], ['image/jpeg', 0.85]]) {
+      const blob = await new Promise((r) => kanvas.toBlob(r, jenis, mutu));
+      if (blob && blob.type === jenis) return blob; // Safari lama tidak menyokong webp: cuba jpeg
+    }
+  } catch { /* pelayar tidak menyokong: hantar fail asal, pelayan menyemak jenis dan saiz */ }
+  return fail;
+}
+
+async function muatGambar(fail) {
+  const b = await kecilkanGambar(fail);
+  const r = await fetch('/api/admin/media', { method: 'POST', headers: { 'content-type': b.type || 'application/octet-stream' }, body: b });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new RalatApi(d, r.status);
+  return d.url;
+}
+
+function paparGambarUtama(url) {
+  const kotak = document.getElementById('pratonton-gambar');
+  if (!kotak) return;
+  kotak.innerHTML = url ? `<img class="gambar-utama" src="${h(url)}" alt="Gambar utama">` : '<p class="kecil">Tiada gambar utama.</p>';
+  document.getElementById('butangBuangGambar').hidden = !url;
+}
+
+document.addEventListener('change', async (e) => {
+  const utama = e.target.closest('[data-gambar-utama]'), dalam = e.target.closest('[data-gambar-isi]');
+  if ((!utama && !dalam) || !e.target.files.length) return;
+  const f = e.target.files[0], b = e.target.closest('form');
+  e.target.disabled = true;
+  try {
+    const url = await muatGambar(f);
+    if (utama) { b.querySelector('#gambar').value = url; paparGambarUtama(url); }
+    else {
+      const t = b.querySelector('#isi'), alt = f.name.replace(/\.[^.]+$/, '').replace(/[[\]()]/g, ' ').trim() || 'gambar';
+      const sisip = `\n\n![${alt}](${url})\n\n`, i = t.selectionStart ?? t.value.length;
+      t.value = t.value.slice(0, i) + sisip + t.value.slice(t.selectionEnd ?? i);
+      t.focus(); t.selectionStart = t.selectionEnd = i + sisip.length;
+      kemaskiniKiraArtikel();
+    }
+  } catch (err) { if (err.status === 401) return mula(); tunjukRalatBorang(b, err); }
+  finally { e.target.disabled = false; e.target.value = ''; }
+});
+
+document.addEventListener('input', (e) => { if (['isi', 'ringkasan', 'meta_description'].includes(e.target.id)) kemaskiniKiraArtikel(); });
 
 // ---------- tetapan laman ----------
 
@@ -456,7 +531,7 @@ const BORANG = {
   },
   async artikel(b) {
     const d = new FormData(b);
-    const badan = { tajuk: d.get('tajuk'), ringkasan: d.get('ringkasan'), isi: d.get('isi'), status: d.get('status') };
+    const badan = { tajuk: d.get('tajuk'), ringkasan: d.get('ringkasan'), meta_description: d.get('meta_description'), gambar: d.get('gambar') || '', gambar_alt: d.get('gambar_alt'), isi: d.get('isi'), status: d.get('status') };
     const slug = String(d.get('slug') || '').trim();
     if (slug && !b.querySelector('#slug').readOnly) badan.slug = slug;
     const n = kiraPerkataan(badan.isi);
@@ -495,6 +570,10 @@ const TINDAKAN = {
     if (!confirm('Padam course ini? Tindakan ini tidak boleh dibatalkan.')) return;
     await api('DELETE', `course/${el.dataset.id}`);
     pergi('#/');
+  },
+  'buang-gambar'() {
+    document.getElementById('gambar').value = '';
+    paparGambarUtama(null);
   },
   async 'padam-artikel'(el) {
     if (!confirm('Padam artikel ini? Tindakan ini tidak boleh dibatalkan.')) return;

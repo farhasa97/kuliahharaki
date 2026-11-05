@@ -116,13 +116,13 @@ export function repoPalsu() {
     async artikelDariSlug(s) { return [...artikel.values()].find((a) => a.slug === s) ?? null; },
     async slugArtikelUnik(asas) { let c = asas, n = 1; while ([...artikel.values()].some((a) => a.slug === c)) c = `${asas}-${++n}`; return c; },
     async ciptaArtikel(a, masa) {
-      const b = { id: idA++, slug: a.slug, tajuk: a.tajuk, ringkasan: a.ringkasan ?? '', isi: a.isi ?? '', bil_perkataan: a.bil_perkataan ?? 0, status: a.status ?? 'draf',
+      const b = { id: idA++, slug: a.slug, tajuk: a.tajuk, ringkasan: a.ringkasan ?? '', meta_description: a.meta_description ?? '', gambar: a.gambar ?? null, gambar_alt: a.gambar_alt ?? '', isi: a.isi ?? '', bil_perkataan: a.bil_perkataan ?? 0, status: a.status ?? 'draf',
         dicipta_pada: masa, dikemas_kini_pada: masa, diterbit_pada: a.status === 'terbit' ? masa : null };
       artikel.set(b.id, b); return b;
     },
     async kemaskiniArtikel(id, nilai, masa) {
       const a = artikel.get(id);
-      for (const k of ['slug', 'tajuk', 'ringkasan', 'isi', 'bil_perkataan', 'status', 'diterbit_pada']) if (k in nilai) a[k] = nilai[k];
+      for (const k of ['slug', 'tajuk', 'ringkasan', 'meta_description', 'gambar', 'gambar_alt', 'isi', 'bil_perkataan', 'status', 'diterbit_pada']) if (k in nilai) a[k] = nilai[k];
       a.dikemas_kini_pada = masa; return a;
     },
     async padamArtikel(id) { artikel.delete(id); },

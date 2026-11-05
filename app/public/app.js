@@ -240,7 +240,7 @@ async function lamanAwam() {
   ${artikel.length ? `<section class="section" id="artikel">
     <div class="wrap">
       <div class="section-head"><div><p class="kicker">Artikel</p><h2 style="margin-top:10px">Bacaan terbaru</h2></div></div>
-      <div class="artikel-senarai">${artikel.map((a) => `<a class="artikel-kad" href="/artikel/${h(a.slug)}"><h2>${h(a.tajuk)}</h2><p>${h(a.ringkasan)}</p><span class="artikel-meta">${tarikhMy(a.diterbit_pada)}</span></a>`).join('')}</div>
+      <div class="artikel-senarai">${artikel.map((a) => `<a class="artikel-kad${a.gambar ? ' ada-gambar' : ''}" href="/artikel/${h(a.slug)}">${a.gambar ? `<img class="artikel-kad-gambar" src="${h(a.gambar)}" alt="${h(a.gambar_alt)}" loading="lazy">` : ''}<h2>${h(a.tajuk)}</h2><p>${h(a.ringkasan)}</p><span class="artikel-meta">${tarikhMy(a.diterbit_pada)}</span></a>`).join('')}</div>
       <p style="margin-top:18px"><a class="btn outline" href="/artikel">Semua artikel</a></p>
     </div>
   </section>` : ''}

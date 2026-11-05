@@ -145,3 +145,50 @@ test('tetapan laman (nama, logo) dipakai pada halaman artikel; jadual artikel be
   assert.equal((await minta(rosak, null)('GET', '/api/artikel')).status, 200);
   assert.equal((await minta(repo, null)('POST', '/artikel')).status, 405);
 });
+
+function r2Palsu() { const o = new Map(); return { _objek: o, async put(k, v, op) { o.set(k, { d: new Uint8Array(v), j: op?.httpMetadata?.contentType }); },
+  async get(k) { const x = o.get(k); return x ? { body: new Blob([x.d]).stream(), size: x.d.length } : null; }, async delete(k) { o.delete(k); } }; }
+const WEBP = new Uint8Array([0x52, 0x49, 0x46, 0x46, 1, 2, 3, 4, 0x57, 0x45, 0x42, 0x50, 0, 0]);
+
+test('media: admin muat naik gambar, dihidang awam dengan cache panjang; SVG, besar, guru dan pelajar ditolak', async () => {
+  const repo = repoPalsu(), e = { ...env, NOTA: r2Palsu() };
+  const kukiA = await sesi(repo, 'ustaz@gmail.com');
+  const hantar = (kuki, badan) => handle(new Request(B + '/api/admin/media', { method: 'POST', headers: { ...(kuki ? { cookie: kuki } : {}), 'content-type': 'image/webp' }, body: badan }), e, { repo, now: NOW });
+  const r = await hantar(kukiA, WEBP);
+  assert.equal(r.status, 201);
+  const { url } = await r.json();
+  assert.match(url, /^\/media\/[0-9a-f]{20}\.webp$/);
+  const g = await minta(repo, null, e)('GET', url);
+  assert.equal(g.status, 200);
+  assert.equal(g.headers.get('content-type'), 'image/webp');
+  assert.match(g.headers.get('cache-control'), /immutable/);
+  assert.equal((await hantar(kukiA, new TextEncoder().encode('<svg onload=alert(1)>'))).status, 415);
+  assert.equal((await hantar(kukiA, new Uint8Array(3 * 1024 * 1024))).status, 413);
+  assert.equal((await hantar(await sesi(repo, 'pelajar@gmail.com'), WEBP)).status, 403);
+  assert.equal((await hantar(null, WEBP)).status, 401);
+  for (const l of ['/media/../nota/x.pdf', '/media/abc.webp', '/media/' + 'a'.repeat(20) + '.svg', '/media/' + 'a'.repeat(20) + '.webp']) assert.equal((await minta(repo, null, e)('GET', l)).status, 404, l);
+});
+
+test('artikel: meta description berasingan, gambar utama dalam halaman, og:image dan JSON-LD; gambar luar ditolak', async () => {
+  const repo = repoPalsu();
+  const A = minta(repo, await sesi(repo, 'ustaz@gmail.com'));
+  const G = '/media/0123456789abcdef0123.webp';
+  assert.equal((await A('POST', '/api/admin/artikel', { tajuk: 'X', gambar: 'https://jahat.my/a.png' })).status, 400);
+  assert.equal((await A('POST', '/api/admin/artikel', { tajuk: 'X', meta_description: 'x'.repeat(201) })).status, 400);
+  const a = await (await A('POST', '/api/admin/artikel', { tajuk: 'Solat Jamak', ringkasan: 'Ringkasan kad.', meta_description: 'Panduan lengkap solat jamak dan qasar untuk musafir.',
+    gambar: G, gambar_alt: 'Musafir <solat>', isi: 'isi', status: 'terbit' })).json();
+  const html = await (await minta(repo, null)('GET', `/artikel/${a.slug}`)).text();
+  assert.ok(html.includes('<meta name="description" content="Panduan lengkap solat jamak dan qasar untuk musafir.">'));
+  assert.ok(html.includes(`<meta property="og:image" content="https://kuliahharaki.com${G}">`));
+  assert.ok(html.includes('summary_large_image'));
+  assert.ok(html.includes(`<img class="artikel-kulit" src="${G}" alt="Musafir &lt;solat&gt;"`));
+  const ld = JSON.parse(html.match(/<script type="application\/ld\+json">(.*?)<\/script>/s)[1]);
+  assert.deepEqual([ld.description, ld.image], ['Panduan lengkap solat jamak dan qasar untuk musafir.', [`https://kuliahharaki.com${G}`]]);
+  const senarai = await (await minta(repo, null)('GET', '/artikel')).text();
+  assert.ok(senarai.includes('Ringkasan kad.') && senarai.includes(`src="${G}"`));
+  assert.equal((await (await minta(repo, null)('GET', '/api/artikel')).json())[0].gambar, G);
+  // meta kosong: ringkasan digunakan; buang gambar
+  await A('PUT', `/api/admin/artikel/${a.id}`, { meta_description: '', gambar: '' });
+  const html2 = await (await minta(repo, null)('GET', `/artikel/${a.slug}`)).text();
+  assert.ok(html2.includes('<meta name="description" content="Ringkasan kad.">') && !html2.includes('artikel-kulit'));
+});

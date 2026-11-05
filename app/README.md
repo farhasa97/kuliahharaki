@@ -26,7 +26,7 @@ Worker Cloudflare dengan static assets dan D1. JavaScript biasa, tiada build ste
 | `src/lib/artikel.js` | | Pengesahan artikel, slug, kiraan perkataan, Markdown ringkas yang selamat (semua teks di-escape) |
 | `src/lib/tetapan.js` | | Tetapan laman: medan dan lalai, semakan gambar logo (PNG, JPEG, WEBP; bukan SVG) |
 | `src/lib/nota.js` | | Nota PDF: nama, had saiz, semakan `%PDF-`, kunci R2 rawak, Content-Disposition |
-| `migrations/` | | Skema D1 (`0001_skema.sql` teras, `0002_video.sql` beli satu video, DITANGGUH, `0003_kandungan.sql` course, subject, progress, `0004_nota.sql` metadata nota PDF, `0005_tetapan.sql` tetapan laman, `0006_artikel.sql` artikel, `0007_guru.sql` guru, semakan, status nota) |
+| `migrations/` | | Skema D1 (`0001_skema.sql` teras, `0002_video.sql` beli satu video, DITANGGUH, `0003_kandungan.sql` course, subject, progress, `0004_nota.sql` metadata nota PDF, `0005_tetapan.sql` tetapan laman, `0006_artikel.sql` artikel, `0007_guru.sql` guru, semakan, status nota, `0008_artikel_gambar.sql` meta description dan gambar artikel) |
 
 Ujian:
 

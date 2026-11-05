@@ -106,7 +106,16 @@ export async function handle(req, env, opts = {}) {
 
   if (p === '/api/artikel' && req.method === 'GET') {
     let a = []; try { a = await repo.senaraiArtikel(); } catch { /* jadual belum dicipta */ }
-    return json(a.slice(0, 20).map(({ slug, tajuk, ringkasan, diterbit_pada, bil_perkataan }) => ({ slug, tajuk, ringkasan, diterbit_pada, bil_perkataan })));
+    return json(a.slice(0, 20).map(({ slug, tajuk, ringkasan, gambar, gambar_alt, diterbit_pada, bil_perkataan }) => ({ slug, tajuk, ringkasan, gambar, gambar_alt, diterbit_pada, bil_perkataan })));
+  }
+
+  // Gambar artikel (awam, nama rawak tidak berubah: cache lama).
+  if (p.startsWith('/media/')) {
+    const m = p.match(/^\/media\/([0-9a-f]{20})\.(webp|png|jpg)$/);
+    const obj = m && req.method === 'GET' && env.NOTA ? await env.NOTA.get('media/' + m[1] + '.' + m[2]) : null;
+    if (!obj) return json({ ralat: 'tidak-dijumpai' }, 404);
+    return new Response(obj.body, { headers: { 'content-type': { webp: 'image/webp', png: 'image/png', jpg: 'image/jpeg' }[m[2]],
+      'cache-control': 'public, max-age=31536000, immutable', 'x-content-type-options': 'nosniff' } });
   }
 
   if (p === '/api/logo' && req.method === 'GET') {
