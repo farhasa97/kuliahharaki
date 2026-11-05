@@ -2,7 +2,7 @@
 export function repoPalsu() {
   const bayaran = new Map(), langganan = new Map(), pengguna = new Map(), sesi = new Map();
   const pesanan = new Map(), itemPesanan = new Map(), akses = new Map();
-  const courses = new Map(), subjects = new Map(), progress = new Map(); let idC = 1, idS = 1;
+  const courses = new Map(), subjects = new Map(), progress = new Map(), notas = new Map(); let idC = 1, idS = 1, idN = 1;
   let idSeterusnya = 1;
   return {
     _bayaran: bayaran, _langganan: langganan, _pengguna: pengguna, _sesi: sesi, _pesanan: pesanan, _akses: akses, _course: courses, _subject: subjects, _progress: progress,
@@ -103,7 +103,15 @@ export function repoPalsu() {
       s.dikemas_kini_pada = masa;
       return s;
     },
-    async padamSubject(id) { subjects.delete(id); for (const k of [...progress.keys()]) if (k.endsWith('|' + id)) progress.delete(k); },
+    async padamSubject(id) {
+      subjects.delete(id); for (const k of [...progress.keys()]) if (k.endsWith('|' + id)) progress.delete(k);
+      for (const [k, n] of notas) if (n.subject_id === id) notas.delete(k);
+    },
+    async senaraiNota(sid) { return [...notas.values()].filter((n) => n.subject_id === sid).map(({ id, nama, saiz }) => ({ id, nama, saiz })); },
+    async kunciNota(sid) { return [...notas.values()].filter((n) => n.subject_id === sid).map((n) => n.kunci); },
+    async notaDariId(id) { return notas.get(id) ?? null; },
+    async ciptaNota(sid, n, masa) { const b = { id: idN++, subject_id: sid, nama: n.nama, kunci: n.kunci, saiz: n.saiz, dicipta_pada: masa }; notas.set(b.id, b); return b; },
+    async padamNota(id) { notas.delete(id); },
     async padamLangganan(emel) { langganan.delete(emel); },
   };
 }

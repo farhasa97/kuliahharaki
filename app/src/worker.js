@@ -97,7 +97,7 @@ export async function handle(req, env, opts = {}) {
       hargaBulanan: env.HARGA_BULANAN || '', hargaTahunan: env.HARGA_TAHUNAN || '' });
   }
 
-  if (p.startsWith('/api/course') || p.startsWith('/api/subject')) return pelajarApi(req, env, url, repo, now);
+  if (p.startsWith('/api/course') || p.startsWith('/api/subject') || p.startsWith('/api/nota')) return pelajarApi(req, env, url, repo, now);
 
   if (p === '/auth/google' && req.method === 'POST') {
     // JSON sahaja: borang silang laman tidak boleh menghantar application/json tanpa CORS

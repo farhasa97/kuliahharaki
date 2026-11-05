@@ -5,6 +5,7 @@ import { json } from './lib/http.js';
 import { bacaKuki, hashToken } from './lib/sesi.js';
 import { peranEfektif } from './lib/peranan.js';
 import { sahkanCourse, sahkanSubject, buatSlug } from './lib/kandungan.js';
+import { MAKS_SAIZ, MAKS_SETIAP_SUBJECT, namaNota, adaPdf, kunciBaru } from './lib/nota.js';
 
 const MAKS_BADAN = 50_000;
 
@@ -87,8 +88,49 @@ export async function adminApi(req, env, url, repo, now) {
       if (akhir.status === 'terbit' && !akhir.video_id) return json({ ralat: 'video-diperlukan', medan: 'video' }, 400);
       return json(luarSubject(await repo.kemaskiniSubject(id, v.nilai, masa)));
     }
-    if (req.method === 'DELETE') { await repo.padamSubject(id); return json({ ok: true }); }
+    if (req.method === 'DELETE') {
+      const kunci = await repo.kunciNota(id);
+      await repo.padamSubject(id);
+      // Padam fail R2 selepas baris pangkalan data; objek yatim tidak boleh diakses tanpa baris rujukan.
+      if (env.NOTA) await Promise.all(kunci.map((k) => env.NOTA.delete(k).catch(() => {})));
+      return json({ ok: true });
+    }
     return json({ ralat: 'kaedah-tidak-disokong' }, 405);
+  }
+
+  // Nota PDF: POST badan mentah application/pdf, nama paparan dalam ?nama=
+  if (sumber === 'subject' && bahagian.length === 3 && anak === 'nota') {
+    if (!id) return json({ ralat: 'id-tidak-sah' }, 400);
+    if (!(await repo.subjectDariId(id))) return json({ ralat: 'tidak-dijumpai' }, 404);
+    if (req.method === 'GET') return json(await repo.senaraiNota(id));
+    if (req.method !== 'POST') return json({ ralat: 'kaedah-tidak-disokong' }, 405);
+    if (!env.NOTA) return json({ ralat: 'r2-belum-sedia' }, 503);
+    if (!(req.headers.get('content-type') || '').startsWith('application/pdf')) return json({ ralat: 'bukan-pdf' }, 415);
+    if (Number(req.headers.get('content-length') || 0) > MAKS_SAIZ) return json({ ralat: 'fail-terlalu-besar' }, 413);
+    if ((await repo.senaraiNota(id)).length >= MAKS_SETIAP_SUBJECT) return json({ ralat: 'had-nota' }, 409);
+    const bait = await req.arrayBuffer();
+    if (bait.byteLength > MAKS_SAIZ) return json({ ralat: 'fail-terlalu-besar' }, 413);
+    if (!bait.byteLength) return json({ ralat: 'fail-kosong' }, 400);
+    if (!adaPdf(bait)) return json({ ralat: 'bukan-pdf' }, 415);
+    const kunci = kunciBaru(id);
+    await env.NOTA.put(kunci, bait, { httpMetadata: { contentType: 'application/pdf' } });
+    try {
+      const n = await repo.ciptaNota(id, { nama: namaNota(url.searchParams.get('nama')), kunci, saiz: bait.byteLength }, masa);
+      return json({ id: n.id, nama: n.nama, saiz: n.saiz }, 201);
+    } catch (e) {
+      await env.NOTA.delete(kunci).catch(() => {}); // jangan tinggalkan fail tanpa rekod
+      throw e;
+    }
+  }
+
+  if (sumber === 'nota' && bahagian.length === 2) {
+    if (!id) return json({ ralat: 'id-tidak-sah' }, 400);
+    if (req.method !== 'DELETE') return json({ ralat: 'kaedah-tidak-disokong' }, 405);
+    const n = await repo.notaDariId(id);
+    if (!n) return json({ ralat: 'tidak-dijumpai' }, 404);
+    await repo.padamNota(id);
+    if (env.NOTA) await env.NOTA.delete(n.kunci).catch(() => {});
+    return json({ ok: true });
   }
 
   return json({ ralat: 'tidak-dijumpai' }, 404);

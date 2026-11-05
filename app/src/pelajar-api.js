@@ -6,6 +6,7 @@ import { bacaKuki, hashToken } from './lib/sesi.js';
 import { hariIni, status } from './lib/langganan.js';
 import { tangguhHari } from './lib/konfig.js';
 import { keputusanSubject, subjectRingkas, subjectPenuh } from './lib/pelajar.js';
+import { kepalaKandungan } from './lib/nota.js';
 
 const idDari = (x) => { const n = Number(x); return Number.isInteger(n) && n > 0 ? n : null; };
 
@@ -57,8 +58,13 @@ export async function pelajarApi(req, env, url, repo, now) {
     const adik = await repo.senaraiSubject(t.c.id);
     const i = adik.findIndex((x) => x.id === t.s.id);
     const ringkas = (x) => (x ? { id: x.id, tajuk: x.tajuk } : null);
+    // Nama nota hanya untuk yang layak DAN sudah log masuk. Kunci R2 tidak pernah dihantar. Jika jadual nota
+    // belum dicipta (migrasi 0004 belum dijalankan), halaman kuliah tetap berfungsi tanpa nota.
+    let nota = [];
+    try { nota = await repo.senaraiNota(t.s.id); } catch { /* jadual nota belum wujud */ }
     return json({
       subject: subjectPenuh(t.s, keputusan, selesai), course: courseAwam(t.c),
+      bil_nota: nota.length, nota: keputusan.akses && logMasuk ? nota : [],
       kedudukan: i + 1, jumlah: adik.length, sebelum: ringkas(adik[i - 1]), seterusnya: ringkas(adik[i + 1]), log_masuk: logMasuk,
     });
   }
@@ -73,6 +79,26 @@ export async function pelajarApi(req, env, url, repo, now) {
     if (!keputusanSubject({ course: t.c, subject: t.s, langganan: k.langganan, hari: k.hari, logMasuk }).akses) return json({ ralat: 'tiada-akses' }, 403);
     await repo.tandaSelesai(k.pengguna.id, t.s.id, new Date(now).toISOString());
     return json({ ok: true, selesai: true });
+  }
+
+  // Muat turun nota: peraturan akses sama seperti video, ditambah mesti log masuk (SPEC bahagian 9).
+  if (bahagian[0] === 'nota' && bahagian.length === 2 && req.method === 'GET') {
+    const n = await repo.notaDariId(idDari(bahagian[1]));
+    const t = n && await subjectTerbit(repo, n.subject_id);
+    if (!t) return json({ ralat: 'tidak-dijumpai' }, 404);
+    const keputusan = keputusanSubject({ course: t.c, subject: t.s, langganan: k.langganan, hari: k.hari, logMasuk });
+    if (!logMasuk) return json({ ralat: 'belum-log-masuk' }, 401);
+    if (!keputusan.akses) return json({ ralat: 'tiada-akses' }, 403);
+    if (!env.NOTA) return json({ ralat: 'r2-belum-sedia' }, 503);
+    const obj = await env.NOTA.get(n.kunci);
+    if (!obj) return json({ ralat: 'tidak-dijumpai' }, 404);
+    return new Response(obj.body, { headers: {
+      'content-type': 'application/pdf',
+      'content-length': String(obj.size ?? n.saiz),
+      'content-disposition': kepalaKandungan(n.nama, url.searchParams.get('unduh') === '1'),
+      'cache-control': 'private, no-store',
+      'x-content-type-options': 'nosniff',
+    } });
   }
 
   return json({ ralat: 'tidak-dijumpai' }, 404);

@@ -40,6 +40,17 @@ CREATE TABLE progress ( pengguna_id INTEGER NOT NULL REFERENCES pengguna(id), su
 CREATE INDEX progress_subject ON progress(subject_id);
 ```
 
+### A1c. Nota PDF (R2), tambahan 07/11/2026
+1. Dashboard Cloudflare akaun farha, **R2 Object Storage**: langganan R2 diaktifkan dan bucket bernama `kuliahharaki-fail` dicipta, **tanpa** akses awam. Nama bucket mesti sama dengan `bucket_name` dalam `app/wrangler.toml`, kalau tidak deploy Worker gagal.
+2. Console D1 `kuliahharaki`, jalankan SQL ini sekali (jadual baru sahaja, tidak menyentuh yang sedia ada):
+
+```sql
+CREATE TABLE nota ( id INTEGER PRIMARY KEY AUTOINCREMENT, subject_id INTEGER NOT NULL REFERENCES subject(id), nama TEXT NOT NULL, kunci TEXT NOT NULL UNIQUE, saiz INTEGER NOT NULL, dicipta_pada TEXT NOT NULL );
+CREATE INDEX nota_subject ON nota(subject_id);
+```
+
+3. Panel admin, sunting subject, bahagian **Nota PDF** di bawah borang: pilih fail PDF (maksimum 20 MB, sehingga 10 nota setiap subject). Pelajar nampak tab **Nota PDF** pada halaman kuliah. Peraturan: mesti log masuk DAN layak menonton kuliah itu (percuma, pratonton, atau langganan aktif/tangguh). Padam subject memadam nota dan failnya sekali.
+
 ### A2. Worker dari GitHub
 Workers & Pages, Create, import repository `farhasa97/kuliahharaki`:
 - Project name: `kuliahharaki` (mesti sama dengan `name` dalam `app/wrangler.toml`)
@@ -117,7 +128,7 @@ Guna **panel admin** di `https://kuliahharaki.farhan-sazali15.workers.dev/panel/
 
 1. **Tambah course**: tajuk, huraian, Berbayar atau Percuma, Draf atau Terbit.
 2. Buka course, **Tambah subject**: tajuk, tampal pautan YouTube (dari butang Share, video sebaiknya Unlisted), tandakan **Pratonton** untuk video intro percuma, pilih Terbit.
-3. Susun subject dengan butang anak panah. Course dan subject hanya kelihatan kepada pelajar bila kedua-duanya **Terbit**.
+3. Buka **Sunting** pada subject untuk memuat naik nota PDF (lihat A1c). Susun subject dengan butang anak panah. Course dan subject hanya kelihatan kepada pelajar bila kedua-duanya **Terbit**.
 4. Panel memberi amaran bila course masih draf, tiada subject terbit, atau course berbayar tiada pratonton.
 
 Cara alternatif (tanpa panel), melalui konsol pelayar selepas log masuk sebagai admin. Buka laman Kuliah Haraki, F12, tab Console:

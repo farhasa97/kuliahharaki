@@ -69,6 +69,11 @@ try {
   const b1 = await post(`course/${fiqh.id}/subject`, { tajuk: 'Intro Fiqh', video: V.b1, status: 'terbit', pratonton: true });
   const b2 = await post(`course/${fiqh.id}/subject`, { tajuk: 'Bab 1: Taharah', video: V.b2, status: 'terbit' });
   const b3 = await post(`course/${fiqh.id}/subject`, { tajuk: 'Bab 2 (draf)', video: V.b3 });
+  const PDF = Buffer.from('%PDF-1.4\n1 0 obj<<>>endobj\n%%EOF');
+  const muatNota = async (sid, nama) => { const r = await ctxAdmin.request.post(`${B}/api/admin/subject/${sid}/nota?nama=${encodeURIComponent(nama)}`, { data: PDF, headers: { 'content-type': 'application/pdf' } }); assert.equal(r.status(), 201); return r.json(); };
+  const notaBerbayar = await muatNota(b2.id, 'Nota Taharah.pdf');
+  await muatNota(a1.id, 'Nota Selamat Datang.pdf');
+  await muatNota(b3.id, 'Nota Draf.pdf');
   const rahsia = await post('course', { tajuk: 'Course Rahsia', akses: 'percuma', status: 'draf' });
   await post(`course/${rahsia.id}/subject`, { tajuk: 'R1', video: V.r1, status: 'terbit' });
   await post('course', { tajuk: 'Course Kosong', akses: 'ahli', status: 'terbit' });
@@ -189,6 +194,39 @@ try {
     const p = ahli.page;
     await p.locator('.role-chip').click();
     await p.getByText(`Aktif hingga ${tamatAhli}`).waitFor();
+  });
+
+  await langkah('nota PDF: pelanggan boleh buka dan muat turun; bukan pelanggan dan pelawat tidak', async () => {
+    const p = ahli.page;
+    await p.goto(`${B}/#/subject/${b2.id}`);
+    await p.locator(`[data-video="${V.b2}"]`).waitFor();
+    await p.getByRole('tab', { name: 'Nota PDF (1)' }).click();
+    await p.locator('.nota-row', { hasText: 'Nota Taharah.pdf' }).waitFor();
+    assert.equal(await p.locator('[data-pane=huraian]').isVisible(), false);
+    const pautan = await p.locator('.nota-row').getAttribute('href');
+    assert.equal(pautan, `/api/nota/${notaBerbayar.id}`);
+    const r = await p.request.get(B + pautan);
+    assert.equal(r.status(), 200);
+    assert.equal(r.headers()['content-type'], 'application/pdf');
+    assert.deepEqual(await r.body(), PDF);
+    await skrin(p, '18-ahli-nota');
+    // pelajar tanpa langganan: nampak bilangan sahaja, tiada nama atau pautan, muat turun 403
+    const q = pelajar.page;
+    await q.goto(`${B}/#/subject/${b2.id}`);
+    await q.getByRole('tab', { name: 'Nota PDF (1)' }).click();
+    await q.getByText('Nota ini untuk pelanggan Advance').waitFor();
+    assert.equal(await q.locator('.nota-row').count(), 0);
+    assert.equal(await q.getByText('Nota Taharah').count(), 0);
+    assert.equal((await q.request.get(B + pautan)).status(), 403);
+    // pelawat: kuliah percuma ada nota tetapi mesti log masuk dahulu
+    const v = pelawat.page;
+    await v.goto(`${B}/#/subject/${a1.id}`);
+    await v.getByRole('tab', { name: 'Nota PDF (1)' }).click();
+    await v.getByText('untuk muat turun').waitFor();
+    assert.equal(await v.locator('.nota-row').count(), 0);
+    assert.equal((await v.request.get(B + pautan)).status(), 401);
+    // nota subject draf tidak wujud untuk sesiapa
+    assert.equal((await p.request.get(`${B}/api/nota/${notaBerbayar.id + 2}`)).status(), 404);
   });
 
   await langkah('kuliah draf dan siri draf tidak dijumpai, walaupun untuk pelanggan', async () => {

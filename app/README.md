@@ -22,7 +22,8 @@ Worker Cloudflare dengan static assets dan D1. JavaScript biasa, tiada build ste
 | `src/lib/kandungan.js` | | Pengesahan course dan subject, ekstrak ID YouTube, slug |
 | `src/lib/peranan.js`, `src/lib/http.js` | | Peranan efektif (ADMIN_EMELS), pembantu respons JSON |
 | `src/repo.js` | | Semua SQL D1 |
-| `migrations/` | | Skema D1 (`0001_skema.sql` teras, `0002_video.sql` beli satu video, DITANGGUH, `0003_kandungan.sql` course, subject, progress) |
+| `src/lib/nota.js` | | Nota PDF: nama, had saiz, semakan `%PDF-`, kunci R2 rawak, Content-Disposition |
+| `migrations/` | | Skema D1 (`0001_skema.sql` teras, `0002_video.sql` beli satu video, DITANGGUH, `0003_kandungan.sql` course, subject, progress, `0004_nota.sql` metadata nota PDF) |
 
 Ujian:
 

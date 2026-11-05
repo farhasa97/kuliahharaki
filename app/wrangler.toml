@@ -25,5 +25,10 @@ database_name = "kuliahharaki"
 database_id = "6245241e-0433-4b18-b32d-103a6a8965ea" # bukan rahsia
 migrations_dir = "migrations"
 
+# Nota PDF. Bucket dicipta di dashboard (R2 Object Storage), tanpa akses awam: fail hanya keluar melalui Worker.
+[[r2_buckets]]
+binding = "NOTA"
+bucket_name = "kuliahharaki-fail"
+
 [observability]
 enabled = true

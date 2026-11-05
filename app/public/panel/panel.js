@@ -23,6 +23,11 @@ const RALAT = {
   'belum-log-masuk': 'Sesi tamat. Sila log masuk semula.',
   'tidak-dijumpai': 'Tidak dijumpai. Mungkin sudah dipadam.',
   'asal-tidak-dibenarkan': 'Permintaan ditolak (asal laman tidak sah).',
+  'bukan-pdf': 'Fail ini bukan PDF yang sah.',
+  'fail-terlalu-besar': 'Fail terlalu besar. Maksimum 20 MB.',
+  'fail-kosong': 'Fail kosong.',
+  'had-nota': 'Setiap subject maksimum 10 nota. Padam nota lama dahulu.',
+  'r2-belum-sedia': 'Storan fail (R2) belum disambungkan pada Worker.',
 };
 
 class RalatApi extends Error {
@@ -156,8 +161,47 @@ async function borangSubject(cid, sid) {
         <button type="submit">Simpan</button>
         ${sid ? `<button type="button" class="bahaya" data-act="padam-subject" data-course="${cid}" data-id="${sid}">Padam subject</button>` : ''}
       </div>
-    </form>`;
+    </form>
+    <div class="kad" id="kad-nota" data-subject="${sid || ''}">${sid ? 'Memuatkan nota…' : '<h2>Nota PDF</h2><p class="bantuan">Simpan subject ini dahulu, kemudian buka semula untuk memuat naik nota.</p>'}</div>`;
+  if (sid) segarNota(sid);
 }
+
+// ---------- nota PDF ----------
+
+const saizTeks = (b) => (b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB');
+
+async function segarNota(sid, ralat) {
+  const kad = document.getElementById('kad-nota');
+  if (!kad) return;
+  let senarai = [];
+  try { senarai = await api('GET', `subject/${sid}/nota`); } catch (e) { ralat = ralat || e.message; }
+  kad.innerHTML = `<h2>Nota PDF</h2>
+    <div class="ralat" ${ralat ? '' : 'hidden'}>${h(ralat || '')}</div>
+    ${senarai.length ? senarai.map((n) => `<div class="baris antara" style="margin:0 0 8px"><span><b>${h(n.nama)}</b> <span class="kecil">${saizTeks(n.saiz)}</span></span>
+      <button type="button" class="bahaya" data-act="padam-nota" data-subject="${sid}" data-id="${n.id}">Padam</button></div>`).join('') : '<p class="kecil">Belum ada nota.</p>'}
+    <label for="failNota">Muat naik nota (PDF, maksimum 20 MB, sehingga 10 nota)</label>
+    <input type="file" id="failNota" accept="application/pdf,.pdf" multiple data-nota-fail data-subject="${sid}">
+    <div class="bantuan" id="statusNota">Pelajar hanya boleh muat turun jika layak menonton kuliah ini dan sudah log masuk.</div>`;
+}
+
+document.addEventListener('change', async (e) => {
+  const input = e.target.closest('[data-nota-fail]');
+  if (!input || !input.files.length) return;
+  const sid = input.dataset.subject, status = document.getElementById('statusNota');
+  let ralat = '';
+  input.disabled = true;
+  for (const f of input.files) {
+    status.textContent = `Memuat naik ${f.name}…`;
+    try {
+      const r = await fetch(`/api/admin/subject/${sid}/nota?nama=${encodeURIComponent(f.name)}`, { method: 'POST', headers: { 'content-type': 'application/pdf' }, body: f });
+      if (!r.ok) throw new RalatApi(await r.json().catch(() => ({})), r.status);
+    } catch (err) {
+      if (err.status === 401) return mula();
+      ralat = `${f.name}: ${err.message}`; break;
+    }
+  }
+  segarNota(sid, ralat);
+});
 
 // ---------- borang dan tindakan ----------
 
@@ -195,8 +239,13 @@ const TINDAKAN = {
     await api('DELETE', `course/${el.dataset.id}`);
     pergi('#/');
   },
+  async 'padam-nota'(el) {
+    if (!confirm('Padam nota ini?')) return;
+    try { await api('DELETE', `nota/${el.dataset.id}`); } catch (e) { if (e.status === 401) return mula(); return segarNota(el.dataset.subject, e.message); }
+    segarNota(el.dataset.subject);
+  },
   async 'padam-subject'(el) {
-    if (!confirm('Padam subject ini? Progress pelajar untuk subject ini turut dipadam.')) return;
+    if (!confirm('Padam subject ini? Progress pelajar dan nota PDF subject ini turut dipadam.')) return;
     await api('DELETE', `subject/${el.dataset.id}`);
     pergi(`#/course/${el.dataset.course}`);
   },

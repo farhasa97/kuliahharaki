@@ -112,8 +112,23 @@ export function repoD1(db) {
     // Padam subject dan progress yang merujuknya dalam satu batch (kunci asing).
     padamSubject: (id) => db.batch([
       db.prepare('DELETE FROM progress WHERE subject_id = ?').bind(id),
+      db.prepare('DELETE FROM nota WHERE subject_id = ?').bind(id),
       db.prepare('DELETE FROM subject WHERE id = ?').bind(id),
     ]),
+
+    // ---- nota PDF (metadata; fail dalam R2) ----
+    async senaraiNota(subjectId) {
+      return (await db.prepare('SELECT id, nama, saiz FROM nota WHERE subject_id = ? ORDER BY id').bind(subjectId).all()).results;
+    },
+    async kunciNota(subjectId) {
+      return (await db.prepare('SELECT kunci FROM nota WHERE subject_id = ?').bind(subjectId).all()).results.map((r) => r.kunci);
+    },
+    notaDariId: (id) => satu('SELECT * FROM nota WHERE id = ?', id),
+    async ciptaNota(subjectId, n, masa) {
+      const r = await jalan('INSERT INTO nota (subject_id, nama, kunci, saiz, dicipta_pada) VALUES (?, ?, ?, ?, ?)', subjectId, n.nama, n.kunci, n.saiz, masa);
+      return satu('SELECT * FROM nota WHERE id = ?', r.meta.last_row_id);
+    },
+    padamNota: (id) => jalan('DELETE FROM nota WHERE id = ?', id),
 
     // ---- pesanan video ----
     async simpanPesanan(p, items) {

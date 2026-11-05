@@ -8,7 +8,7 @@ import { repoD1 } from '../src/repo.js';
 
 const proksi = await getPlatformProxy({ configPath: 'wrangler.toml', persist: false });
 const db = proksi.env.DB;
-const sql = ['migrations/0001_skema.sql', 'migrations/0002_video.sql', 'migrations/0003_kandungan.sql'].map((f) => readFileSync(f, 'utf8')).join(';').replace(/--[^\n]*/g, '');
+const sql = ['migrations/0001_skema.sql', 'migrations/0002_video.sql', 'migrations/0003_kandungan.sql', 'migrations/0004_nota.sql'].map((f) => readFileSync(f, 'utf8')).join(';').replace(/--[^\n]*/g, '');
 await db.batch(sql.split(';').map((s) => s.trim()).filter(Boolean).map((s) => db.prepare(s)));
 const repo = repoD1(db);
 test.after(() => proksi.dispose());
@@ -201,4 +201,21 @@ test('progress: tanda selesai idempoten, kiraan hanya subject terbit, dikumpul i
   await repo.kemaskiniSubject(b.id, { status: 'draf' }, 't'); // subject ditarik balik tidak dikira
   assert.deepEqual(await kira(), { [c1.id]: 1, [c2.id]: 1 });
   await assert.rejects(repo.tandaSelesai(p.id, 987654, 't')); // kunci asing subject
+});
+
+test('nota: cipta, senarai tanpa kunci, kunci unik, kunci asing, dipadam bersama subject', async () => {
+  const c = await repo.ciptaCourse({ tajuk: 'N', slug: 'n-nota', akses: 'ahli', status: 'terbit' }, 't');
+  const s1 = await repo.ciptaSubject(c.id, { tajuk: 'n1', video_id: 'nnnnnnnnnnn', status: 'terbit' }, 't');
+  const n1 = await repo.ciptaNota(s1.id, { nama: 'a.pdf', kunci: 'nota/x/1.pdf', saiz: 10 }, 't1');
+  await repo.ciptaNota(s1.id, { nama: 'b.pdf', kunci: 'nota/x/2.pdf', saiz: 20 }, 't2');
+  assert.deepEqual(await repo.senaraiNota(s1.id), [{ id: n1.id, nama: 'a.pdf', saiz: 10 }, { id: n1.id + 1, nama: 'b.pdf', saiz: 20 }]);
+  assert.deepEqual((await repo.kunciNota(s1.id)).sort(), ['nota/x/1.pdf', 'nota/x/2.pdf']);
+  assert.equal((await repo.notaDariId(n1.id)).kunci, 'nota/x/1.pdf');
+  assert.equal(await repo.notaDariId(null), null);
+  await assert.rejects(repo.ciptaNota(s1.id, { nama: 'c.pdf', kunci: 'nota/x/1.pdf', saiz: 1 }, 't')); // kunci unik
+  await assert.rejects(repo.ciptaNota(987654, { nama: 'c.pdf', kunci: 'nota/x/9.pdf', saiz: 1 }, 't')); // kunci asing
+  await repo.padamNota(n1.id);
+  assert.equal((await repo.senaraiNota(s1.id)).length, 1);
+  await repo.padamSubject(s1.id); // nota dipadam dalam batch yang sama, tidak dihalang kunci asing
+  assert.deepEqual(await repo.senaraiNota(s1.id), []);
 });

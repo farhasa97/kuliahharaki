@@ -496,6 +496,17 @@ async function halamanCourse(slug) {
   </div>`);
 }
 
+const IKON_PDF = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 14h6M9 17h4"/></svg>';
+const saizTeks = (b) => (b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB');
+
+// Senarai nama hanya diberi pelayan kepada yang layak dan sudah log masuk; selain itu hanya bilangan.
+function paparNota(d, s) {
+  if (d.nota.length) return `<div class="nota-senarai">${d.nota.map((n) => `<a class="nota-row" href="/api/nota/${n.id}" target="_blank" rel="noopener">
+      <span class="nota-ikon">${IKON_PDF}</span><span class="nota-nama">${h(n.nama)}<small>${saizTeks(n.saiz)} · PDF</small></span><span class="nota-buka">Buka</span></a>`).join('')}</div>`;
+  if (!d.log_masuk) return `<p class="kosong-nota">${d.bil_nota} nota PDF untuk kuliah ini. <a href="#/masuk">Log masuk</a> untuk muat turun.</p>`;
+  return `<p class="kosong-nota">${d.bil_nota} nota PDF disediakan untuk kuliah ini. Nota ini untuk pelanggan Advance.</p>`;
+}
+
 async function halamanSubject(id) {
   const d = await dapat('/api/subject/' + encodeURIComponent(id));
   const siri = await dapat('/api/course/' + encodeURIComponent(d.course.slug));
@@ -526,8 +537,14 @@ async function halamanSubject(id) {
       <div class="lesson-main">
         ${pentas}
         <div class="panel" style="margin-top:16px">
-          <div class="panel-head"><div class="panel-tabs" role="tablist" aria-label="Bahan kuliah"><button role="tab" aria-selected="true">Huraian kuliah</button></div></div>
-          <div class="panel-body"><div class="notes">${s.huraian ? `<p>${h(s.huraian)}</p>` : '<p class="kosong-nota">Tiada huraian untuk kuliah ini.</p>'}</div></div>
+          <div class="panel-head"><div class="panel-tabs" role="tablist" aria-label="Bahan kuliah">
+            <button role="tab" aria-selected="true" data-act="tab" data-tab="huraian">Huraian kuliah</button>
+            ${d.bil_nota ? `<button role="tab" aria-selected="false" data-act="tab" data-tab="nota">Nota PDF (${d.bil_nota})</button>` : ''}
+          </div></div>
+          <div class="panel-body">
+            <div class="notes" data-pane="huraian">${s.huraian ? `<p>${h(s.huraian)}</p>` : '<p class="kosong-nota">Tiada huraian untuk kuliah ini.</p>'}</div>
+            ${d.bil_nota ? `<div class="notes" data-pane="nota" hidden>${paparNota(d, s)}</div>` : ''}
+          </div>
         </div>
         <div class="navigasi">
           ${d.sebelum ? `<a class="btn outline" href="#/subject/${d.sebelum.id}">&larr; Sebelum</a>` : '<span></span>'}
@@ -604,6 +621,11 @@ const TINDAKAN = {
   selesai: (el) => tandaSelesai(el.dataset.id),
   async semak() { await muatSaya(); laluan(); },
   async keluar() { await fetch('/auth/keluar', { method: 'POST' }); saya = null; location.hash = '#/'; laluan(); },
+  tab(el) {
+    const panel = el.closest('.panel');
+    panel.querySelectorAll('[role=tab]').forEach((t) => t.setAttribute('aria-selected', String(t === el)));
+    panel.querySelectorAll('[data-pane]').forEach((p) => { p.hidden = p.dataset.pane !== el.dataset.tab; });
+  },
   menu(el) {
     const m = document.getElementById('menuTelefon');
     m.hidden = !m.hidden;

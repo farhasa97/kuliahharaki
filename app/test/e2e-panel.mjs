@@ -115,6 +115,25 @@ try {
     await page.locator('.subject', { hasText: 'Bab 1: Asas Akidah' }).waitFor();
   });
 
+  await langkah('nota PDF: muat naik, bukan PDF ditolak, senarai dan padam', async () => {
+    await page.locator('.subject', { hasText: 'Bab 1: Asas Akidah' }).getByRole('link', { name: 'Sunting' }).click();
+    await page.locator('#failNota').waitFor();
+    await page.getByText('Belum ada nota.').waitFor();
+    const pdf = Buffer.from('%PDF-1.4\n1 0 obj<<>>endobj\n%%EOF');
+    await page.setInputFiles('#failNota', { name: 'Ringkasan <img src=x onerror=alert(1)>.pdf', mimeType: 'application/pdf', buffer: pdf });
+    await page.locator('#kad-nota b', { hasText: 'Ringkasan <img src=x onerror=alert(1)>.pdf' }).waitFor(); // dipaparkan sebagai teks
+    assert.equal(await page.locator('#kad-nota img').count(), 0);
+    await page.setInputFiles('#failNota', { name: 'palsu.pdf', mimeType: 'application/pdf', buffer: Buffer.from('<html>bukan pdf</html>') });
+    await page.locator('#kad-nota .ralat').getByText('bukan PDF yang sah').waitFor();
+    assert.equal(await page.locator('#kad-nota button', { hasText: 'Padam' }).count(), 1);
+    await skrin('03-nota');
+    await page.locator('#kad-nota button', { hasText: 'Padam' }).click();
+    await page.getByText('Belum ada nota.').waitFor();
+    await page.setInputFiles('#failNota', { name: 'kekal.pdf', mimeType: 'application/pdf', buffer: pdf });
+    await page.locator('#kad-nota b', { hasText: 'kekal.pdf' }).waitFor();
+    await page.goBack();
+  });
+
   await langkah('padam course yang masih ada subject ditolak dengan mesej jelas', async () => {
     await page.getByRole('link', { name: 'Sunting course' }).click();
     await page.getByRole('button', { name: 'Padam course' }).click();
