@@ -165,6 +165,7 @@ Sumber: dokumentasi Cloudflare (Workers limits, D1 limits). Angka cron dan R2 pi
   5. Kemas, uji di telefon, Google OAuth ke Production, padam Worker spike.
 - **Fasa 2, bayaran dalam UI:** kunci kandungan premium ikut keputusan akses, notis, halaman langganan, Beli video dan Video saya, laluan gateway pesanan video, ujian RM1 sebenar.
 - **Fasa 3, komuniti dan sijil:** komen, sijil dan pengesahan, tetapan laman (banner, warna, teks), manual dan video tutorial.
+- **Ditangguh ke minggu depan (keputusan 06/11/2026, bermula sekitar 09/11/2026):** sijil, manual dan video tutorial, emel notifikasi, login tanpa Google (kod emel), beli satu video RM2, Bunny Stream, eksport D1 berkala ke R2, warna tema dalam Tetapan laman.
 - **Kemudian:** migrasi premium ke Bunny, auto-debit, kod emel untuk pelajar tanpa Google, naik ke tier Murah bila had hampir.
 
 ## 16. Kos (anggaran)

@@ -32,6 +32,12 @@ Pemilik yang menjalankan; lihat `operasi-pelancaran.md` bahagian 5:
 - Pertimbangkan repo Private (sapu sejarah untuk rahsia dahulu).
 - Jalankan SQL migrasi yang belum (A1c hingga A1h) di Console D1.
 
+## Dijadualkan minggu depan (keputusan pemilik 06/11/2026: "di bawah kita tangguh, next week kita buat")
+
+Lapan item di bawah ditangguh dan akan dikerjakan **minggu depan (bermula sekitar 09/11/2026)**. Cadangan urutan (pendapat, boleh diubah): (1) eksport D1 sandaran, (2) emel notifikasi, (3) sijil, (4) warna tema, (5) login tanpa Google (bergantung pada penghantar emel dari item 2), (6) manual dan video tutorial (selepas ciri tetap), (7) beli satu video RM2 dan (8) Bunny Stream (keputusan berat, boleh kekal ditangguh).
+
+Prasyarat daripada pemilik: akaun penghantar emel (contoh Resend) dengan rekod DNS domain; keputusan rupa dan teks sijil; akaun Bunny jika item 8 diteruskan. Kunci API diminta melalui mekanisme credential platform, bukan chat.
+
 ## Belum dibina (pilihan, ikut keperluan)
 
 | Item | Nota |
