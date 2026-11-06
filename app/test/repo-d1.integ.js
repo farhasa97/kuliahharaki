@@ -8,7 +8,7 @@ import { repoD1 } from '../src/repo.js';
 
 const proksi = await getPlatformProxy({ configPath: 'wrangler.toml', persist: false });
 const db = proksi.env.DB;
-const sql = ['migrations/0001_skema.sql', 'migrations/0002_video.sql', 'migrations/0003_kandungan.sql', 'migrations/0004_nota.sql', 'migrations/0005_tetapan.sql', 'migrations/0006_artikel.sql', 'migrations/0007_guru.sql', 'migrations/0008_artikel_gambar.sql'].map((f) => readFileSync(f, 'utf8')).join(';').replace(/--[^\n]*/g, '');
+const sql = ['migrations/0001_skema.sql', 'migrations/0002_video.sql', 'migrations/0003_kandungan.sql', 'migrations/0004_nota.sql', 'migrations/0005_tetapan.sql', 'migrations/0006_artikel.sql', 'migrations/0007_guru.sql', 'migrations/0008_artikel_gambar.sql', 'migrations/0009_soalan.sql'].map((f) => readFileSync(f, 'utf8')).join(';').replace(/--[^\n]*/g, '');
 await db.batch(sql.split(';').map((s) => s.trim()).filter(Boolean).map((s) => db.prepare(s)));
 const repo = repoD1(db);
 test.after(() => proksi.dispose());
@@ -275,4 +275,39 @@ test('guru dan kelulusan: guru, course milik guru, subject menunggu, semakan uni
   assert.deepEqual(await repo.senaraiSemakan(), []);
   await repo.padamGuru('g@x.my');
   assert.equal(await repo.guruDariEmel('g@x.my'), null);
+});
+
+test('soal jawab: cipta, menunggu hanya milik penanya, awam selepas dijawab dan tidak disorok, panel ikut guru, had sehari, padam berantai', async () => {
+  await repo.simpanGuru('gq@x.my', 'Ustaz Q', 't');
+  const c1 = await repo.ciptaCourse({ tajuk: 'Q1', slug: 'q-satu', akses: 'percuma', status: 'terbit', guru_emel: 'gq@x.my' }, 't');
+  const c2 = await repo.ciptaCourse({ tajuk: 'Q2', slug: 'q-dua', akses: 'percuma', status: 'terbit' }, 't');
+  const s1 = await repo.ciptaSubject(c1.id, { tajuk: 'k1', video_id: 'qqqqqqqqqqq', status: 'terbit' }, 't');
+  const s2 = await repo.ciptaSubject(c2.id, { tajuk: 'k2', video_id: 'rrrrrrrrrrr', status: 'terbit' }, 't');
+  const p1 = await repo.simpanPengguna({ emel: 'q1@x.my', sub: 'q1', nama: 'Aminah Ali' }, 't');
+  const p2 = await repo.simpanPengguna({ emel: 'q2@x.my', sub: 'q2', nama: 'Hafiz Rahman' }, 't');
+  const a = await repo.ciptaSoalan(s1.id, p1.id, 'Soalan A', '2026-11-07T01:00:00.000Z');
+  const b = await repo.ciptaSoalan(s1.id, p2.id, 'Soalan B', '2026-11-07T02:00:00.000Z');
+  await repo.ciptaSoalan(s2.id, p1.id, 'Soalan C', '2026-11-07T03:00:00.000Z');
+  assert.deepEqual((await repo.soalanMenunggu(s1.id, p1.id)).map((q) => q.teks), ['Soalan A']);
+  assert.deepEqual(await repo.soalanAwam(s1.id), []);
+  assert.equal(await repo.bilSoalanBelumJawab(), 3);
+  assert.equal(await repo.bilSoalanBelumJawab('gq@x.my'), 2); // hanya course milik guru
+  assert.deepEqual((await repo.soalanPanel({ guruEmel: 'gq@x.my' })).map((q) => q.teks), ['Soalan A', 'Soalan B']);
+  assert.equal((await repo.soalanPanel({}))[0].emel_penanya, 'q1@x.my');
+  await repo.jawabSoalan(a.id, 'Jawapan A', 'Ustaz Q', 'T1');
+  await repo.jawabSoalan(a.id, 'Jawapan A disunting', 'Ustaz Q', 'T2'); // tarikh dijawab pertama kekal
+  const awam = await repo.soalanAwam(s1.id);
+  assert.deepEqual(awam.map((q) => [q.teks, q.jawapan, q.dijawab_pada, q.nama_penanya]), [['Soalan A', 'Jawapan A disunting', 'T1', 'Aminah Ali']]);
+  assert.equal(await repo.bilSoalanAwam(s1.id), 1);
+  await repo.sorokSoalan(a.id, true);
+  assert.equal(await repo.bilSoalanAwam(s1.id), 0);
+  assert.equal((await repo.soalanPanel({ status: 'dijawab' })).length, 1); // panel masih melihat yang disorok
+  await repo.sorokSoalan(a.id, false);
+  assert.equal(await repo.bilSoalanSejak(p1.id, '2026-11-07T00:00:00.000Z'), 2);
+  assert.equal(await repo.bilSoalanSejak(p1.id, '2026-11-07T02:00:00.000Z'), 1);
+  await assert.rejects(repo.ciptaSoalan(987654, p1.id, 'x', 't')); // kunci asing subject
+  await repo.padamSoalan(b.id);
+  assert.equal(await repo.soalanDariId(b.id), null);
+  await repo.padamSubject(s1.id); // soalan dipadam dalam batch yang sama
+  assert.equal(await repo.soalanDariId(a.id), null);
 });

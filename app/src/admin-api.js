@@ -10,6 +10,7 @@ import { perananPenuh } from './lib/peranan.js';
 import { sahkanCourse, sahkanSubject, buatSlug } from './lib/kandungan.js';
 import { sahkanArtikel, slugArtikel, MAKS_ISI } from './lib/artikel.js';
 import { MAKS_LOGO, sahkanTetapan, gabungTetapan, jenisGambar, urlLogo, LALAI } from './lib/tetapan.js';
+import { sahkanJawapan } from './lib/soalan.js';
 import { MAKS_SAIZ, MAKS_SETIAP_SUBJECT, namaNota, adaPdf, kunciBaru } from './lib/nota.js';
 
 const MAKS_BADAN = 50_000;
@@ -52,7 +53,7 @@ export async function adminApi(req, env, url, repo, now) {
   const [sumber, idMentah, anak] = bahagian;
   const id = idDari(idMentah);
 
-  if (!admin && !['course', 'subject', 'nota', 'saya'].includes(sumber)) return json({ ralat: 'tidak-dibenarkan' }, 403);
+  if (!admin && !['course', 'subject', 'nota', 'saya', 'soalan'].includes(sumber)) return json({ ralat: 'tidak-dibenarkan' }, 403);
 
   // Nama guru untuk paparan (emel -> nama).
   const petaGuru = async () => { try { return new Map((await repo.senaraiGuru()).map((g) => [g.emel, g.nama])); } catch { return new Map(); } };
@@ -66,6 +67,37 @@ export async function adminApi(req, env, url, repo, now) {
   };
 
   if (sumber === 'saya' && req.method === 'GET') return json({ emel: saya, peranan });
+
+  // ---------------- soal jawab (admin dan guru pemilik course) ----------------
+  if (sumber === 'soalan') {
+    const guruEmel = admin ? null : saya;
+    if (bahagian.length === 1 && req.method === 'GET') {
+      const st = url.searchParams.get('status');
+      const status = ['menunggu', 'dijawab', 'semua'].includes(st) ? st : 'menunggu';
+      const baris = (await repo.soalanPanel({ guruEmel, status })).map(({ emel_penanya, ...q }) => ({ ...q, ...(admin ? { emel_penanya } : {}) }));
+      return json({ bil_menunggu: await repo.bilSoalanBelumJawab(guruEmel), soalan: baris });
+    }
+    if (!id) return json({ ralat: 'id-tidak-sah' }, 400);
+    const q = await repo.soalanDariId(id);
+    if (!q || !(await subjectSaya(q.subject_id))) return json({ ralat: 'tidak-dijumpai' }, 404);
+    if (bahagian.length === 2 && req.method === 'PUT') {
+      const b = await bacaJson(req); if (b.gagal) return b.gagal;
+      const v = sahkanJawapan(b.nilai?.jawapan); if (!v.ok) return json({ ralat: v.sebab, medan: 'jawapan' }, 400);
+      let penjawab = 'Admin';
+      if (!admin || (await repo.guruDariEmel(saya).catch(() => null))) penjawab = (await repo.guruDariEmel(saya).catch(() => null))?.nama || 'Guru';
+      await repo.jawabSoalan(id, v.nilai, penjawab, masa);
+      return json({ ok: true, penjawab });
+    }
+    // Menyorok dan memadam: admin sahaja (moderasi).
+    if (!admin) return json({ ralat: 'tidak-dibenarkan' }, 403);
+    if (bahagian.length === 3 && anak === 'sorok' && req.method === 'POST') {
+      const b = await bacaJson(req); if (b.gagal) return b.gagal;
+      await repo.sorokSoalan(id, !!b.nilai?.tersembunyi);
+      return json({ ok: true, tersembunyi: !!b.nilai?.tersembunyi });
+    }
+    if (bahagian.length === 2 && req.method === 'DELETE') { await repo.padamSoalan(id); return json({ ok: true }); }
+    return json({ ralat: 'kaedah-tidak-disokong' }, 405);
+  }
 
   // ---------------- guru (admin) ----------------
   if (sumber === 'guru') {

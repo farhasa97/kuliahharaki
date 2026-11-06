@@ -114,6 +114,26 @@ ALTER TABLE artikel ADD COLUMN gambar_alt TEXT NOT NULL DEFAULT '';
 - **Gambar dalam isi**: butang **Masukkan gambar** di atas kotak isi; gambar dimuat naik dan disisip di kedudukan kursor.
 - Semua gambar dikecilkan dalam pelayar sebelum dimuat naik (lebar maksimum 1600px, WEBP atau JPEG, had 2 MB), disimpan dalam R2 di `media/` dan dihidang di `/media/<nama>`. Hanya PNG, JPEG, WEBP diterima (bukan SVG).
 
+### A1h. Soal jawab (07/11/2026)
+Jalankan dalam Console D1 `kuliahharaki`, satu pernyataan setiap kali. Selagi belum dijalankan, tab Soal jawab kosong dan soalan tidak boleh dihantar (halaman kuliah tetap berfungsi):
+
+```sql
+CREATE TABLE soalan ( id INTEGER PRIMARY KEY AUTOINCREMENT, subject_id INTEGER NOT NULL REFERENCES subject(id), pengguna_id INTEGER NOT NULL REFERENCES pengguna(id), teks TEXT NOT NULL, dicipta_pada TEXT NOT NULL, jawapan TEXT, penjawab_nama TEXT, dijawab_pada TEXT, tersembunyi INTEGER NOT NULL DEFAULT 0 );
+```
+```sql
+CREATE INDEX soalan_subject ON soalan(subject_id, dijawab_pada);
+```
+```sql
+CREATE INDEX soalan_pengguna ON soalan(pengguna_id, dicipta_pada);
+```
+
+Cara kerja:
+- **Pelajar** (log masuk, layak menonton kuliah itu) menghantar soalan di tab **Soal jawab**. Maksimum 5 soalan sehari (waktu Malaysia), 5 hingga 1000 aksara. Penanya boleh menarik balik soalan yang belum dijawab.
+- **Soalan hanya kelihatan kepada pelajar lain selepas dijawab.** Penanya nampak soalannya sendiri dengan status "Menunggu jawapan". Pelajar lain hanya nampak nama pertama penanya, tidak pernah emel. Pelawat boleh membaca soal jawab pada kuliah percuma tetapi tidak boleh bertanya.
+- **Guru** menjawab di panel, **Soal jawab** (lencana merah menunjukkan bilangan belum dijawab): hanya soalan pada course miliknya. Jawapan **terus dipaparkan** tanpa kelulusan admin dan boleh disunting kemudian.
+- **Admin** melihat semua soalan (termasuk emel penanya untuk moderasi), boleh menjawab, **menyorok** jawapan daripada pelajar, atau memadam. Guru tidak boleh menyorok atau memadam.
+- **Tiada notifikasi emel.** Guru perlu membuka panel untuk melihat soalan baharu, dan pelajar perlu membuka kuliah untuk melihat jawapan. Emel boleh ditambah kemudian (contoh Resend).
+
 ### A2. Worker dari GitHub
 Workers & Pages, Create, import repository `farhasa97/kuliahharaki`:
 - Project name: `kuliahharaki` (mesti sama dengan `name` dalam `app/wrangler.toml`)

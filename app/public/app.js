@@ -649,6 +649,44 @@ const IKON_PDF = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" st
 const saizTeks = (b) => (b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB');
 
 // Senarai nama hanya diberi pelayan kepada yang layak dan sudah log masuk; selain itu hanya bilangan.
+// ---------- soal jawab ----------
+const RALAT_SOALAN = {
+  'soalan-terlalu-pendek': 'Soalan terlalu pendek. Tulis sekurang-kurangnya 5 aksara.',
+  'soalan-terlalu-panjang': 'Soalan terlalu panjang. Maksimum 1000 aksara.',
+  'belum-log-masuk': 'Sila log masuk untuk bertanya.',
+  'tiada-akses': 'Soal jawab ini untuk pelanggan yang layak menonton kuliah ini.',
+  'asal-tidak-dibenarkan': 'Permintaan ditolak. Muat semula halaman dan cuba lagi.',
+};
+const itemSoalan = (q) => `<article class="qa-item"><div class="qa-q"><div class="qa-kepala"><b>${h(q.nama)}</b><small>${tarikhMy(q.dicipta_pada)}</small></div><p>${h(q.teks)}</p></div>
+  <div class="qa-a"><div class="qa-kepala"><span class="badge free">${h(q.penjawab || 'Guru')}</span><small>${tarikhMy(q.dijawab_pada)}</small></div><p>${h(q.jawapan)}</p></div></article>`;
+
+// Tab soal jawab. Pelajar lain hanya nampak soalan yang sudah dijawab; penanya nampak soalannya sendiri yang menunggu jawapan.
+function paparSoalan(d) {
+  const sj = d.soalan, id = d.subject.id;
+  if (!d.subject.boleh_tonton) return `<p class="kosong-nota">${sj.bil ? `${sj.bil} soalan telah dijawab pada kuliah ini. ` : ''}Soal jawab untuk pelanggan Advance.</p>`;
+  const borang = d.log_masuk
+    ? `<div class="qa-borang" data-soalan-borang data-id="${id}"><label for="teksSoalan">Tanya guru tentang kuliah ini</label>
+        <textarea id="teksSoalan" maxlength="1000" rows="4" placeholder="Tulis soalan anda di sini..."></textarea>
+        <div class="qa-bawah"><small id="kiraSoalan">0 / 1000</small><button type="button" class="btn primary sm" data-act="hantar-soalan">Hantar soalan</button></div>
+        <p class="qa-nota">Soalan anda dipaparkan kepada pelajar lain selepas dijawab. Maksimum ${sj.had || 5} soalan sehari.</p><div class="qa-ralat" role="alert" hidden></div></div>`
+    : '<p class="kosong-nota"><a href="#/masuk">Log masuk</a> untuk bertanya kepada guru.</p>';
+  const menunggu = sj.menunggu.length ? `<h4 class="qa-tajuk">Soalan anda, menunggu jawapan</h4>${sj.menunggu.map((q) => `<div class="qa-menunggu"><p>${h(q.teks)}</p>
+      <div class="qa-kepala"><small>${tarikhMy(q.dicipta_pada)} · Menunggu jawapan</small><button type="button" class="btn sm ghost" data-act="padam-soalan" data-id="${q.id}">Tarik balik</button></div></div>`).join('')}` : '';
+  const awam = sj.awam.length ? `<h4 class="qa-tajuk">Soal jawab (${sj.awam.length})</h4>${sj.awam.map(itemSoalan).join('')}`
+    : (sj.menunggu.length ? '' : '<p class="kosong-nota">Belum ada soal jawab untuk kuliah ini. Jadilah yang pertama bertanya.</p>');
+  return borang + menunggu + awam;
+}
+const labelTabSoalan = (d) => `Soal jawab${d.soalan.bil ? ` (${d.soalan.bil})` : ''}`;
+
+// Muat semula tab soal jawab sahaja (video tidak terganggu).
+async function segarSoalan(id) {
+  const d = await dapat('/api/subject/' + encodeURIComponent(id));
+  const pane = akar.querySelector('[data-pane=soalan]');
+  if (!pane) return;
+  pane.innerHTML = paparSoalan(d);
+  const tab = akar.querySelector('[data-tab=soalan]'); if (tab) tab.textContent = labelTabSoalan(d);
+}
+
 function paparNota(d, s) {
   if (d.nota.length) return `<div class="nota-senarai">${d.nota.map((n) => `<a class="nota-row" href="/api/nota/${n.id}" target="_blank" rel="noopener">
       <span class="nota-ikon">${IKON_PDF}</span><span class="nota-nama">${h(n.nama)}<small>${saizTeks(n.saiz)} · PDF</small></span><span class="nota-buka">Buka</span></a>`).join('')}</div>`;
@@ -689,10 +727,12 @@ async function halamanSubject(id) {
           <div class="panel-head"><div class="panel-tabs" role="tablist" aria-label="Bahan kuliah">
             <button role="tab" aria-selected="true" data-act="tab" data-tab="huraian">Huraian kuliah</button>
             ${d.bil_nota ? `<button role="tab" aria-selected="false" data-act="tab" data-tab="nota">Nota PDF (${d.bil_nota})</button>` : ''}
+            <button role="tab" aria-selected="false" data-act="tab" data-tab="soalan">${labelTabSoalan(d)}</button>
           </div></div>
           <div class="panel-body">
             <div class="notes" data-pane="huraian">${s.huraian ? `<p>${h(s.huraian)}</p>` : '<p class="kosong-nota">Tiada huraian untuk kuliah ini.</p>'}</div>
             ${d.bil_nota ? `<div class="notes" data-pane="nota" hidden>${paparNota(d, s)}</div>` : ''}
+            <div class="notes" data-pane="soalan" hidden>${paparSoalan(d)}</div>
           </div>
         </div>
         <div class="navigasi">
@@ -783,6 +823,20 @@ const TINDAKAN = {
     setTimeout(() => m.querySelector('.skrin-tutup')?.focus({ preventScroll: true }), 60);
   },
   'menu-tutup'() { tutupMenu(); },
+  async 'hantar-soalan'(el) {
+    const kotak = el.closest('[data-soalan-borang]'), ralat = kotak.querySelector('.qa-ralat'), teks = kotak.querySelector('textarea').value;
+    ralat.hidden = true;
+    const r = await fetch(`/api/subject/${kotak.dataset.id}/soalan`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ teks }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { ralat.textContent = j.ralat === 'had-harian' ? `Anda sudah menghantar ${j.had || 5} soalan hari ini. Cuba lagi esok.` : (RALAT_SOALAN[j.ralat] || 'Soalan tidak dapat dihantar. Cuba lagi.'); ralat.hidden = false; return; }
+    await segarSoalan(kotak.dataset.id);
+    akar.querySelector('.qa-menunggu')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  },
+  async 'padam-soalan'(el) {
+    if (!confirm('Tarik balik soalan ini?')) return;
+    const r = await fetch(`/api/soalan/${el.dataset.id}`, { method: 'DELETE' });
+    if (r.ok || r.status === 404 || r.status === 409) await segarSoalan(location.hash.split('/')[2]);
+  },
   pasang() { return pasangApp(); },
   gulung(el) {
     tutupMenu();
@@ -800,6 +854,11 @@ const TINDAKAN = {
     document.getElementById('notaPlan').textContent = tahun ? 'Bayar setahun sekali, jimat 2 bulan.' : 'Bayar bulanan. Tiada potongan automatik.';
   },
 };
+
+document.addEventListener('input', (e) => {
+  if (e.target.id !== 'teksSoalan') return;
+  const k = document.getElementById('kiraSoalan'); if (k) k.textContent = `${e.target.value.length} / 1000`;
+});
 
 document.addEventListener('click', async (e) => {
   const pergi = e.target.closest('[data-pergi]');

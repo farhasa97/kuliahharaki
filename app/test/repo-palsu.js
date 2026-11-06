@@ -2,7 +2,7 @@
 export function repoPalsu() {
   const bayaran = new Map(), langganan = new Map(), pengguna = new Map(), sesi = new Map();
   const pesanan = new Map(), itemPesanan = new Map(), akses = new Map();
-  const courses = new Map(), subjects = new Map(), progress = new Map(), notas = new Map(), tetapan = new Map(), artikel = new Map(), gurus = new Map(), semakan = new Map(); let idC = 1, idS = 1, idN = 1, idA = 1, idK = 1;
+  const courses = new Map(), subjects = new Map(), progress = new Map(), notas = new Map(), tetapan = new Map(), artikel = new Map(), gurus = new Map(), semakan = new Map(), soalan = new Map(); let idC = 1, idS = 1, idN = 1, idA = 1, idK = 1, idQ = 1;
   let idSeterusnya = 1;
   return {
     _bayaran: bayaran, _langganan: langganan, _pengguna: pengguna, _sesi: sesi, _pesanan: pesanan, _akses: akses, _course: courses, _subject: subjects, _progress: progress,
@@ -107,6 +107,7 @@ export function repoPalsu() {
       subjects.delete(id); for (const k of [...progress.keys()]) if (k.endsWith('|' + id)) progress.delete(k);
       for (const [k, n] of notas) if (n.subject_id === id) notas.delete(k);
       for (const [k, s] of semakan) if (s.jenis === 'subject' && s.sasaran_id === id) semakan.delete(k);
+      for (const [k, q] of soalan) if (q.subject_id === id) soalan.delete(k);
     },
     async senaraiArtikel({ termasukDraf = false } = {}) {
       return [...artikel.values()].filter((a) => termasukDraf || a.status === 'terbit').map(({ isi, ...r }) => r)
@@ -126,6 +127,27 @@ export function repoPalsu() {
       a.dikemas_kini_pada = masa; return a;
     },
     async padamArtikel(id) { artikel.delete(id); },
+    async soalanAwam(sid) {
+      return [...soalan.values()].filter((q) => q.subject_id === sid && q.jawapan != null && !q.tersembunyi)
+        .sort((a, b) => String(b.dijawab_pada).localeCompare(String(a.dijawab_pada)) || b.id - a.id)
+        .map((q) => ({ id: q.id, teks: q.teks, dicipta_pada: q.dicipta_pada, jawapan: q.jawapan, penjawab_nama: q.penjawab_nama, dijawab_pada: q.dijawab_pada, nama_penanya: [...pengguna.values()].find((p) => p.id === q.pengguna_id)?.nama }));
+    },
+    async soalanMenunggu(sid, pid) { return [...soalan.values()].filter((q) => q.subject_id === sid && q.pengguna_id === pid && q.jawapan == null).sort((a, b) => b.id - a.id).map(({ id, teks, dicipta_pada }) => ({ id, teks, dicipta_pada })); },
+    async bilSoalanAwam(sid) { return [...soalan.values()].filter((q) => q.subject_id === sid && q.jawapan != null && !q.tersembunyi).length; },
+    async ciptaSoalan(sid, pid, teks, masa) { const q = { id: idQ++, subject_id: sid, pengguna_id: pid, teks, dicipta_pada: masa, jawapan: null, penjawab_nama: null, dijawab_pada: null, tersembunyi: 0 }; soalan.set(q.id, q); return q; },
+    async bilSoalanSejak(pid, mula) { return [...soalan.values()].filter((q) => q.pengguna_id === pid && q.dicipta_pada >= mula).length; },
+    async soalanDariId(id) { return soalan.get(id) ?? null; },
+    async padamSoalan(id) { soalan.delete(id); },
+    async jawabSoalan(id, jawapan, penjawab, masa) { const q = soalan.get(id); q.jawapan = jawapan; q.penjawab_nama = penjawab; q.dijawab_pada = q.dijawab_pada ?? masa; },
+    async sorokSoalan(id, sorok) { soalan.get(id).tersembunyi = sorok ? 1 : 0; },
+    async soalanPanel({ guruEmel = null, status = 'menunggu' } = {}) {
+      return [...soalan.values()].map((q) => { const s = subjects.get(q.subject_id), c = courses.get(s.course_id), p = [...pengguna.values()].find((x) => x.id === q.pengguna_id);
+        return { id: q.id, teks: q.teks, dicipta_pada: q.dicipta_pada, jawapan: q.jawapan, penjawab_nama: q.penjawab_nama, dijawab_pada: q.dijawab_pada, tersembunyi: q.tersembunyi,
+          subject_id: s.id, subject_tajuk: s.tajuk, course_id: c.id, course_tajuk: c.tajuk, nama_penanya: p?.nama, emel_penanya: p?.emel, _guru: c.guru_emel ?? null }; })
+        .filter((r) => (!guruEmel || r._guru === guruEmel) && (status === 'semua' || (status === 'menunggu' ? r.jawapan == null : r.jawapan != null)))
+        .map(({ _guru, ...r }) => r).sort((a, b) => (status === 'dijawab' ? String(b.dijawab_pada).localeCompare(String(a.dijawab_pada)) : a.id - b.id));
+    },
+    async bilSoalanBelumJawab(guruEmel = null) { return (await this.soalanPanel({ guruEmel, status: 'menunggu' })).length; },
     async bilPeserta(kecuali = []) {
       const k = new Set(kecuali.map((e) => e.toLowerCase()));
       return [...pengguna.values()].filter((p) => !k.has(p.emel.toLowerCase()) && !gurus.has(p.emel.toLowerCase())).length;

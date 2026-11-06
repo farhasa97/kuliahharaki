@@ -378,6 +378,106 @@ try {
     await page.waitForFunction(() => !document.body.textContent.includes('Ustazah Baru'));
   });
 
+  // ---- soal jawab ----
+  const YT_RINGKAS = "window.YT={PlayerState:{ENDED:0},Player:function(){this.destroy=function(){}}};setTimeout(function(){window.onYouTubeIframeAPIReady&&window.onYouTubeIframeAPIReady()},0);";
+  const bukaSesi = async (token, saiz = { width: 390, height: 844 }) => {
+    const c = await pelayar.newContext({ viewport: saiz, serviceWorkers: 'block' });
+    if (token) await c.addCookies([{ name: 'kh_sesi', value: token, domain: 'localhost', path: '/', httpOnly: true, secure: false, sameSite: 'Lax' }]);
+    await c.route('**/*', (r) => {
+      const u = r.request().url();
+      if (u.startsWith(B)) return r.continue();
+      if (u === 'https://www.youtube.com/iframe_api') return r.fulfill({ contentType: 'text/javascript', body: YT_RINGKAS });
+      return r.abort();
+    });
+    const pg = await c.newPage(); pg.setDefaultTimeout(10_000);
+    pg.on('pageerror', (e) => ralatHalaman.push('soalan: ' + e.message));
+    pg.on('dialog', (d) => { if (d.type() === 'confirm') d.accept(); else { amaranXss.push(d.message()); d.dismiss(); } });
+    return { c, pg };
+  };
+  let sidSoalan;
+
+  await langkah('soal jawab: pelajar bertanya (HTML kekal teks), pelajar lain tidak nampak; guru menjawab di panel dan lencana hilang', async () => {
+    const awamCtx = await pelayar.newContext({ serviceWorkers: 'block' });
+    sidSoalan = (await (await awamCtx.request.get(B + '/api/course/sirah-guru')).json()).subject[0].id;
+    await awamCtx.close();
+    const { c, pg } = await bukaSesi(tokenPelajar);
+    await pg.goto(`${B}/#/subject/${sidSoalan}`);
+    await pg.getByRole('tab', { name: /Soal jawab/ }).click();
+    await pg.getByText('Belum ada soal jawab untuk kuliah ini').waitFor();
+    await pg.fill('#teksSoalan', 'x');
+    await pg.getByRole('button', { name: 'Hantar soalan' }).click();
+    await pg.getByText('terlalu pendek').waitFor(); // pengesahan di pelayan
+    await pg.fill('#teksSoalan', '<img src=x onerror=alert(1)> Apakah adab ketika bertanya kepada guru?');
+    await pg.getByRole('button', { name: 'Hantar soalan' }).click();
+    await pg.locator('.qa-menunggu', { hasText: 'Menunggu jawapan' }).waitFor();
+    assert.equal(await pg.locator('.qa-menunggu img').count(), 0); // di-escape
+    await pg.locator('.qa-menunggu p').getByText('Apakah adab ketika bertanya', { exact: false }).waitFor();
+    assert.deepEqual(amaranXss, []);
+    await skrinHalaman(pg, '10-soalan-pelajar');
+    // pelawat tidak nampak soalan yang belum dijawab dan tidak boleh bertanya
+    const v = await bukaSesi(null);
+    await v.pg.goto(`${B}/#/subject/${sidSoalan}`);
+    await v.pg.getByRole('tab', { name: /Soal jawab/ }).click();
+    await v.pg.getByText('Belum ada soal jawab untuk kuliah ini').waitFor();
+    assert.equal(await v.pg.locator('#teksSoalan').count(), 0);
+    await v.pg.getByRole('link', { name: 'Log masuk' }).first().waitFor();
+    await v.c.close();
+    // guru: lencana, jawab
+    const g = await bukaSesi(tokenGuru, { width: 1280, height: 800 });
+    await g.pg.goto(B + '/panel/#/');
+    await g.pg.locator('#menuPanel a[data-menu=soalan] .bil-pil').waitFor({ state: 'visible' });
+    assert.equal((await g.pg.locator('#bilSoalan').textContent()).trim(), '1');
+    await g.pg.locator('#menuPanel a[data-menu=soalan]').click();
+    const kad = g.pg.locator('.soalan-kad', { hasText: 'Apakah adab ketika bertanya' });
+    await kad.waitFor();
+    assert.equal(await kad.getByText('pelajar-e2e@contoh.my').count(), 0); // guru tidak nampak emel pelajar
+    await kad.locator('textarea').fill('Bertanyalah dengan sopan dan ikhlas.');
+    await kad.getByRole('button', { name: 'Hantar jawapan' }).click();
+    await g.pg.getByText('Tiada soalan menunggu jawapan').waitFor();
+    await g.pg.locator('#bilSoalan').waitFor({ state: 'hidden' });
+    await skrinHalaman(g.pg, '11-soalan-guru');
+    await g.c.close(); await c.close();
+  });
+
+  await langkah('soal jawab: jawapan tersiar kepada pelajar dan pelawat; admin nampak emel, boleh menyorok dan memadam', async () => {
+    const lihat = async (token) => {
+      const k = await bukaSesi(token);
+      await k.pg.goto(`${B}/#/subject/${sidSoalan}`);
+      await k.pg.getByRole('tab', { name: /Soal jawab/ }).click();
+      return k;
+    };
+    const p1 = await lihat(tokenPelajar);
+    const item = p1.pg.locator('.qa-item');
+    await item.waitFor();
+    assert.equal(await item.locator('.qa-q b').textContent(), 'Pelajar'); // nama pertama sahaja
+    await item.getByText('Bertanyalah dengan sopan dan ikhlas.').waitFor();
+    await item.locator('.badge', { hasText: 'Ustaz Guru' }).waitFor();
+    assert.equal(await p1.pg.locator('.qa-menunggu').count(), 0);
+    assert.equal(await p1.pg.getByRole('tab', { name: 'Soal jawab (1)' }).count(), 1);
+    await skrinHalaman(p1.pg, '12-soalan-dijawab');
+    const v = await lihat(null);
+    await v.pg.locator('.qa-item').waitFor(); // pelawat boleh membaca pada kuliah percuma
+    assert.ok(!(await v.pg.content()).includes('pelajar-e2e@contoh.my'));
+    // admin
+    await page.goto(B + '/panel/#/soalan/dijawab');
+    const kad = page.locator('.soalan-kad', { hasText: 'Apakah adab ketika bertanya' });
+    await kad.waitFor();
+    await kad.getByText('pelajar-e2e@contoh.my', { exact: false }).waitFor();
+    await kad.getByRole('button', { name: 'Sorok daripada pelajar' }).click();
+    await page.locator('.soalan-kad', { hasText: 'Disorok' }).waitFor();
+    await v.pg.reload(); await v.pg.getByRole('tab', { name: /Soal jawab/ }).click();
+    await v.pg.getByText('Belum ada soal jawab untuk kuliah ini').waitFor();
+    await page.getByRole('button', { name: 'Tunjuk semula' }).click();
+    await page.locator('.soalan-kad', { hasText: 'Sorok daripada pelajar' }).waitFor();
+    await v.pg.reload(); await v.pg.getByRole('tab', { name: /Soal jawab/ }).click();
+    await v.pg.locator('.qa-item').waitFor();
+    await page.getByRole('button', { name: 'Padam' }).click();
+    await page.getByText('Belum ada soalan yang dijawab').waitFor();
+    await v.pg.reload(); await v.pg.getByRole('tab', { name: /Soal jawab/ }).click();
+    await v.pg.getByText('Belum ada soal jawab untuk kuliah ini').waitFor();
+    await p1.c.close(); await v.c.close();
+  });
+
   await langkah('tiada ralat JavaScript sepanjang sesi admin', async () => {
     assert.deepEqual(ralatHalaman, []);
   });

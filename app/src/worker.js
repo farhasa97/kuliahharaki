@@ -130,7 +130,7 @@ export async function handle(req, env, opts = {}) {
     return new Response(obj.body, { headers: { 'content-type': g.logoJenis || 'image/png', 'cache-control': 'public, max-age=3600', 'x-content-type-options': 'nosniff' } });
   }
 
-  if (p.startsWith('/api/course') || p.startsWith('/api/subject') || p.startsWith('/api/nota')) return pelajarApi(req, env, url, repo, now);
+  if (p.startsWith('/api/course') || p.startsWith('/api/subject') || p.startsWith('/api/nota') || p.startsWith('/api/soalan')) return pelajarApi(req, env, url, repo, now);
 
   if (p === '/auth/google' && req.method === 'POST') {
     // JSON sahaja: borang silang laman tidak boleh menghantar application/json tanpa CORS

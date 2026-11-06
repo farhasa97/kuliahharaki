@@ -118,6 +118,7 @@ export function repoD1(db) {
       db.prepare('DELETE FROM progress WHERE subject_id = ?').bind(id),
       db.prepare('DELETE FROM nota WHERE subject_id = ?').bind(id),
       db.prepare(`DELETE FROM semakan WHERE jenis = 'subject' AND sasaran_id = ?`).bind(id),
+      db.prepare('DELETE FROM soalan WHERE subject_id = ?').bind(id),
       db.prepare('DELETE FROM subject WHERE id = ?').bind(id),
     ]),
 
@@ -170,6 +171,45 @@ export function repoD1(db) {
       return satu('SELECT * FROM artikel WHERE id = ?', id);
     },
     padamArtikel: (id) => jalan('DELETE FROM artikel WHERE id = ?', id),
+
+    // ---- soal jawab ----
+    async soalanAwam(subjectId) {
+      return (await db.prepare(`SELECT q.id, q.teks, q.dicipta_pada, q.jawapan, q.penjawab_nama, q.dijawab_pada, p.nama AS nama_penanya
+        FROM soalan q JOIN pengguna p ON p.id = q.pengguna_id
+        WHERE q.subject_id = ? AND q.jawapan IS NOT NULL AND q.tersembunyi = 0 ORDER BY q.dijawab_pada DESC, q.id DESC LIMIT 100`).bind(subjectId).all()).results;
+    },
+    async soalanMenunggu(subjectId, penggunaId) {
+      return (await db.prepare('SELECT id, teks, dicipta_pada FROM soalan WHERE subject_id = ? AND pengguna_id = ? AND jawapan IS NULL ORDER BY id DESC').bind(subjectId, penggunaId).all()).results;
+    },
+    async bilSoalanAwam(subjectId) {
+      return (await satu('SELECT COUNT(*) AS c FROM soalan WHERE subject_id = ? AND jawapan IS NOT NULL AND tersembunyi = 0', subjectId)).c;
+    },
+    async ciptaSoalan(subjectId, penggunaId, teks, masa) {
+      const r = await jalan('INSERT INTO soalan (subject_id, pengguna_id, teks, dicipta_pada) VALUES (?, ?, ?, ?)', subjectId, penggunaId, teks, masa);
+      return satu('SELECT * FROM soalan WHERE id = ?', r.meta.last_row_id);
+    },
+    async bilSoalanSejak(penggunaId, mulaIso) {
+      return (await satu('SELECT COUNT(*) AS c FROM soalan WHERE pengguna_id = ? AND dicipta_pada >= ?', penggunaId, mulaIso)).c;
+    },
+    soalanDariId: (id) => satu('SELECT * FROM soalan WHERE id = ?', id),
+    padamSoalan: (id) => jalan('DELETE FROM soalan WHERE id = ?', id),
+    jawabSoalan: (id, jawapan, penjawab, masa) => jalan('UPDATE soalan SET jawapan = ?, penjawab_nama = ?, dijawab_pada = COALESCE(dijawab_pada, ?) WHERE id = ?', jawapan, penjawab, masa, id),
+    sorokSoalan: (id, sorok) => jalan('UPDATE soalan SET tersembunyi = ? WHERE id = ?', sorok ? 1 : 0, id),
+    // Untuk panel: guruEmel = hanya course milik guru itu; null = semua (admin). status: 'menunggu' | 'dijawab' | 'semua'.
+    async soalanPanel({ guruEmel = null, status = 'menunggu' } = {}) {
+      const where = [guruEmel ? 'c.guru_emel = ?' : '1 = 1', status === 'menunggu' ? 'q.jawapan IS NULL' : status === 'dijawab' ? 'q.jawapan IS NOT NULL' : '1 = 1'].join(' AND ');
+      const sql = `SELECT q.id, q.teks, q.dicipta_pada, q.jawapan, q.penjawab_nama, q.dijawab_pada, q.tersembunyi, q.subject_id, s.tajuk AS subject_tajuk, s.course_id,
+          c.tajuk AS course_tajuk, p.nama AS nama_penanya, p.emel AS emel_penanya
+        FROM soalan q JOIN subject s ON s.id = q.subject_id JOIN course c ON c.id = s.course_id JOIN pengguna p ON p.id = q.pengguna_id
+        WHERE ${where} ORDER BY ${status === 'dijawab' ? 'q.dijawab_pada DESC' : 'q.id ASC'} LIMIT 200`;
+      const st = db.prepare(sql);
+      return (await (guruEmel ? st.bind(guruEmel) : st).all()).results;
+    },
+    async bilSoalanBelumJawab(guruEmel = null) {
+      const sql = `SELECT COUNT(*) AS c FROM soalan q JOIN subject s ON s.id = q.subject_id JOIN course c ON c.id = s.course_id WHERE q.jawapan IS NULL${guruEmel ? ' AND c.guru_emel = ?' : ''}`;
+      const st = db.prepare(sql);
+      return (await (guruEmel ? st.bind(guruEmel) : st).first()).c;
+    },
 
     // ---- statistik awam ----
     // Peserta berdaftar = semua pengguna kecuali admin (ADMIN_EMELS) dan guru. Hanya nombor, tiada data peribadi.

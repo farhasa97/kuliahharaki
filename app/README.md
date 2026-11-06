@@ -25,8 +25,10 @@ Worker Cloudflare dengan static assets dan D1. JavaScript biasa, tiada build ste
 | `src/artikel-halaman.js` | | Halaman awam artikel di pelayan: `/artikel`, `/artikel/<slug>`, `/sitemap.xml`, `/robots.txt` |
 | `src/lib/artikel.js` | | Pengesahan artikel, slug, kiraan perkataan, Markdown ringkas yang selamat (semua teks di-escape) |
 | `src/lib/tetapan.js` | | Tetapan laman: medan dan lalai, semakan gambar logo (PNG, JPEG, WEBP; bukan SVG) |
+| `src/lib/soalan.js` | | Soal jawab: pengesahan soalan dan jawapan, had sehari, nama pertama penanya |
+| `public/efek.js` | | Gerakan dikongsi: kesan masuk semasa skrol (kiri/kanan), header berkaca, butang naik dengan cincin kemajuan |
 | `src/lib/nota.js` | | Nota PDF: nama, had saiz, semakan `%PDF-`, kunci R2 rawak, Content-Disposition |
-| `migrations/` | | Skema D1 (`0001_skema.sql` teras, `0002_video.sql` beli satu video, DITANGGUH, `0003_kandungan.sql` course, subject, progress, `0004_nota.sql` metadata nota PDF, `0005_tetapan.sql` tetapan laman, `0006_artikel.sql` artikel, `0007_guru.sql` guru, semakan, status nota, `0008_artikel_gambar.sql` meta description dan gambar artikel) |
+| `migrations/` | | Skema D1 (`0001_skema.sql` teras, `0002_video.sql` beli satu video, DITANGGUH, `0003_kandungan.sql` course, subject, progress, `0004_nota.sql` metadata nota PDF, `0005_tetapan.sql` tetapan laman, `0006_artikel.sql` artikel, `0007_guru.sql` guru, semakan, status nota, `0008_artikel_gambar.sql` meta description dan gambar artikel, `0009_soalan.sql` soal jawab) |
 
 Ujian:
 

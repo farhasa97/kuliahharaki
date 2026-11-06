@@ -361,3 +361,30 @@ a.course:hover .thumb>div:first-child{transform:scale(1.07)}
 /* Prototaip: .hero-inner{padding:88px 0 96px} menimpa padding mendatar .wrap, jadi teks hero melekat ke tepi skrin. */
 .wrap.hero-inner{padding-left:24px;padding-right:24px}
 @media (max-width:700px){.wrap.hero-inner{padding-left:20px;padding-right:20px}}
+
+/* ---------- soal jawab (halaman kuliah) ---------- */
+.qa-borang{padding:4px 0 18px;border-bottom:1px solid var(--line);margin-bottom:18px}
+.qa-borang label{display:block;font-weight:600;font-size:14.5px;margin-bottom:8px}
+.qa-borang textarea{width:100%;min-height:104px;padding:12px 14px;border:1px solid var(--line-strong);border-radius:var(--r-md);font:inherit;font-size:15px;line-height:1.6;background:var(--surface);resize:vertical}
+.qa-borang textarea:focus{outline:3px solid var(--accent-soft);border-color:var(--accent)}
+.qa-bawah{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px}
+.qa-bawah small{color:var(--ink-3)}
+.qa-nota{font-size:13px;color:var(--ink-3);margin-top:10px}
+.qa-ralat{margin-top:10px;padding:10px 14px;border-radius:var(--r-md);background:var(--bad-soft);color:var(--bad);font-weight:600;font-size:14px}
+.qa-ralat[hidden]{display:none}
+.qa-tajuk{margin:22px 0 10px;font-size:15.5px}
+.qa-item{border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;margin-bottom:12px;background:var(--surface)}
+.qa-q,.qa-a{padding:14px 16px}
+.qa-a{background:var(--accent-soft);border-top:1px solid var(--line)}
+.qa-kepala{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:space-between}
+.qa-kepala small{color:var(--ink-3);font-size:12.5px}
+.qa-q p,.qa-a p,.qa-menunggu p{margin:8px 0 0;white-space:pre-line;overflow-wrap:anywhere;font-size:15px;line-height:1.65}
+.qa-menunggu{border:1px dashed var(--line-strong);border-radius:var(--r-lg);padding:14px 16px;margin-bottom:12px;background:var(--surface-2)}
+.qa-menunggu .qa-kepala{margin-top:10px}
+.p-admin .segmen{display:inline-flex;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-pill);padding:3px;gap:2px}
+.p-admin .segmen a{padding:7px 16px;border-radius:var(--r-pill);font-size:13.5px;font-weight:600;color:var(--ink-2);text-decoration:none}
+.p-admin .segmen a[aria-selected="true"]{background:var(--night-2);color:#fff}
+.p-admin .soalan-teks{white-space:pre-line;overflow-wrap:anywhere;font-size:15.5px;line-height:1.6;margin:10px 0 4px}
+.notes .qa-borang,.notes .qa-item,.notes .qa-menunggu,.notes .qa-nota,.notes .qa-tajuk{font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif}
+.notes .qa-item p,.notes .qa-menunggu p{color:var(--ink);max-width:none}
+.notes .qa-nota{max-width:none;line-height:1.5}

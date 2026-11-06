@@ -19,6 +19,7 @@ const IKON = {
   guru: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="6" cy="5.5" r="2.4" stroke="currentColor" stroke-width="1.5"/><path d="M1.8 13c.5-2 2.2-3.1 4.2-3.1s3.7 1.1 4.2 3.1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M10.6 3.4a2.3 2.3 0 0 1 0 4.3M12 9.9c1.2.4 2 1.4 2.3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
   artikel: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M9.5 2H4.2A1.2 1.2 0 0 0 3 3.2v9.6A1.2 1.2 0 0 0 4.2 14h7.6a1.2 1.2 0 0 0 1.2-1.2V5.5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M9.5 2v3.5H13M5.8 8.5h4.4M5.8 11h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
   tetapan: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="2.2" stroke="currentColor" stroke-width="1.5"/><path d="M8 1.8v1.6M8 12.6v1.6M14.2 8h-1.6M3.4 8H1.8M12.4 3.6l-1.1 1.1M4.7 11.3l-1.1 1.1M12.4 12.4l-1.1-1.1M4.7 4.7 3.6 3.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
+  soalan: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 3.5A1.5 1.5 0 0 1 4 2h8a1.5 1.5 0 0 1 1.5 1.5v6A1.5 1.5 0 0 1 12 11H7l-3 2.5V11A1.5 1.5 0 0 1 2.5 9.5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M5.5 5.5h5M5.5 7.8h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
   luar: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M9 3h4v4M13 3 7.5 8.5M11.5 9.5v3a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   keluar: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 2.5H3.5a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1H6M10.5 11l3-3-3-3M13.5 8H6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   orang: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="5.5" r="2.6" stroke="currentColor" stroke-width="1.5"/><path d="M3 13.2c.6-2.2 2.6-3.4 5-3.4s4.4 1.2 5 3.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
@@ -27,16 +28,21 @@ const IKON = {
 // Menu pil di header. Item aktif ditanda ikut bahagian pertama hash.
 function binaMenu() {
   const item = PERANAN === 'admin'
-    ? [['course', '#/', 'Course'], ['kelulusan', '#/kelulusan', 'Kelulusan'], ['guru', '#/guru', 'Guru'], ['artikel', '#/artikel', 'Artikel'], ['tetapan', '#/tetapan', 'Tetapan laman']]
-    : [['course', '#/', 'Course saya']];
-  menuPanel.innerHTML = item.map(([k, href, label]) => `<a href="${href}" data-menu="${k}">${IKON[k]}<span>${label}</span>${k === 'kelulusan' ? '<span class="bil-pil" id="bilKelulusan" hidden></span>' : ''}</a>`).join('')
+    ? [['course', '#/', 'Course'], ['kelulusan', '#/kelulusan', 'Kelulusan'], ['soalan', '#/soalan', 'Soal jawab'], ['guru', '#/guru', 'Guru'], ['artikel', '#/artikel', 'Artikel'], ['tetapan', '#/tetapan', 'Tetapan laman']]
+    : [['course', '#/', 'Course saya'], ['soalan', '#/soalan', 'Soal jawab']];
+  menuPanel.innerHTML = item.map(([k, href, label]) => `<a href="${href}" data-menu="${k}">${IKON[k]}<span>${label}</span>${k === 'kelulusan' ? '<span class="bil-pil" id="bilKelulusan" hidden></span>' : ''}${k === 'soalan' ? '<span class="bil-pil" id="bilSoalan" hidden></span>' : ''}</a>`).join('')
     + `<a href="/" data-menu="luar">${IKON.luar}<span>Laman pelajar</span></a>`;
   menuPanel.hidden = false;
 }
 function tandaMenu() {
   const bahagian = (location.hash || '#/').slice(2).split('/')[0];
-  const aktif = ['kelulusan', 'guru', 'artikel', 'tetapan'].includes(bahagian) ? bahagian : 'course';
+  const aktif = ['kelulusan', 'soalan', 'guru', 'artikel', 'tetapan'].includes(bahagian) ? bahagian : 'course';
   menuPanel.querySelectorAll('a[data-menu]').forEach((a) => { if (a.dataset.menu === aktif) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+}
+async function kemaskiniBilSoalan() {
+  const lencana = document.getElementById('bilSoalan');
+  if (!lencana) return;
+  try { const n = (await api('GET', 'soalan')).bil_menunggu; lencana.textContent = n; lencana.hidden = !n; } catch { lencana.hidden = true; }
 }
 async function kemaskiniBilKelulusan() {
   const lencana = document.getElementById('bilKelulusan');
@@ -71,6 +77,8 @@ const RALAT = {
   'isi-diperlukan': 'Isi artikel wajib diisi sebelum diterbitkan.',
   'isi-tidak-sah': 'Isi terlalu panjang.',
   'badan-terlalu-besar': 'Kandungan terlalu besar.',
+  'jawapan-kosong': 'Jawapan tidak boleh kosong.',
+  'jawapan-terlalu-panjang': 'Jawapan terlalu panjang. Maksimum 4000 aksara.',
   'gambar-terlalu-besar': 'Gambar terlalu besar walaupun selepas dikecilkan (maksimum 2 MB).',
   'meta-tidak-sah': 'Meta description maksimum 200 aksara.',
   'gambar-tidak-sah': 'Gambar tidak sah. Muat naik semula.',
@@ -283,6 +291,34 @@ async function halamanKelulusan() {
       </tbody></table>${butangKelulusan('perubahan', k.id)}</div>`)}
     ${bahagian('Nota PDF', q.nota, (n) => `<div class="kad"><b>${h(n.nama)}</b> <span class="kecil">${saizTeks(n.saiz)}</span>
       <div class="kecil">${h(n.course_tajuk)} · ${h(n.subject_tajuk)} · Guru: ${h(n.guru_nama || '-')} · <a href="/api/admin/nota/${n.id}" target="_blank" rel="noopener">Buka PDF</a></div>${butangKelulusan('nota', n.id)}</div>`)}`;
+}
+
+// ---------- soal jawab (admin dan guru) ----------
+
+async function halamanSoalan(status) {
+  const d = await api('GET', `soalan?status=${status}`);
+  const kad = (q) => `<div class="kad soalan-kad" data-soalan="${q.id}">
+    <div class="baris antara" style="margin:0"><div class="kecil"><b>${h(q.course_tajuk)}</b> · <a href="/#/subject/${q.subject_id}" target="_blank" rel="noopener">${h(q.subject_tajuk)}</a></div>
+      ${q.tersembunyi ? '<span class="lencana draf">Disorok</span>' : ''}</div>
+    <div class="kecil" style="margin-top:6px">${h(q.nama_penanya || 'Pelajar')}${ADMIN() && q.emel_penanya ? ` (${h(q.emel_penanya)})` : ''} · ${tarikhMy(q.dicipta_pada)}</div>
+    <p class="soalan-teks">${h(q.teks)}</p>
+    <label for="j-${q.id}">${q.jawapan ? 'Jawapan' + (q.penjawab_nama ? ` (${h(q.penjawab_nama)}, ${tarikhMy(q.dijawab_pada)})` : '') : 'Jawapan anda'}</label>
+    <textarea id="j-${q.id}" maxlength="4000" style="min-height:96px" placeholder="Tulis jawapan. Selepas dihantar, ia terus dipaparkan kepada pelajar.">${h(q.jawapan || '')}</textarea>
+    <div class="ralat" hidden></div>
+    <div class="tindakan" style="margin-top:12px">
+      <button type="button" data-act="jawab" data-id="${q.id}">${q.jawapan ? 'Kemas kini jawapan' : 'Hantar jawapan'}</button>
+      ${ADMIN() && q.jawapan ? `<button type="button" class="kedua" data-act="sorok-soalan" data-id="${q.id}" data-sorok="${q.tersembunyi ? '0' : '1'}">${q.tersembunyi ? 'Tunjuk semula' : 'Sorok daripada pelajar'}</button>` : ''}
+      ${ADMIN() ? `<button type="button" class="bahaya" data-act="padam-soalan" data-id="${q.id}">Padam</button>` : ''}
+    </div></div>`;
+  app.innerHTML = `
+    <p><a href="#/">&larr; Senarai course</a></p>
+    <div class="baris antara"><h1>Soal jawab</h1>
+      <div class="segmen" role="tablist" aria-label="Penapis soalan">
+        <a href="#/soalan" role="tab" aria-selected="${status === 'menunggu'}">Menunggu${d.bil_menunggu ? ` (${d.bil_menunggu})` : ''}</a>
+        <a href="#/soalan/dijawab" role="tab" aria-selected="${status === 'dijawab'}">Dijawab</a>
+      </div></div>
+    <p class="kecil">Soalan pelajar pada kuliah ${ADMIN() ? 'semua course' : 'course anda'}. Jawapan terus dipaparkan kepada pelajar; soalan yang belum dijawab tidak kelihatan kepada pelajar lain.</p>
+    ${d.soalan.length ? d.soalan.map(kad).join('') : `<div class="kad kosong">${status === 'menunggu' ? 'Tiada soalan menunggu jawapan.' : 'Belum ada soalan yang dijawab.'}</div>`}`;
 }
 
 // ---------- guru (admin) ----------
@@ -620,6 +656,19 @@ const TINDAKAN = {
     await api('DELETE', `artikel/${el.dataset.id}`);
     pergi('#/artikel');
   },
+  async jawab(el) {
+    const kad = el.closest('[data-soalan]'), ralat = kad.querySelector('.ralat');
+    ralat.hidden = true;
+    try { await api('PUT', `soalan/${el.dataset.id}`, { jawapan: kad.querySelector('textarea').value }); }
+    catch (e) { if (e.status === 401) return mula(); ralat.textContent = e.message; ralat.hidden = false; return; }
+    await laluan();
+  },
+  async 'sorok-soalan'(el) { await api('POST', `soalan/${el.dataset.id}/sorok`, { tersembunyi: el.dataset.sorok === '1' }); await laluan(); },
+  async 'padam-soalan'(el) {
+    if (!confirm('Padam soalan ini? Tindakan ini tidak boleh dibatalkan.')) return;
+    await api('DELETE', `soalan/${el.dataset.id}`);
+    await laluan();
+  },
   async lulus(el) {
     await api('POST', `kelulusan/${el.dataset.jenis}/${el.dataset.id}/lulus`);
     halamanKelulusan();
@@ -694,6 +743,7 @@ async function laluan() {
     if (!m.length) await senaraiCourse();
     else if (m[0] === 'tetapan') await borangTetapan();
     else if (m[0] === 'kelulusan') await halamanKelulusan();
+    else if (m[0] === 'soalan') await halamanSoalan(m[1] === 'dijawab' ? 'dijawab' : 'menunggu');
     else if (m[0] === 'guru') await halamanGuru();
     else if (m[0] === 'artikel' && !m[1]) await senaraiArtikel();
     else if (m[0] === 'artikel' && m[1] === 'baru') await borangArtikel(null);
@@ -708,6 +758,7 @@ async function laluan() {
   } catch (e) { paparRalat(e); }
   tandaMenu();
   kemaskiniBilKelulusan();
+  kemaskiniBilSoalan();
   // gerakan luncur setiap pertukaran skrin (gaya.css .halaman)
   app.classList.remove('halaman'); void app.offsetWidth; app.classList.add('halaman');
 }

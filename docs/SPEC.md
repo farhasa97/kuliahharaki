@@ -41,7 +41,7 @@ Platform pembelajaran untuk satu kuliah (single-tenant). Pelajar tonton video pe
 ## 4. Peranan
 
 - **Pelajar:** daftar, log masuk, tonton, tanda selesai, komen, langgan, muat turun sijil.
-- **Guru (ramai, dilaksanakan 07/11/2026):** cipta dan sunting course/subject sendiri, upload nota, tampal link YouTube. Semua penerbitan, perubahan pada kandungan terbit dan nota PDF perlu kelulusan admin (versi terbit kekal sehingga diluluskan). Guru nampak bilangan khatam setiap kuliah. Komen ditangguh. Admin ditetapkan melalui `ADMIN_EMELS`; guru melalui panel (jadual `guru`).
+- **Guru (ramai, dilaksanakan 07/11/2026):** cipta dan sunting course/subject sendiri, upload nota, tampal link YouTube. Semua penerbitan, perubahan pada kandungan terbit dan nota PDF perlu kelulusan admin (versi terbit kekal sehingga diluluskan). Guru nampak bilangan khatam setiap kuliah. Soal jawab dilaksanakan 07/11/2026 (pada setiap kuliah; soalan awam selepas dijawab; guru menjawab tanpa kelulusan; admin moderasi; tanpa emel notifikasi). Komen umum ditangguh. Admin ditetapkan melalui `ADMIN_EMELS`; guru melalui panel (jadual `guru`).
 - **Admin:** semua kuasa guru ke atas semua course (termasuk upload bagi pihak guru), urus pengguna dan langganan, ubah tetapan laman.
 
 ## 5. Skrin

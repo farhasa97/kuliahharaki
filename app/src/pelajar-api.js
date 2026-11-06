@@ -7,6 +7,7 @@ import { hariIni, status } from './lib/langganan.js';
 import { tangguhHari } from './lib/konfig.js';
 import { keputusanSubject, subjectRingkas, subjectPenuh } from './lib/pelajar.js';
 import { kepalaKandungan } from './lib/nota.js';
+import { sahkanSoalan, namaPertama, awalHari, HAD_SEHARI } from './lib/soalan.js';
 
 const idDari = (x) => { const n = Number(x); return Number.isInteger(n) && n > 0 ? n : null; };
 
@@ -65,8 +66,19 @@ export async function pelajarApi(req, env, url, repo, now) {
     // belum dicipta (migrasi 0004 belum dijalankan), halaman kuliah tetap berfungsi tanpa nota.
     let nota = [];
     try { nota = (await repo.senaraiNota(t.s.id)).map(({ id, nama, saiz }) => ({ id, nama, saiz })); } catch { /* jadual atau lajur belum wujud */ }
+    // Soal jawab: bilangan sentiasa diberi; senarai dijawab untuk sesiapa yang layak menonton (pelawat pada kuliah percuma boleh membaca);
+    // soalan menunggu hanya milik pengguna sendiri. Nama penanya hanya nama pertama. Jika jadual belum wujud: kosong.
+    let soalan = { bil: 0, awam: [], menunggu: [], had: HAD_SEHARI };
+    try {
+      const bil = await repo.bilSoalanAwam(t.s.id);
+      soalan = { bil, had: HAD_SEHARI, awam: [], menunggu: [] };
+      if (keputusan.akses) {
+        soalan.awam = (await repo.soalanAwam(t.s.id)).map((q) => ({ id: q.id, nama: namaPertama(q.nama_penanya), teks: q.teks, dicipta_pada: q.dicipta_pada, jawapan: q.jawapan, penjawab: q.penjawab_nama, dijawab_pada: q.dijawab_pada }));
+        if (logMasuk) soalan.menunggu = await repo.soalanMenunggu(t.s.id, k.pengguna.id);
+      }
+    } catch { /* jadual soalan belum wujud */ }
     return json({
-      subject: subjectPenuh(t.s, keputusan, selesai), course: courseAwam(t.c, await petaGuru(repo)),
+      subject: subjectPenuh(t.s, keputusan, selesai), course: courseAwam(t.c, await petaGuru(repo)), soalan,
       bil_nota: nota.length, nota: keputusan.akses && logMasuk ? nota : [],
       kedudukan: i + 1, jumlah: adik.length, sebelum: ringkas(adik[i - 1]), seterusnya: ringkas(adik[i + 1]), log_masuk: logMasuk,
     });
@@ -82,6 +94,34 @@ export async function pelajarApi(req, env, url, repo, now) {
     if (!keputusanSubject({ course: t.c, subject: t.s, langganan: k.langganan, hari: k.hari, logMasuk }).akses) return json({ ralat: 'tiada-akses' }, 403);
     await repo.tandaSelesai(k.pengguna.id, t.s.id, new Date(now).toISOString());
     return json({ ok: true, selesai: true });
+  }
+
+  // Tanya soalan pada kuliah: mesti log masuk dan layak menonton kuliah itu. Had beberapa soalan sehari.
+  if (bahagian[0] === 'subject' && bahagian[2] === 'soalan' && bahagian.length === 3 && req.method === 'POST') {
+    const asal = req.headers.get('origin');
+    if (asal && asal !== url.origin) return json({ ralat: 'asal-tidak-dibenarkan' }, 403);
+    if (!logMasuk) return json({ ralat: 'belum-log-masuk' }, 401);
+    const t = await subjectTerbit(repo, idDari(bahagian[1]));
+    if (!t) return json({ ralat: 'tidak-dijumpai' }, 404);
+    if (!keputusanSubject({ course: t.c, subject: t.s, langganan: k.langganan, hari: k.hari, logMasuk }).akses) return json({ ralat: 'tiada-akses' }, 403);
+    if (!(req.headers.get('content-type') || '').includes('application/json')) return json({ ralat: 'JSON sahaja' }, 415);
+    let b; try { b = JSON.parse(await req.text()); } catch { return json({ ralat: 'JSON tidak sah' }, 400); }
+    const v = sahkanSoalan(b?.teks); if (!v.ok) return json({ ralat: v.sebab, medan: 'teks' }, 400);
+    if ((await repo.bilSoalanSejak(k.pengguna.id, awalHari(k.hari))) >= HAD_SEHARI) return json({ ralat: 'had-harian', had: HAD_SEHARI }, 429);
+    const q = await repo.ciptaSoalan(t.s.id, k.pengguna.id, v.nilai, new Date(now).toISOString());
+    return json({ id: q.id, teks: q.teks, dicipta_pada: q.dicipta_pada }, 201);
+  }
+
+  // Penanya boleh menarik balik soalannya selagi belum dijawab.
+  if (bahagian[0] === 'soalan' && bahagian.length === 2 && req.method === 'DELETE') {
+    const asal = req.headers.get('origin');
+    if (asal && asal !== url.origin) return json({ ralat: 'asal-tidak-dibenarkan' }, 403);
+    if (!logMasuk) return json({ ralat: 'belum-log-masuk' }, 401);
+    const q = await repo.soalanDariId(idDari(bahagian[1]));
+    if (!q || q.pengguna_id !== k.pengguna.id) return json({ ralat: 'tidak-dijumpai' }, 404);
+    if (q.jawapan != null) return json({ ralat: 'sudah-dijawab' }, 409);
+    await repo.padamSoalan(q.id);
+    return json({ ok: true });
   }
 
   // Muat turun nota: peraturan akses sama seperti video, ditambah mesti log masuk (SPEC bahagian 9).
