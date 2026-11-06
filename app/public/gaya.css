@@ -229,3 +229,135 @@ a.btn{text-decoration:none}
   .p-admin .jenama small{display:none}
 }
 .p-admin main.bekas,.p-admin .atas .bekas{max-width:1240px}
+
+/* ============================================================
+   GERAKAN (rujukan: ammartraveldraft): masuk kiri/kanan, header berkaca, kesan sapuan, butang naik
+   ============================================================ */
+:root{--ease:cubic-bezier(.2,.7,.1,1)}
+html{scroll-behavior:smooth;scroll-padding-top:84px;-webkit-text-size-adjust:100%}
+button,a,[role=tab]{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+
+/* masuk semasa skrol (efek.js menambah data-anim dan kelas .in; .js hanya ada jika gerakan dibenarkan) */
+.js [data-anim]{opacity:0;transition:opacity .9s var(--ease),transform 1s var(--ease);transition-delay:var(--d,0s);will-change:transform,opacity}
+.js [data-anim=left]{transform:translateX(-70px)}
+.js [data-anim=right]{transform:translateX(70px)}
+.js [data-anim=up]{transform:translateY(42px)}
+.js [data-anim].in{opacity:1;transform:none}
+@media (max-width:700px){.js [data-anim=left]{transform:translateX(-36px)}.js [data-anim=right]{transform:translateX(36px)}}
+
+/* header berkaca bila skrol */
+.site-header,.topbar{transition:box-shadow .3s,background .3s}
+.site-header.scrolled{box-shadow:0 10px 30px -16px rgba(5,25,18,.45);background:rgba(255,255,255,.97)}
+.topbar.scrolled{box-shadow:var(--shadow-pop)}
+
+/* garis bawah menu yang menyapu */
+.menu a{position:relative}
+.menu a::after{content:"";position:absolute;left:12px;right:12px;bottom:4px;height:2px;border-radius:2px;background:var(--brand);transform:scaleX(0);transform-origin:right;transition:transform .3s var(--ease)}
+.menu a:hover::after,.menu a.active::after{transform:scaleX(1);transform-origin:left}
+
+/* kad: sapuan warna dan angkat bila hover */
+.step{position:relative;overflow:hidden;isolation:isolate;transition:transform .4s var(--ease),box-shadow .4s}
+.step::before{content:"";position:absolute;inset:0;background:var(--accent-soft);transform:translateX(-101%);transition:transform .55s var(--ease);z-index:-1}
+.step:hover::before{transform:none}
+.step:hover{transform:translateY(-5px);box-shadow:0 24px 40px -24px rgba(5,25,18,.4)}
+a.course{transition:transform .4s var(--ease),box-shadow .4s,border-color .3s}
+a.course:hover{transform:translateY(-6px);box-shadow:0 28px 44px -26px rgba(5,25,18,.5)}
+a.course .thumb{overflow:hidden}
+a.course .thumb>div:first-child{transition:transform .7s var(--ease)}
+a.course:hover .thumb>div:first-child{transform:scale(1.07)}
+.plan{transition:transform .35s var(--ease),box-shadow .35s}
+.plan:hover{transform:translateY(-4px);box-shadow:0 26px 44px -26px rgba(5,25,18,.4)}
+.artikel-kad-gambar{transition:transform .6s var(--ease)}
+.artikel-kad:hover .artikel-kad-gambar{transform:scale(1.04)}
+.btn{transition:background .25s,color .25s,transform .25s,box-shadow .25s,border-color .25s}
+.btn:active{transform:scale(.97)}
+.btn.primary:hover{transform:translateY(-2px);box-shadow:0 12px 24px -12px rgba(11,107,79,.7)}
+
+/* butang naik ke atas dengan cincin kemajuan skrol */
+.ke-atas{position:fixed;right:16px;bottom:calc(24px + env(safe-area-inset-bottom));width:50px;height:50px;border-radius:50%;border:0;background:var(--surface);color:var(--ink);display:grid;place-items:center;z-index:45;cursor:pointer;
+  box-shadow:0 10px 30px -8px rgba(5,25,18,.45);opacity:0;transform:translateY(16px);pointer-events:none;transition:opacity .3s,transform .3s}
+.ke-atas.tunjuk{opacity:1;transform:none;pointer-events:auto}
+.ke-atas .gelang{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+.ke-atas .gelang circle{fill:none;stroke-width:2.5}
+.ke-atas .gelang circle:first-child{stroke:var(--line)}
+.ke-atas .gelang circle:last-child{stroke:var(--brand);stroke-dasharray:131.95;stroke-dashoffset:131.95;stroke-linecap:round}
+@media (max-width:700px){.ke-atas{bottom:calc(86px + env(safe-area-inset-bottom));right:14px;width:44px;height:44px}}
+
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .step::before,a.course,a.course .thumb>div:first-child,.plan,.artikel-kad-gambar,.ke-atas{transition:none !important}
+}
+
+/* ============================================================
+   PWA DI TELEFON: bar bawah (tab / tindakan pantas), menu skrin penuh, butang pasang
+   ============================================================ */
+.bar-bawah{display:none}
+@keyframes kh-bar{from{transform:translateY(100%)}to{transform:none}}
+@media (max-width:700px){
+  .bar-bawah{position:fixed;left:0;right:0;bottom:0;z-index:55;display:flex;gap:6px;padding:8px 10px calc(8px + env(safe-area-inset-bottom));
+    background:rgba(255,255,255,.95);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);animation:kh-bar .55s var(--ease) both}
+  .bar-pelawat{gap:10px;background:rgba(6,25,18,.95);border-top-color:rgba(255,255,255,.12)}
+  .bar-pelawat .btn{flex:1;height:48px}
+  .bar-pelawat .btn.outline{background:transparent;border-color:rgba(255,255,255,.35);color:#fff}
+  .bar-item{position:relative;flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 2px 6px;border:0;background:none;border-radius:14px;
+    color:var(--ink-3);font-family:inherit;font-size:11px;font-weight:600;line-height:1.1;text-decoration:none;cursor:pointer;transition:color .25s}
+  .bar-item svg{transition:transform .4s var(--ease)}
+  .bar-item.aktif{color:var(--brand)}
+  .bar-item.aktif svg{transform:translateY(-2px) scale(1.12)}
+  .bar-item.aktif::before{content:"";position:absolute;top:0;left:50%;width:28px;height:3px;border-radius:0 0 3px 3px;background:var(--brand);transform:translateX(-50%)}
+  .bar-item:active svg{transform:scale(.9)}
+  .app.ada-tab .topbar .navpills{display:none}
+  .app.ada-tab .page{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+  .halaman .site-footer{padding-bottom:calc(78px + env(safe-area-inset-bottom))}
+}
+@media (display-mode:standalone){
+  .site-header,.topbar{padding-top:env(safe-area-inset-top)}
+  body{overscroll-behavior-y:contain}
+}
+
+/* menu skrin penuh (telefon): lapisan emas menyapu dahulu, kemudian lapisan gelap, pautan masuk berperingkat */
+.skrin-menu{position:fixed;inset:0;z-index:100;visibility:hidden;transition:visibility 0s .9s}
+.skrin-menu.terbuka{visibility:visible;transition-delay:0s}
+.skrin-menu::before{content:"";position:absolute;inset:0;background:#D8B868;clip-path:inset(0 100% 0 0);transition:clip-path .7s var(--ease)}
+.skrin-isi{position:absolute;inset:0;background:radial-gradient(120% 90% at 20% 10%,#0e5a43 0%,#06251c 60%,#04140f 100%);color:#fff;clip-path:inset(0 100% 0 0);
+  transition:clip-path .7s var(--ease) .12s;display:grid;align-content:center;gap:34px;padding:90px 28px calc(40px + env(safe-area-inset-bottom));overflow:auto}
+.skrin-menu.terbuka::before,.skrin-menu.terbuka .skrin-isi{clip-path:inset(0 0 0 0)}
+.skrin-tutup{position:absolute;top:calc(16px + env(safe-area-inset-top));right:16px;width:50px;height:50px;border-radius:50%;border:0;background:#fff;color:#06251c;display:grid;place-items:center;cursor:pointer;transition:transform .35s var(--ease)}
+.skrin-tutup:hover{transform:rotate(90deg)}
+.skrin-nav{display:flex;flex-direction:column;gap:2px}
+.skrin-nav a{font-family:'Lora',Georgia,serif;font-weight:700;font-size:clamp(1.8rem,8vw,2.8rem);line-height:1.15;color:#fff;text-decoration:none;display:flex;align-items:baseline;gap:16px;padding:6px 0;
+  opacity:0;transform:translateX(-40px);transition:opacity .5s,transform .6s var(--ease),color .25s,padding .3s}
+.skrin-nav a i{font:700 .8rem/1 'Inter',sans-serif;color:#D8B868;letter-spacing:.08em;font-style:normal}
+.skrin-nav a:hover{color:#D8B868;padding-left:14px}
+.skrin-menu.terbuka .skrin-nav a{opacity:1;transform:none}
+.skrin-menu.terbuka .skrin-nav a:nth-child(1){transition-delay:.35s,.35s,0s,0s}
+.skrin-menu.terbuka .skrin-nav a:nth-child(2){transition-delay:.42s,.42s,0s,0s}
+.skrin-menu.terbuka .skrin-nav a:nth-child(3){transition-delay:.49s,.49s,0s,0s}
+.skrin-menu.terbuka .skrin-nav a:nth-child(4){transition-delay:.56s,.56s,0s,0s}
+.skrin-menu.terbuka .skrin-nav a:nth-child(5){transition-delay:.63s,.63s,0s,0s}
+.skrin-menu.terbuka .skrin-nav a:nth-child(6){transition-delay:.7s,.7s,0s,0s}
+.skrin-bawah{display:flex;flex-direction:column;gap:12px;opacity:0;transform:translateY(20px);transition:opacity .5s .6s,transform .6s var(--ease) .6s}
+.skrin-menu.terbuka .skrin-bawah{opacity:1;transform:none}
+.skrin-bawah .btn{justify-content:center}
+.skrin-bawah .btn.outline{background:transparent;border-color:rgba(255,255,255,.35);color:#fff}
+.skrin-bawah [hidden]{display:none}
+@media (prefers-reduced-motion:reduce){
+  .skrin-menu,.skrin-menu::before,.skrin-isi,.skrin-nav a,.skrin-bawah,.bar-bawah{transition:none !important;animation:none !important}
+}
+
+/* Elemen yang menunggu masuk dari tepi (data-anim) tidak boleh melebarkan halaman atau mencetuskan skrol mendatar.
+   `clip` (bukan hidden) supaya header melekit (sticky) kekal berfungsi. */
+@supports (overflow:clip){html,body{overflow-x:clip}}
+@supports not (overflow:clip){body{overflow-x:hidden}}
+
+/* Telefon: header laman utama hanya jenama + hamburger (Daftar percuma dan Log masuk ada dalam menu dan bar bawah).
+   Sebelum ini jenama + butang + hamburger lebih lebar daripada skrin dan hamburger terkeluar. */
+@media (max-width:700px){
+  .site-header .header-cta .btn{display:none}
+  .site-header .header-inner{gap:10px}
+  .site-header .menu-toggle{margin-left:auto}
+}
+
+/* Prototaip: .hero-inner{padding:88px 0 96px} menimpa padding mendatar .wrap, jadi teks hero melekat ke tepi skrin. */
+.wrap.hero-inner{padding-left:24px;padding-right:24px}
+@media (max-width:700px){.wrap.hero-inner{padding-left:20px;padding-right:20px}}

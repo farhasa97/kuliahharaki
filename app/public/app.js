@@ -73,6 +73,58 @@ function harga(kitaran) {
   return nilai ? `RM${h(nilai)}` : '';
 }
 
+// ---------- PWA: bar bawah, menu skrin penuh, pasang app ----------
+const IK = (d) => `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const IKON_BAR = {
+  utama: IK('<rect x="3.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.8"/>'),
+  kuliah: IK('<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/>'),
+  artikel: IK('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/>'),
+  akaun: IK('<circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c.9-3.4 3.8-5.2 7.5-5.2s6.6 1.8 7.5 5.2"/>'),
+  panel: IK('<circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.6M12 18.6v2.6M21.2 12h-2.6M5.4 12H2.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8M18.5 18.5l-1.8-1.8M7.3 7.3 5.5 5.5"/>'),
+};
+const TUTUP = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 5l14 14M19 5 5 19"/></svg>';
+
+// Bar bawah (telefon sahaja, CSS): pengguna log masuk = tab; pelawat di laman utama = Log masuk dan Daftar percuma.
+function barBawah(aktif) {
+  if (!saya) return '<nav class="bar-bawah bar-pelawat" aria-label="Tindakan pantas"><a class="btn outline" href="#/masuk">Log masuk</a><a class="btn primary" href="#/masuk">Daftar percuma</a></nav>';
+  const tab = (nama, label, ke) => `<button type="button" class="bar-item${aktif === nama ? ' aktif' : ''}" data-pergi="${ke}"${aktif === nama ? ' aria-current="page"' : ''}>${IKON_BAR[nama]}<span>${label}</span></button>`;
+  const khas = ['admin', 'guru'].includes(saya.pengguna.peranan);
+  return `<nav class="bar-bawah bar-tab" aria-label="Menu utama">${tab('utama', 'Utama', '#/')}${tab('kuliah', 'Kuliah', '#/kuliah')}
+    <a class="bar-item" href="/artikel">${IKON_BAR.artikel}<span>Artikel</span></a>${tab('akaun', 'Akaun', '#/akaun')}${khas ? tab('panel', 'Panel', '/panel/') : ''}</nav>`;
+}
+
+// Menu skrin penuh di telefon: lapisan emas menyapu dahulu, kemudian lapisan gelap, pautan masuk berperingkat.
+function skrinMenu(item) {
+  return `<div class="skrin-menu" id="skrinMenu" aria-hidden="true"><div class="skrin-isi" role="dialog" aria-modal="true" aria-label="Menu">
+    <button type="button" class="skrin-tutup" data-act="menu-tutup" aria-label="Tutup menu">${TUTUP}</button>
+    <nav class="skrin-nav">${item.map(([label, ke, aksi], i) => `<a href="${ke}"${aksi ? ` ${aksi}` : ''}><i>${String(i + 1).padStart(2, '0')}</i>${label}</a>`).join('')}</nav>
+    <div class="skrin-bawah"><a class="btn primary lg" href="#/masuk">Daftar percuma</a><button type="button" class="btn outline lg" data-act="pasang" data-pasang hidden>Pasang app di telefon</button></div>
+  </div></div>`;
+}
+function tutupMenu() {
+  const m = document.getElementById('skrinMenu');
+  document.body.style.overflow = '';
+  if (!m) return;
+  m.classList.remove('terbuka'); m.setAttribute('aria-hidden', 'true');
+  document.querySelector('[data-act=menu]')?.setAttribute('aria-expanded', 'false');
+}
+addEventListener('keydown', (e) => { if (e.key === 'Escape') tutupMenu(); });
+
+// Butang "Pasang app": Android dan desktop guna isyarat pelayar; iPhone Safari hanya boleh melalui Kongsi > Tambah ke Skrin Utama.
+let promptPasang = null;
+const sudahPasang = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const iPhone = /iphone|ipad|ipod/i.test(navigator.userAgent);
+function paparPasang() {
+  const boleh = !sudahPasang() && (!!promptPasang || iPhone);
+  document.querySelectorAll('[data-pasang]').forEach((b) => { b.hidden = !boleh; });
+}
+addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); promptPasang = e; paparPasang(); });
+addEventListener('appinstalled', () => { promptPasang = null; paparPasang(); });
+async function pasangApp() {
+  if (promptPasang) { const p = promptPasang; promptPasang = null; p.prompt(); await p.userChoice.catch(() => {}); paparPasang(); }
+  else alert('Di iPhone: tekan butang Kongsi di Safari, kemudian pilih "Tambah ke Skrin Utama".');
+}
+
 // Topbar prototaip (dashboard dan halaman kuliah). `aktif` = pil yang dipilih.
 function topbar(aktif) {
   const pil = (nama, label, ke, ikon = '') => `<button role="tab" aria-selected="${aktif === nama}" data-pergi="${ke}">${ikon}${label}</button>`;
@@ -90,7 +142,7 @@ function topbar(aktif) {
   </div>`;
 }
 
-const halamanApp = (aktif, isi) => `<div class="app"><div class="app-wrap">${topbar(aktif)}<div class="page">${isi}</div></div></div>`;
+const halamanApp = (aktif, isi) => `<div class="app${saya ? ' ada-tab' : ''}"><div class="app-wrap">${topbar(aktif)}<div class="page">${isi}</div></div>${saya ? barBawah(aktif) : ''}</div>`;
 
 // Kad langganan: pelawat diajak log masuk; pengguna dibawa ke borang BCL dengan emel akaunnya.
 function kadLanggan() {
@@ -270,7 +322,6 @@ async function lamanAwam() {
         <button class="menu-toggle" data-act="menu" aria-label="Buka menu" aria-expanded="false">${MENU}</button>
       </div>
     </div>
-    <nav class="mobile-menu" id="menuTelefon" hidden>${menu}<a href="#/masuk"><b>Log masuk</b></a></nav>
   </header>
 
   <section class="hero">
@@ -309,7 +360,7 @@ async function lamanAwam() {
         <button class="tab" role="tab" aria-selected="false" data-act="tapis" data-tapis="percuma">Percuma</button>
         <button class="tab" role="tab" aria-selected="false" data-act="tapis" data-tapis="ahli">Ahli penuh</button>
       </div>
-      ${senarai.length ? `<div class="course-grid muncul" id="gridCourse">${senarai.map(kadCourse).join('')}</div>`
+      ${senarai.length ? `<div class="course-grid" id="gridCourse" data-skrol>${senarai.map(kadCourse).join('')}</div>`
         : '<div class="panel-card ralat-halaman"><p>Kandungan akan datang. Sila kembali tidak lama lagi.</p></div>'}
     </div>
   </section>
@@ -325,7 +376,7 @@ async function lamanAwam() {
   <section class="section tint">
     <div class="wrap">
       <div class="section-head"><div><p class="kicker">Cara ia berjalan</p><h2 style="margin-top:10px">Tiga langkah sahaja</h2></div></div>
-      <div class="steps muncul">
+      <div class="steps">
         <div class="step" style="--i:0"><span class="step-no">LANGKAH 01</span><h3>Log masuk dengan Google</h3><p>Satu klik dengan akaun Google. Tiada kata laluan untuk diingat, dan semua kuliah percuma terus terbuka.</p></div>
         <div class="step" style="--i:1"><span class="step-no">LANGKAH 02</span><h3>Tonton dan ikut kemajuan</h3><p>Kuliah yang ditonton hingga habis ditanda khatam secara automatik, jadi anda tahu di mana untuk sambung.</p></div>
         <div class="step" style="--i:2"><span class="step-no">LANGKAH 03</span><h3>Naik taraf ahli penuh</h3><p>Yuran membuka semua siri ahli penuh. Tiada potongan automatik: sambung bila mahu teruskan.</p></div>
@@ -401,7 +452,7 @@ async function lamanAwam() {
       </div>
     </div>
   </footer>
-  </div>`;
+  </div>${skrinMenu([['Utama', '#/', 'data-act="menu-tutup"'], ['Siri kuliah', '#/', 'data-act="gulung" data-sasaran="courses"'], ...(artikel.length ? [['Artikel', '/artikel', '']] : []), ['Yuran', '#/', 'data-act="gulung" data-sasaran="pricing"'], ['Log masuk', '#/masuk', '']])}${barBawah('')}`;
   binaCahaya();
   pasangKarusel(slaid);
 }
@@ -707,7 +758,7 @@ function halamanAkaun() {
           <div class="row-item ${l.akses ? 'done' : 'info'}"><div class="rt"><b>Ahli penuh: ${STATUS_LANGGANAN[l.status]}${l.tarikh_tamat ? ` hingga ${h(l.tarikh_tamat)}` : ''}</b><small>Keahlian ${l.akses ? 'ahli penuh' : 'percuma'}</small></div></div>
         </div>
         ${notis}
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px">${['admin', 'guru'].includes(saya.pengguna.peranan) ? `<a class="btn outline" href="/panel/">Panel ${saya.pengguna.peranan}</a>` : ''}<button class="btn outline" data-act="keluar">Log keluar</button></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px"><button class="btn outline" data-act="pasang" data-pasang hidden>Pasang app di telefon</button>${['admin', 'guru'].includes(saya.pengguna.peranan) ? `<a class="btn outline" href="/panel/">Panel ${saya.pengguna.peranan}</a>` : ''}<button class="btn outline" data-act="keluar">Log keluar</button></div>
       </div></div>
       <aside class="lesson-side">${l.akses && !l.notis ? '' : kadLanggan()}</aside>
     </div></div>`);
@@ -725,12 +776,16 @@ const TINDAKAN = {
     panel.querySelectorAll('[data-pane]').forEach((p) => { p.hidden = p.dataset.pane !== el.dataset.tab; });
   },
   menu(el) {
-    const m = document.getElementById('menuTelefon');
-    m.hidden = !m.hidden;
-    el.setAttribute('aria-expanded', String(!m.hidden));
+    const m = document.getElementById('skrinMenu');
+    m.classList.add('terbuka'); m.setAttribute('aria-hidden', 'false');
+    el.setAttribute('aria-expanded', 'true');
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => m.querySelector('.skrin-tutup')?.focus({ preventScroll: true }), 60);
   },
+  'menu-tutup'() { tutupMenu(); },
+  pasang() { return pasangApp(); },
   gulung(el) {
-    document.getElementById('menuTelefon')?.setAttribute('hidden', '');
+    tutupMenu();
     document.getElementById(el.dataset.sasaran)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   },
   tapis(el) {
@@ -766,6 +821,7 @@ document.addEventListener('click', async (e) => {
 const KEDALAMAN = { '': 0, kuliah: 1, akaun: 1, masuk: 1, course: 1, subject: 2 };
 
 async function laluan() {
+  document.body.style.overflow = ''; // buka kunci skrol jika menu skrin penuh terbuka semasa pindah halaman
   if (pemain) { try { pemain.destroy(); } catch { /* sudah dibuang */ } pemain = null; }
   const [nama, nilai] = (location.hash || '#/').slice(2).split('/');
   if (nama !== 'masuk' && nama !== 'akaun') { try { sessionStorage.setItem('kh-kembali', location.hash || '#/'); } catch { /* storan disekat */ } }
@@ -785,6 +841,9 @@ async function laluan() {
   }
   if (arah) akar.querySelector('.halaman')?.classList.add(arah);
   window.scrollTo(0, 0);
+  paparPasang();
+  window.KH_efek?.pasang(akar); // kesan masuk semasa skrol pada elemen halaman baharu
+  window.KH_efek?.semakSkrol();
 }
 
 async function muatSaya() {

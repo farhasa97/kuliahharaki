@@ -90,7 +90,10 @@ try {
     await p.getByText('Menuntut ilmu tanpa terikat masa dan tempat.').waitFor();
     assert.deepEqual(await p.locator('#gridCourse .course h3').allTextContents(), ['Asas Percuma', 'Fiqh Advance', '<img src=x onerror=alert(1)>Tajuk']);
     assert.deepEqual(await p.locator('.hero-stats b').allTextContents(), ['3', '5', '2', '2']); // 3 siri, 5 video terbit, 2 siri percuma, 2 peserta berdaftar (admin tidak dikira)
-    await p.locator('#nav').getByRole('link', { name: 'Daftar percuma' }).waitFor(); // 'Log masuk' ada dalam menu telefon
+    // telefon: header = jenama + hamburger, hamburger mesti berada dalam skrin; CTA ada di bar bawah
+    const toggle = await p.locator('#nav .menu-toggle').boundingBox();
+    assert.ok(toggle && toggle.x + toggle.width <= 390, 'hamburger terkeluar skrin');
+    await p.locator('.bar-pelawat').getByRole('link', { name: 'Daftar percuma' }).waitFor();
     assert.equal(await p.locator('.course', { hasText: 'Fiqh Advance' }).locator('.badge').textContent(), 'AHLI PENUH');
     // video percuma pertama terus dimainkan dalam kad hero (bukan pautan ke halaman lain)
     assert.match(await p.locator('.preview-stage iframe').getAttribute('src'), new RegExp(`youtube-nocookie\\.com/embed/${V.a1}`));
@@ -138,12 +141,42 @@ try {
     assert.equal(await p.locator('#kitaranPlan').textContent(), '/tahun');
   });
 
-  await langkah('pelawat (telefon): menu dibuka dan ditutup dengan butang menu', async () => {
+  await langkah('pelawat (telefon): menu skrin penuh dibuka, mengunci skrol, dan ditutup', async () => {
     const p = pelawat.page;
     await p.getByRole('button', { name: 'Buka menu' }).click();
-    assert.equal(await p.locator('#menuTelefon').isVisible(), true);
+    await p.locator('#skrinMenu.terbuka').waitFor();
+    await p.locator('.skrin-nav a', { hasText: 'Yuran' }).waitFor({ state: 'visible' });
+    assert.equal(await p.evaluate(() => document.body.style.overflow), 'hidden');
+    assert.equal(await p.locator('.skrin-nav a').count(), 4); // Utama, Siri kuliah, Yuran, Log masuk (Artikel hanya jika ada artikel terbit)
+    await p.getByRole('button', { name: 'Tutup menu' }).click();
+    await p.waitForFunction(() => !document.getElementById('skrinMenu').classList.contains('terbuka'));
+    assert.equal(await p.evaluate(() => document.body.style.overflow), '');
+    // pautan dalam menu: menutup menu dan menggulung ke bahagian yuran
     await p.getByRole('button', { name: 'Buka menu' }).click();
-    assert.equal(await p.locator('#menuTelefon').isVisible(), false);
+    await p.locator('.skrin-nav a', { hasText: 'Yuran' }).click();
+    await p.waitForFunction(() => !document.getElementById('skrinMenu').classList.contains('terbuka'));
+    await p.waitForFunction(() => document.getElementById('pricing').getBoundingClientRect().top < 400);
+    await skrin(p, '10c-menu-skrin');
+  });
+
+  await langkah('pelawat (telefon): bar tindakan bawah, kesan masuk semasa skrol, butang naik dengan cincin', async () => {
+    const p = pelawat.page;
+    await p.goto(B + '/?semula=1');
+    await p.locator('.bar-pelawat').waitFor();
+    // elemen yang menunggu masuk dari tepi tidak melebarkan halaman (tiada skrol mendatar di telefon)
+    assert.ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'laman utama melimpah mendatar');
+    assert.ok((await p.locator('.hero h1').evaluate((e) => e.getBoundingClientRect().left)) >= 16, 'teks hero melekat ke tepi skrin');
+    assert.equal(await p.locator('.bar-pelawat .btn').count(), 2);
+    assert.equal(await p.locator('.ke-atas.tunjuk').count(), 0);
+    // kad siri meluncur masuk ketika skrol, dan penanda gerakan dilucutkan selepas siap (supaya hover berfungsi)
+    assert.ok(await p.locator('#gridCourse > a.course[data-anim]').count() > 0);
+    await p.evaluate(() => document.getElementById('courses').scrollIntoView({ block: 'start' }));
+    await p.waitForFunction(() => !document.querySelector('#gridCourse > a.course').hasAttribute('data-anim'), null, { timeout: 8000 }); // kad yang kelihatan sahaja
+    assert.equal(await p.locator('#gridCourse > a.course').first().evaluate((e) => getComputedStyle(e).opacity), '1');
+    await p.waitForFunction(() => document.querySelector('.ke-atas')?.classList.contains('tunjuk'));
+    await p.locator('.ke-atas').click();
+    await p.waitForFunction(() => scrollY < 5);
+    assert.equal(await p.locator('.site-header.scrolled').count(), 0); // kembali di atas: header tidak berkaca
   });
 
   await langkah('pelawat: video siri percuma dimainkan tanpa log masuk', async () => {
@@ -183,6 +216,31 @@ try {
     tiadaBocor(await p.content(), V.b2);
     assert.equal((await p.request.post(`${B}/api/subject/${b2.id}/selesai`)).status(), 403);
     await skrin(p, '12-pelajar-langgan');
+  });
+
+  await langkah('pelajar (telefon): bar tab bawah berfungsi, pil atas disembunyikan, pasang app tersembunyi di Chrome biasa', async () => {
+    const p = pelajar.page;
+    await p.goto(B + '/?tab=1#/');
+    await p.locator('.bar-tab').waitFor();
+    for (const hash of ['#/', '#/kuliah', '#/akaun', `#/course/${asas.slug}`, `#/subject/${a1.id}`]) {
+      await p.goto(`${B}/?lebar=${encodeURIComponent(hash)}${hash}`);
+      await p.locator('.app').waitFor(); await p.waitForTimeout(500);
+      assert.ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${hash} melimpah mendatar`);
+    }
+    await p.goto(B + '/?tab=2#/');
+    await p.locator('.bar-tab').waitFor();
+    assert.deepEqual(await p.locator('.bar-tab .bar-item span').allTextContents(), ['Utama', 'Kuliah', 'Artikel', 'Akaun']);
+    assert.equal(await p.locator('.topbar .navpills').isVisible(), false);
+    assert.equal(await p.locator('.bar-item.aktif span').textContent(), 'Utama');
+    await p.locator('.bar-tab').getByRole('button', { name: 'Kuliah' }).click();
+    await p.waitForFunction(() => location.hash === '#/kuliah');
+    await p.locator('.bar-item.aktif span', { hasText: 'Kuliah' }).waitFor();
+    await p.locator('.bar-tab').getByRole('button', { name: 'Akaun' }).click();
+    await p.getByText('Maklumat akaun').waitFor();
+    assert.equal(await p.locator('[data-pasang]').isVisible(), false); // belum ada isyarat pasang
+    const kotak = await p.locator('.bar-tab').boundingBox();
+    assert.ok(kotak.y + kotak.height >= 843, 'bar melekat di bawah skrin');
+    await skrin(p, '12b-bar-tab');
   });
 
   await langkah('pelajar: video tamat menanda khatam secara automatik; kemajuan dikemas kini di semua skrin', async () => {
@@ -282,6 +340,7 @@ try {
     await d.page.goto(`${B}/#/subject/${a2.id}`);
     await d.page.locator(`[data-video="${V.a2}"]`).waitFor();
     await d.page.locator('.lesson-side .lesson-row.active', { hasText: 'Adab menuntut ilmu' }).waitFor();
+    assert.equal(await d.page.locator('.bar-bawah').isVisible(), false); // bar bawah hanya di telefon
     await skrin(d.page, '15-desktop-kuliah');
     const v = await konteks(null, { width: 1280, height: 800 });
     await v.page.goto(B + '/');
@@ -300,6 +359,10 @@ try {
     const m = await (await p.request.get(B + '/manifest.webmanifest')).json();
     assert.deepEqual([m.name, m.display, m.start_url], ['Kuliah Haraki', 'standalone', '/']);
     assert.equal((await p.request.get(B + '/manifest.webmanifest')).headers()['access-control-allow-origin'], '*'); // semakan domain utama (index.html)
+    assert.deepEqual([m.id, m.scope, m.categories], ['/', '/', ['education']]);
+    assert.deepEqual(m.shortcuts.map((x) => x.url), ['/#/kuliah', '/artikel', '/#/akaun']);
+    assert.equal((await p.request.get(B + '/efek.js')).status(), 200);
+    assert.match(await (await p.request.get(B + '/sw.js')).text(), /\/efek\.js/); // disimpan awal
     for (const ikon of m.icons) {
       const r = await p.request.get(B + ikon.src);
       assert.equal(r.status(), 200, ikon.src);

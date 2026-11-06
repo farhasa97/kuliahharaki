@@ -39,6 +39,8 @@ ${noindex ? '<meta name="robots" content="noindex, nofollow">' : '<meta name="ro
 <meta property="og:image" content="${h(gambarOg)}">
 <meta name="twitter:card" content="${gambar ? 'summary_large_image' : 'summary'}">
 <meta name="theme-color" content="#0B6B4F">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="${h(laman.nama)}">
 <link rel="icon" href="/ikon/ikon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="/ikon/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -63,6 +65,7 @@ ${jsonld ? `<script type="application/ld+json">${JSON.stringify(jsonld).replace(
     ${laman.emel_hubungan ? `<span>Hubungi: <a href="mailto:${h(laman.emel_hubungan)}">${h(laman.emel_hubungan)}</a></span>` : ''}
   </div>
 </div></footer>
+<script src="/efek.js"></script>
 </body>
 </html>`;
 }
