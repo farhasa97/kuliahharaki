@@ -89,12 +89,41 @@ try {
     await p.goto(B + '/');
     await p.getByText('Menuntut ilmu tanpa terikat masa dan tempat.').waitFor();
     assert.deepEqual(await p.locator('#gridCourse .course h3').allTextContents(), ['Asas Percuma', 'Fiqh Advance', '<img src=x onerror=alert(1)>Tajuk']);
-    assert.deepEqual(await p.locator('.hero-stats b').allTextContents(), ['3', '5', '2']); // 3 siri, 5 video terbit, 2 siri percuma
+    assert.deepEqual(await p.locator('.hero-stats b').allTextContents(), ['3', '5', '2', '2']); // 3 siri, 5 video terbit, 2 siri percuma, 2 peserta berdaftar (admin tidak dikira)
     await p.locator('#nav').getByRole('link', { name: 'Daftar percuma' }).waitFor(); // 'Log masuk' ada dalam menu telefon
     assert.equal(await p.locator('.course', { hasText: 'Fiqh Advance' }).locator('.badge').textContent(), 'AHLI PENUH');
     // video percuma pertama terus dimainkan dalam kad hero (bukan pautan ke halaman lain)
     assert.match(await p.locator('.preview-stage iframe').getAttribute('src'), new RegExp(`youtube-nocookie\\.com/embed/${V.a1}`));
+    // karusel: empat kuliah boleh ditonton tanpa langganan. Titik, anak panah, dan butiran di bawah video.
+    assert.equal(await p.locator('.preview-card .dot-btn').count(), 4); // a1, a2, siri XSS (percuma) dan intro Fiqh (pratonton)
+    assert.equal(await p.locator('.preview-card .dot-btn.aktif').count(), 1);
+    assert.match(await p.locator('.preview-desc').first().textContent(), /\S/); // penerangan, bukan garis kosong
+    assert.equal(await p.locator('.preview-notes').count(), 0);
+    const peserta = await p.locator('.hero-stats div', { hasText: 'peserta berdaftar' }).locator('b').textContent();
+    assert.equal(peserta.trim(), '2'); // pelajar dan ahli; admin tidak dikira
     await skrin(p, '10-pelawat-utama');
+  });
+
+  await langkah('pelawat: karusel hero. Titik dan anak panah menukar kuliah, video hanya dimuat pada slaid aktif', async () => {
+    const p = pelawat.page;
+    const iframeSrc = (v) => p.waitForFunction((x) => document.querySelector('.preview-stage iframe')?.src.includes(x), v);
+    await p.locator('.preview-card .dot-btn').first().waitFor();
+    await p.locator('.preview-card .dot-btn').nth(1).click();
+    await iframeSrc(V.a2);
+    assert.equal(await p.locator('.preview-stage iframe').count(), 1); // slaid ditinggalkan kembali kepada poster
+    assert.match(await p.locator('[data-kira]').textContent(), /2 daripada 4/);
+    assert.equal(await p.locator('.dot-btn.aktif').getAttribute('aria-label'), 'Kuliah 2: Adab menuntut ilmu');
+    await p.locator('.preview-nav button[data-arah="1"]').click();
+    await p.waitForFunction(() => document.querySelector('[data-judul]')?.textContent.includes('<script>alert(2)</script>'));
+    assert.deepEqual(dialog, []); // tajuk berisi HTML kekal teks
+    await p.locator('.preview-card .dot-btn').nth(3).click();
+    await iframeSrc(V.b1);
+    assert.equal(await p.locator('.preview-nav button[data-arah="1"]').isDisabled(), true);
+    await p.locator('.preview-nav button[data-arah="-1"]').click();
+    await p.waitForFunction(() => document.querySelector('[data-judul]')?.textContent.includes('<script>alert(2)</script>'));
+    await p.locator('.preview-card .dot-btn').first().click();
+    await iframeSrc(V.a1);
+    await skrin(p, '10b-karusel');
   });
 
   await langkah('pelawat: tab Percuma menapis kad, kad yuran bertukar bulanan ke tahunan', async () => {

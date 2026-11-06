@@ -156,19 +156,102 @@ function kadCourse(c, i) {
   </a>`;
 }
 
+const MAKS_SLAID = 6;
+const IKON_KIRI = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 3 5 8l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const IKON_KANAN = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m6 3 5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ptr = (s) => `<a class="preview-poster" href="#/subject/${s.id}" aria-label="Buka ${h(s.tajuk)}"><div class="${ART(s.id)}"></div><div class="stage-veil"></div><span class="play"></span></a>`;
+const videoEmbed = (s) => `<iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(s.video_id)}?rel=0&modestbranding=1&playsinline=1" title="${h(s.tajuk)}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+
+// Kad pratonton hero: satu atau lebih kuliah percuma. Lebih daripada satu: titik boleh diklik, anak panah, dan leret (swipe).
+function kadKarusel(slaid) {
+  const banyak = slaid.length > 1;
+  const s0 = slaid[0];
+  const huraian = (s) => s.huraian || `Kuliah percuma daripada ${konfig.laman.nama}. Daftar untuk menyimpan kemajuan anda.`;
+  return `<div class="preview-card${banyak ? ' ada-banyak' : ''}" data-karusel>
+    <div class="preview-head">
+      ${banyak ? `<div class="dots" role="tablist" aria-label="Kuliah percuma">${slaid.map((s, i) => `<button type="button" class="dot-btn${i ? '' : ' aktif'}" role="tab" aria-selected="${i === 0}" aria-label="Kuliah ${i + 1}: ${h(s.tajuk)}" data-slaid="${i}"></button>`).join('')}</div>`
+        : '<span class="dots" aria-hidden="true"><i class="dot"></i><i class="dot"></i><i class="dot"></i></span>'}
+      <a class="preview-judul" data-judul href="#/subject/${s0.id}">${h(s0.course.tajuk)} · ${h(s0.tajuk)}</a>
+      ${banyak ? `<span class="preview-nav"><button type="button" data-arah="-1" aria-label="Kuliah sebelum" disabled>${IKON_KIRI}</button><button type="button" data-arah="1" aria-label="Kuliah seterusnya">${IKON_KANAN}</button></span>` : ''}
+    </div>
+    <div class="karusel" data-trek>
+      ${slaid.map((s, i) => `<div class="slaid" data-i="${i}">
+        <div class="preview-stage" data-pentas>${i === 0 && s.video_id ? videoEmbed(s) : ptr(s)}</div>
+        <p class="preview-desc">${h(huraian(s))}</p>
+      </div>`).join('')}
+    </div>
+    <div class="preview-foot"><small data-kira>${banyak ? `Kuliah percuma 1 daripada ${slaid.length}` : `${s0.course.bil_subject} kuliah video`}</small><span class="badge free">PERCUMA</span></div>
+  </div>`;
+}
+
+// Pasang tingkah laku karusel: titik, anak panah, leret (sentuh dan tetikus), papan kekunci. Video hanya dimuatkan pada slaid aktif;
+// slaid yang ditinggalkan dikembalikan kepada poster supaya video berhenti.
+function pasangKarusel(slaid) {
+  const kad = akar.querySelector('[data-karusel]');
+  if (!kad || slaid.length < 2) return;
+  const trek = kad.querySelector('[data-trek]');
+  const titik = [...kad.querySelectorAll('.dot-btn')];
+  const [bKiri, bKanan] = kad.querySelectorAll('.preview-nav button');
+  let aktif = 0, pemasa = null;
+  const pergiKe = (i) => trek.scrollTo({ left: Math.max(0, Math.min(slaid.length - 1, i)) * trek.clientWidth, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  const tetapkan = (i) => {
+    if (i === aktif) return;
+    aktif = i;
+    const s = slaid[i];
+    trek.querySelectorAll('[data-i]').forEach((el) => {
+      const idx = Number(el.dataset.i), pentas = el.querySelector('[data-pentas]');
+      pentas.innerHTML = idx === i && slaid[idx].video_id ? videoEmbed(slaid[idx]) : ptr(slaid[idx]);
+      el.classList.toggle('aktif', idx === i);
+    });
+    titik.forEach((t, k) => { t.classList.toggle('aktif', k === i); t.setAttribute('aria-selected', String(k === i)); });
+    const judul = kad.querySelector('[data-judul]');
+    judul.textContent = `${s.course.tajuk} · ${s.tajuk}`; judul.href = `#/subject/${s.id}`;
+    kad.querySelector('[data-kira]').textContent = `Kuliah percuma ${i + 1} daripada ${slaid.length}`;
+    bKiri.disabled = i === 0; bKanan.disabled = i === slaid.length - 1;
+  };
+  // Pengawal: laman mungkin sudah ditinggalkan (elemen tercabut atau lebar 0) semasa pemasa berjalan.
+  const indeks = () => { const i = Math.round(trek.scrollLeft / trek.clientWidth); return Number.isFinite(i) && i >= 0 && i < slaid.length ? i : null; };
+  trek.addEventListener('scroll', () => { clearTimeout(pemasa); pemasa = setTimeout(() => { const i = kad.isConnected ? indeks() : null; if (i !== null) tetapkan(i); }, 90); }, { passive: true });
+  titik.forEach((t) => t.addEventListener('click', () => pergiKe(Number(t.dataset.slaid))));
+  bKiri.addEventListener('click', () => pergiKe(aktif - 1));
+  bKanan.addEventListener('click', () => pergiKe(aktif + 1));
+  kad.querySelector('.dots').addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    e.preventDefault(); const k = Math.max(0, Math.min(slaid.length - 1, aktif + (e.key === 'ArrowRight' ? 1 : -1))); pergiKe(k); titik[k].focus();
+  });
+  // Seret dengan tetikus (sentuhan sudah ditangani oleh scroll-snap asli). Tidak bermula di atas pemain video.
+  let seret = null;
+  trek.addEventListener('pointerdown', (e) => {
+    if (e.pointerType !== 'mouse' || e.button !== 0 || e.target.closest('iframe')) return;
+    seret = { x: e.clientX, kiri: trek.scrollLeft }; trek.classList.add('menyeret');
+  });
+  const batal = new AbortController();
+  addEventListener('pointermove', (e) => { if (!kad.isConnected) return batal.abort(); if (seret) trek.scrollLeft = seret.kiri - (e.clientX - seret.x); }, { signal: batal.signal });
+  addEventListener('pointerup', (e) => {
+    if (!kad.isConnected) return batal.abort();
+    if (!seret) return;
+    const jauh = e.clientX - seret.x; seret = null; trek.classList.remove('menyeret');
+    // leret melebihi 40px: slaid sebelah; selain itu kembali ke slaid terdekat
+    pergiKe(Math.abs(jauh) > 40 ? aktif + (jauh < 0 ? 1 : -1) : (indeks() ?? aktif));
+  }, { signal: batal.signal });
+}
+
 async function lamanAwam() {
   const senarai = await dapat('/api/course');
   const bilVideo = senarai.reduce((j, c) => j + c.bil_subject, 0);
   const bilPercuma = senarai.filter(percuma).length;
-  // Video percuma pertama untuk butang "Tonton kuliah percuma" dan kad pratonton hero.
-  let tonton = null;
-  for (const c of senarai.filter(percuma).concat(senarai.filter((c) => !percuma(c)))) {
-    const d = await dapat('/api/course/' + encodeURIComponent(c.slug)).catch(() => null);
-    const s = d?.subject.find((x) => x.boleh_tonton);
-    if (s) { tonton = { id: s.id, tajuk: s.tajuk, course: c }; break; }
-  }
-  // video_id hanya diberi pelayan jika pengguna ini layak menonton (kuliah percuma atau pratonton).
-  if (tonton) tonton.video_id = (await dapat('/api/subject/' + tonton.id).catch(() => null))?.subject?.video_id || '';
+  // Kuliah yang boleh ditonton tanpa langganan (siri percuma dahulu, kemudian pratonton) untuk karusel hero.
+  // video_id hanya diberi pelayan jika pengguna ini layak menonton.
+  const susunan = senarai.filter(percuma).concat(senarai.filter((c) => !percuma(c)));
+  const butiran = await Promise.all(susunan.map((c) => dapat('/api/course/' + encodeURIComponent(c.slug)).catch(() => null)));
+  const calon = [];
+  susunan.forEach((c, i) => (butiran[i]?.subject || []).forEach((s) => { if (s.boleh_tonton) calon.push({ id: s.id, tajuk: s.tajuk, course: c }); }));
+  const slaid = (await Promise.all(calon.slice(0, MAKS_SLAID).map(async (t) => {
+    const d = await dapat('/api/subject/' + t.id).catch(() => null);
+    return { ...t, video_id: d?.subject?.video_id || '', huraian: d?.subject?.huraian || d?.course?.huraian || '' };
+  })));
+  const tonton = slaid[0] || null;
+  const peserta = konfig.laman.papar_peserta === 'tidak' ? 0 : ((await dapat('/api/statistik').catch(() => null))?.peserta || 0);
   const artikel = (await dapat('/api/artikel').catch(() => [])).slice(0, 3);
   const hb = harga('bulan'), ht = harga('tahun');
   const butangLanggan = saya
@@ -206,16 +289,10 @@ async function lamanAwam() {
           <div><b class="tnum">${senarai.length}</b><span>siri kuliah</span></div>
           <div><b class="tnum">${bilVideo}</b><span>kuliah video</span></div>
           <div><b class="tnum">${bilPercuma}</b><span>siri percuma</span></div>
+          ${peserta > 0 ? `<div><b class="tnum">${peserta.toLocaleString('ms-MY')}</b><span>peserta berdaftar</span></div>` : ''}
         </div>
       </div>
-      ${tonton ? `<div class="preview-card">
-        <div class="preview-head"><i class="dot"></i><i class="dot"></i><i class="dot"></i><a href="#/subject/${tonton.id}">${h(tonton.course.tajuk)} · ${h(tonton.tajuk)}</a></div>
-        ${tonton.video_id
-          ? `<div class="preview-stage"><iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(tonton.video_id)}?rel=0&modestbranding=1&playsinline=1" title="${h(tonton.tajuk)}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>`
-          : `<a class="preview-stage" href="#/subject/${tonton.id}" style="display:block"><div class="art art1"></div><div class="stage-veil"></div><span class="play"></span></a>`}
-        <div class="preview-notes"><i></i><i></i><i></i></div>
-        <div class="preview-foot"><small>${tonton.course.bil_subject} kuliah video</small><span class="badge free">PERCUMA</span></div>
-      </div>` : ''}
+      ${slaid.length ? kadKarusel(slaid) : ''}
     </div>
   </section>
 
@@ -326,6 +403,7 @@ async function lamanAwam() {
   </footer>
   </div>`;
   binaCahaya();
+  pasangKarusel(slaid);
 }
 
 // ---------- log masuk ----------

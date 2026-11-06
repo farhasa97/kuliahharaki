@@ -126,6 +126,10 @@ export function repoPalsu() {
       a.dikemas_kini_pada = masa; return a;
     },
     async padamArtikel(id) { artikel.delete(id); },
+    async bilPeserta(kecuali = []) {
+      const k = new Set(kecuali.map((e) => e.toLowerCase()));
+      return [...pengguna.values()].filter((p) => !k.has(p.emel.toLowerCase()) && !gurus.has(p.emel.toLowerCase())).length;
+    },
     async semuaTetapan() { return [...tetapan].map(([kunci, nilai]) => ({ kunci, nilai })); },
     async simpanTetapan(nilai) { for (const [k, v] of Object.entries(nilai)) { if (v === '') tetapan.delete(k); else tetapan.set(k, v); } },
     async senaraiNota(sid, { termasukMenunggu = false } = {}) {

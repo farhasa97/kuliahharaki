@@ -458,6 +458,7 @@ const MEDAN_TETAPAN = [
   ['hero_teks', 'Teks pengenalan (laman awam)', 'textarea', ''],
   ['footer_teks', 'Teks footer', 'textarea', ''],
   ['emel_hubungan', 'Emel hubungan', 'input', 'Dipaparkan di footer jika diisi.'],
+  ['papar_peserta', 'Bilangan peserta di laman utama', 'pilih', 'Papar "N peserta berdaftar" di hero. Admin dan guru tidak dikira. Pilih Sembunyi jika bilangan masih kecil.'],
 ];
 
 async function borangTetapan() {
@@ -470,7 +471,9 @@ async function borangTetapan() {
       <div class="info" id="tetapan-ok" hidden>Disimpan. Muat semula laman pelajar untuk lihat perubahan.</div>
       ${MEDAN_TETAPAN.map(([k, label, jenis, bantuan]) => `
         <label for="${k}">${label}</label>
-        ${jenis === 'textarea'
+        ${jenis === 'pilih'
+          ? `<select id="${k}" name="${k}"><option value="ya" ${t.nilai[k] !== 'tidak' ? 'selected' : ''}>Papar</option><option value="tidak" ${t.nilai[k] === 'tidak' ? 'selected' : ''}>Sembunyi</option></select>`
+          : jenis === 'textarea'
           ? `<textarea id="${k}" name="${k}" maxlength="300" placeholder="${h(t.lalai[k])}">${t.nilai[k] === t.lalai[k] ? '' : h(t.nilai[k])}</textarea>`
           : `<input type="text" id="${k}" name="${k}" maxlength="${k === 'hero_tajuk' || k === 'emel_hubungan' ? 120 : 60}" placeholder="${h(t.lalai[k])}" value="${t.nilai[k] === t.lalai[k] ? '' : h(t.nilai[k])}">`}
         ${bantuan ? `<div class="bantuan">${bantuan}</div>` : ''}`).join('')}

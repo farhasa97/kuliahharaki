@@ -3,6 +3,9 @@
 export const adminEmel = (env, emel) =>
   String(env.ADMIN_EMELS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean).includes(String(emel).toLowerCase());
 
+// Senarai emel admin (huruf kecil) daripada ADMIN_EMELS.
+export const senaraiAdmin = (env) => String(env.ADMIN_EMELS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+
 export function peranEfektif(env, pengguna) {
   if (adminEmel(env, pengguna.emel)) return 'admin';
   return pengguna.peranan === 'admin' ? 'pelajar' : pengguna.peranan;

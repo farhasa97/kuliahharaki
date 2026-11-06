@@ -12,7 +12,7 @@ import { hariIni, lanjut, status, notis, tambahBulan } from './lib/langganan.js'
 import { tokenBaru, hashToken, bacaKuki, kukiSesi, kukiPadam, samaMasaTetap, HARI_SESI } from './lib/sesi.js';
 import { repoD1 } from './repo.js';
 import { json } from './lib/http.js';
-import { adminEmel, perananPenuh } from './lib/peranan.js';
+import { adminEmel, perananPenuh, senaraiAdmin } from './lib/peranan.js';
 import { adminApi } from './admin-api.js';
 import { pelajarApi } from './pelajar-api.js';
 import { halamanArtikel } from './artikel-halaman.js';
@@ -103,6 +103,11 @@ export async function handle(req, env, opts = {}) {
   }
 
   if (p === '/artikel' || p.startsWith('/artikel/') || p === '/sitemap.xml' || p === '/robots.txt') return halamanArtikel(req, env, url, repo, now);
+
+  if (p === '/api/statistik' && req.method === 'GET') {
+    let peserta = 0; try { peserta = await repo.bilPeserta(senaraiAdmin(env)); } catch { /* jadual belum wujud */ }
+    return json({ peserta }, 200, { 'cache-control': 'public, max-age=300' });
+  }
 
   if (p === '/api/artikel' && req.method === 'GET') {
     let a = []; try { a = await repo.senaraiArtikel(); } catch { /* jadual belum dicipta */ }

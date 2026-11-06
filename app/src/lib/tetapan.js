@@ -7,6 +7,7 @@ export const MEDAN = {
   hero_teks: { maks: 300, lalai: 'Setiap kuliah dalam bentuk video yang boleh ditonton bila-bila masa. Mula dengan kuliah percuma, naik taraf ahli penuh bila mahu ikuti siri yang lebih mendalam.' },
   footer_teks: { maks: 300, lalai: 'Platform kuliah dalam talian untuk peserta usrah, halaqah dan sesiapa yang mahu menuntut ilmu secara berterusan.' },
   emel_hubungan: { maks: 120, lalai: '' },
+  papar_peserta: { maks: 5, lalai: 'ya' }, // 'ya' | 'tidak': papar bilangan peserta berdaftar di laman utama
 };
 export const LALAI = Object.fromEntries(Object.entries(MEDAN).map(([k, v]) => [k, v.lalai]));
 
@@ -32,6 +33,7 @@ export function sahkanTetapan(b) {
     if (typeof b[k] !== 'string') return { ok: false, sebab: 'medan-tidak-sah', medan: k };
     const t = b[k].replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, '').trim();
     if (t.length > m.maks) return { ok: false, sebab: 'terlalu-panjang', medan: k };
+    if (k === 'papar_peserta' && t && t !== 'ya' && t !== 'tidak') return { ok: false, sebab: 'medan-tidak-sah', medan: k };
     if (k === 'emel_hubungan' && t && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(t)) return { ok: false, sebab: 'emel-tidak-sah', medan: k };
     nilai[k] = t;
   }

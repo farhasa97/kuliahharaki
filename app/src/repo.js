@@ -171,6 +171,15 @@ export function repoD1(db) {
     },
     padamArtikel: (id) => jalan('DELETE FROM artikel WHERE id = ?', id),
 
+    // ---- statistik awam ----
+    // Peserta berdaftar = semua pengguna kecuali admin (ADMIN_EMELS) dan guru. Hanya nombor, tiada data peribadi.
+    async bilPeserta(kecuali = []) {
+      const k = kecuali.map((e) => String(e).toLowerCase()).concat(['']);
+      const asas = `SELECT COUNT(*) AS c FROM pengguna WHERE LOWER(emel) NOT IN (${k.map(() => '?').join(',')})`;
+      try { return (await db.prepare(asas + ' AND LOWER(emel) NOT IN (SELECT emel FROM guru)').bind(...k).first()).c; }
+      catch { return (await db.prepare(asas).bind(...k).first()).c; } // jadual guru belum wujud
+    },
+
     // ---- tetapan laman ----
     async semuaTetapan() { return (await db.prepare('SELECT kunci, nilai FROM tetapan').all()).results; },
     // Nilai kosong memadam baris (kembali ke lalai). Satu batch supaya borang disimpan sepenuhnya atau tidak langsung.

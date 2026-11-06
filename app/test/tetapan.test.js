@@ -109,3 +109,20 @@ test('logo tanpa R2 disambungkan: 503, bukan ralat pelayan', async () => {
   const A = minta(repo, { ADMIN_EMELS: 'ustaz@gmail.com' }, await sesi(repo, 'ustaz@gmail.com'));
   assert.equal((await A('POST', '/api/admin/tetapan/logo', { badan: PNG })).status, 503);
 });
+
+test('statistik: bilangan peserta tidak mengira admin dan guru; boleh di-cache; tetapan papar_peserta disahkan', async () => {
+  const { repo, env } = await sedia();
+  for (const e of ['a@x.my', 'b@x.my', 'c@x.my']) await sesi(repo, e);
+  await sesi(repo, 'ustaz@gmail.com'); // admin
+  await repo.simpanGuru('guru@x.my', 'Ustaz G', 't'); await sesi(repo, 'guru@x.my');
+  const r = await minta(repo, env, null)('GET', '/api/statistik');
+  assert.equal(r.status, 200);
+  assert.equal((await r.json()).peserta, 3);
+  assert.match(r.headers.get('cache-control'), /max-age=300/);
+  assert.equal(sahkanTetapan({ papar_peserta: 'tidak' }).ok, true);
+  assert.equal(sahkanTetapan({ papar_peserta: '' }).ok, true);
+  assert.equal(sahkanTetapan({ papar_peserta: 'mungkin' }).medan, 'papar_peserta');
+  const A = minta(repo, env, await sesi(repo, 'ustaz@gmail.com'));
+  await A('PUT', '/api/admin/tetapan', json({ papar_peserta: 'tidak' }));
+  assert.equal((await (await minta(repo, env, null)('GET', '/api/konfig')).json()).laman.papar_peserta, 'tidak');
+});
