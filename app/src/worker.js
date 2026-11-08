@@ -9,7 +9,7 @@
 import { prosesBcl } from './lib/bcl.js';
 import { sahkanIdToken } from './lib/google.js';
 import { hariIni, lanjut, status, notis, tambahBulan } from './lib/langganan.js';
-import { tokenBaru, hashToken, bacaKuki, kukiSesi, kukiPadam, samaMasaTetap, HARI_SESI } from './lib/sesi.js';
+import { tokenBaru, hashToken, bacaKuki, kukiSesi, kukiPadam, samaMasaTetap, hariSesi } from './lib/sesi.js';
 import { repoD1 } from './repo.js';
 import { json } from './lib/http.js';
 import { adminEmel, perananPenuh, senaraiAdmin } from './lib/peranan.js';
@@ -146,14 +146,28 @@ export async function handle(req, env, opts = {}) {
     if (!siapa) return json({ ralat: 'token-tidak-sah' }, 401);
     const masa = new Date(now).toISOString();
     const pengguna = await repo.simpanPengguna({ ...siapa, peranan: adminEmel(env, siapa.emel) ? 'admin' : undefined }, masa);
+    if (pengguna.disekat) return json({ ralat: 'akaun-disekat' }, 403);
+    let tetapanHari; try { tetapanHari = gabungTetapan(await repo.semuaTetapan()).nilai.hari_sesi; } catch { /* jadual tetapan belum wujud */ }
+    const hari = hariSesi(pengguna, tetapanHari);
     const token = tokenBaru();
-    await repo.ciptaSesi(await hashToken(token), pengguna.id, new Date(now + HARI_SESI * 864e5).toISOString());
-    return json(await profil(repo, env, pengguna, now), 200, { 'set-cookie': kukiSesi(token) });
+    await repo.ciptaSesi(await hashToken(token), pengguna.id, new Date(now + hari * 864e5).toISOString());
+    await repo.catatLogMasuk(pengguna.id, masa);
+    return json(await profil(repo, env, pengguna, now), 200, { 'set-cookie': kukiSesi(token, hari) });
   }
 
   if (p === '/auth/keluar' && req.method === 'POST') {
     const token = bacaKuki(req);
     if (token) await repo.padamSesi(await hashToken(token));
+    return json({ ok: true }, 200, { 'set-cookie': kukiPadam() });
+  }
+
+  // Log keluar semua peranti: padam semua sesi pengguna ini (termasuk peranti semasa).
+  if (p === '/auth/keluar-semua' && req.method === 'POST') {
+    const asal = req.headers.get('origin');
+    if (asal && asal !== url.origin) return json({ ralat: 'asal-tidak-dibenarkan' }, 403);
+    const pengguna = await penggunaSemasa(req, repo, now);
+    if (!pengguna) return json({ ralat: 'belum-log-masuk' }, 401);
+    await repo.padamSemuaSesi(pengguna.id);
     return json({ ok: true }, 200, { 'set-cookie': kukiPadam() });
   }
 

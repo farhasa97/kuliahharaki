@@ -191,6 +191,13 @@ Cara kerja golongan:
 - **Had guna** ialah satu-satunya "jenis" kod: kosong = kod kongsi untuk satu kelas (semua orang guna kod sama); 1 = kod peribadi sekali guna; nombor lain = had bilangan orang. Kod yang sudah digunakan tidak boleh dipadam, hanya dimatikan.
 - Had cubaan: 5 kod salah sejam bagi setiap pengguna.
 
+### A1j. Pengguna, sekat akaun, tempoh sesi dan admin tambahan (08/11/2026)
+Tiada SQL baharu (jadual sudah dicipta dalam A1i).
+- **Panel, Pengguna** (admin sahaja): cari nama atau emel, tapis golongan dan status, **Eksport CSV** (dibuka dalam Excel atau Google Sheets). Tekan **Urus** pada seorang pengguna untuk menukar golongan dan tarikh tamatnya, menetapkan tempoh log masuk khas, **Log keluar semua peranti**, atau **Sekat akaun**. Akaun disekat dilog keluar serta-merta dan tidak boleh log masuk sehingga dinyahsekat. Akaun sendiri dan admin utama tidak boleh disekat.
+- **Tempoh log masuk**: lalai 30 hari, boleh ditukar di **Tetapan laman** (1 hingga 365 hari). Tetapan khas setiap pengguna mengatasi tetapan laman. Perubahan berkuat kuasa pada log masuk seterusnya.
+- **Pelajar** boleh menekan **Log keluar semua peranti** di halaman Akaun (contoh: telefon hilang, atau akaun dikongsi).
+- **Panel, Pasukan** (dahulu Guru): senarai admin dan guru. **Admin utama** ialah emel dalam `ADMIN_EMELS` di Cloudflare dan hanya mereka boleh menambah atau membuang **admin tambahan** di sini. Admin tambahan mempunyai kuasa penuh panel kecuali mengurus admin. Untuk menukar admin utama, sunting `ADMIN_EMELS` di Cloudflare (Workers, kuliahharaki, Settings, Variables and Secrets).
+
 ### A2. Worker dari GitHub
 Workers & Pages, Create, import repository `farhasa97/kuliahharaki`:
 - Project name: `kuliahharaki` (mesti sama dengan `name` dalam `app/wrangler.toml`)

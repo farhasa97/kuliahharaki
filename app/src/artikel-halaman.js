@@ -4,7 +4,7 @@
 // ditanda noindex supaya enjin carian tidak mengindeks salinan di alamat lain.
 
 import { bacaKuki, hashToken } from './lib/sesi.js';
-import { peranEfektif } from './lib/peranan.js';
+import { perananPenuh } from './lib/peranan.js';
 import { gabungTetapan, urlLogo, LALAI } from './lib/tetapan.js';
 import { h, paparMarkdown, tarikhMy } from './lib/artikel.js';
 
@@ -120,7 +120,7 @@ export async function halamanArtikel(req, env, url, repo, now) {
     // Draf hanya boleh dilihat admin yang sedang log masuk (pratonton).
     const token = bacaKuki(req);
     const pengguna = token ? await repo.penggunaDariSesi(await hashToken(token), new Date(now).toISOString()) : null;
-    if (!pengguna || peranEfektif(env, pengguna) !== 'admin') return tidakJumpa(laman, tapak);
+    if (!pengguna || (await perananPenuh(env, repo, pengguna)) !== 'admin') return tidakJumpa(laman, tapak);
     pratonton = true;
   }
   if (!a) return tidakJumpa(laman, tapak);

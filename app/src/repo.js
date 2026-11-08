@@ -36,8 +36,40 @@ export function repoD1(db) {
       return satu('SELECT * FROM pengguna WHERE emel = ?', p.emel);
     },
     ciptaSesi: (hash, id, tamat) => jalan('INSERT INTO sesi (token_hash, pengguna_id, tamat_pada) VALUES (?, ?, ?)', hash, id, tamat),
-    penggunaDariSesi: (hash, masa) =>
-      satu(`SELECT p.* FROM sesi s JOIN pengguna p ON p.id = s.pengguna_id WHERE s.token_hash = ? AND s.tamat_pada > ?`, hash, masa),
+    // Akaun disekat tidak mempunyai sesi sah (disemak dalam JS supaya berfungsi sebelum migrasi 0010).
+    async penggunaDariSesi(hash, masa) {
+      const p = await satu(`SELECT p.* FROM sesi s JOIN pengguna p ON p.id = s.pengguna_id WHERE s.token_hash = ? AND s.tamat_pada > ?`, hash, masa);
+      return p && p.disekat ? null : p;
+    },
+    padamSemuaSesi: (penggunaId) => jalan('DELETE FROM sesi WHERE pengguna_id = ?', penggunaId),
+    async catatLogMasuk(id, masa) { try { await jalan('UPDATE pengguna SET log_masuk_terakhir = ? WHERE id = ?', masa, id); } catch { /* lajur belum wujud */ } },
+    penggunaDariId: (id) => satu('SELECT * FROM pengguna WHERE id = ?', id),
+    penggunaDariEmel: (emel) => satu('SELECT * FROM pengguna WHERE emel = ?', emel),
+    // Senarai pengguna untuk admin. Tapis: cari (emel/nama), golongan, status (disekat | langganan).
+    async senaraiPengguna({ cari = '', golongan = '', status = '', had = 50, ofset = 0 } = {}) {
+      const syarat = [], p = [];
+      if (cari) { syarat.push('(p.emel LIKE ? OR p.nama LIKE ?)'); p.push(`%${cari}%`, `%${cari}%`); }
+      if (golongan === 'belum') syarat.push('p.golongan IS NULL');
+      else if (golongan) { syarat.push('p.golongan = ?'); p.push(golongan); }
+      if (status === 'disekat') syarat.push('p.disekat = 1');
+      if (status === 'langganan') { syarat.push('l.tarikh_tamat >= ?'); p.push(new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10)); }
+      const di = syarat.length ? 'WHERE ' + syarat.join(' AND ') : '';
+      const dari = `FROM pengguna p LEFT JOIN langganan l ON l.emel = p.emel ${di}`;
+      const jumlah = (await db.prepare(`SELECT COUNT(*) AS c ${dari}`).bind(...p).first()).c;
+      const senarai = (await db.prepare(`SELECT p.id, p.emel, p.nama, p.dicipta_pada, p.golongan, p.golongan_tamat, p.disekat, p.hari_sesi, p.log_masuk_terakhir,
+        l.pelan AS langganan_pelan, l.tarikh_tamat AS langganan_tamat ${dari} ORDER BY p.id DESC LIMIT ? OFFSET ?`).bind(...p, had, ofset).all()).results;
+      return { senarai, jumlah };
+    },
+    async kemaskiniPengguna(id, nilai) {
+      const k = Object.keys(nilai).filter((x) => ['golongan', 'golongan_tamat', 'disekat', 'hari_sesi'].includes(x));
+      if (k.length) await jalan(`UPDATE pengguna SET ${k.map((x) => x + ' = ?').join(', ')} WHERE id = ?`, ...k.map((x) => nilai[x]), id);
+      return satu('SELECT * FROM pengguna WHERE id = ?', id);
+    },
+    // ---- admin tambahan (admin utama kekal dalam ADMIN_EMELS) ----
+    adminTambahan: (emel) => satu('SELECT * FROM admin_tambahan WHERE emel = ?', emel),
+    async senaraiAdminTambahan() { return (await db.prepare('SELECT * FROM admin_tambahan ORDER BY dicipta_pada').all()).results; },
+    tambahAdmin: (emel, oleh, masa) => jalan('INSERT INTO admin_tambahan (emel, ditambah_oleh, dicipta_pada) VALUES (?, ?, ?) ON CONFLICT(emel) DO NOTHING', emel, oleh, masa),
+    buangAdmin: (emel) => jalan('DELETE FROM admin_tambahan WHERE emel = ?', emel),
     padamSesi: (hash) => jalan('DELETE FROM sesi WHERE token_hash = ?', hash),
     async senaraiLangganan() {
       return (await db.prepare('SELECT * FROM langganan ORDER BY tarikh_tamat DESC').all()).results;

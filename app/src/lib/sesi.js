@@ -19,8 +19,17 @@ export function bacaKuki(req) {
   return m ? m[1] : null;
 }
 
-export const kukiSesi = (token) =>
-  `${NAMA_KUKI}=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${HARI_SESI * 86400}`;
+export const kukiSesi = (token, hari = HARI_SESI) =>
+  `${NAMA_KUKI}=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${hari * 86400}`;
+
+// Tempoh sesi: tetapan khas pengguna > tetapan laman > 30 hari. Dihadkan 1 hingga 365.
+export function hariSesi(pengguna, tetapanHari) {
+  for (const x of [pengguna?.hari_sesi, tetapanHari]) {
+    const n = Number(x);
+    if (x !== null && x !== undefined && x !== '' && Number.isInteger(n) && n >= 1 && n <= 365) return n;
+  }
+  return HARI_SESI;
+}
 
 export const kukiPadam = () => `${NAMA_KUKI}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
 

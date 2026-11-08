@@ -346,3 +346,30 @@ test('golongan dan kod: tebus atomik hormati had guna, tamat dan aktif; log guna
   assert.deepEqual([c.golongan, c2.golongan], ['pelajar', 'awam']);
   assert.equal((await repo.kemaskiniCourse(c2.id, { golongan: 'ahli' }, 't')).golongan, 'ahli');
 });
+
+test('pengguna: senarai dengan tapis dan langganan, kemas kini, sekat menyembunyikan sesi, padam semua sesi, admin tambahan', async () => {
+  const a = await repo.simpanPengguna({ emel: 'senarai-a@x.my', sub: 'sa', nama: 'Siti Senarai' }, 't');
+  const b = await repo.simpanPengguna({ emel: 'senarai-b@x.my', sub: 'sb', nama: 'Bakar' }, 't');
+  await repo.tetapkanLangganan('senarai-a@x.my', { pelan: 'bulanan', tarikh_tamat: '2099-01-01', hari_labuh: 1 }, 't');
+  let r = await repo.senaraiPengguna({ cari: 'senarai-' });
+  assert.equal(r.jumlah, 2);
+  assert.equal(r.senarai.find((x) => x.id === a.id).langganan_tamat, '2099-01-01');
+  assert.equal((await repo.senaraiPengguna({ cari: 'Siti' })).jumlah, 1);
+  assert.equal((await repo.senaraiPengguna({ cari: 'senarai-', status: 'langganan' })).jumlah, 1);
+  const u = await repo.kemaskiniPengguna(b.id, { golongan: 'pelajar', golongan_tamat: '2026-12-01', hari_sesi: 7, disekat: 1 });
+  assert.deepEqual([u.golongan, u.golongan_tamat, u.hari_sesi, u.disekat], ['pelajar', '2026-12-01', 7, 1]);
+  assert.equal((await repo.senaraiPengguna({ cari: 'senarai-', status: 'disekat', golongan: 'pelajar' })).jumlah, 1);
+  await repo.ciptaSesi('hash-sekat', b.id, '2099-01-01');
+  assert.equal(await repo.penggunaDariSesi('hash-sekat', '2026-01-01'), null, 'akaun disekat tiada sesi sah');
+  await repo.ciptaSesi('hash-a1', a.id, '2099-01-01'); await repo.ciptaSesi('hash-a2', a.id, '2099-01-01');
+  assert.equal((await repo.penggunaDariSesi('hash-a1', '2026-01-01')).id, a.id);
+  await repo.padamSemuaSesi(a.id);
+  assert.equal(await repo.penggunaDariSesi('hash-a2', '2026-01-01'), null);
+  await repo.catatLogMasuk(a.id, '2026-11-08T00:00:00Z');
+  assert.equal((await repo.penggunaDariEmel('senarai-a@x.my')).log_masuk_terakhir, '2026-11-08T00:00:00Z');
+  await repo.tambahAdmin('t@x.my', 'utama@x.my', 't'); await repo.tambahAdmin('t@x.my', 'utama@x.my', 't');
+  assert.equal((await repo.senaraiAdminTambahan()).length, 1);
+  assert.ok(await repo.adminTambahan('t@x.my'));
+  await repo.buangAdmin('t@x.my');
+  assert.equal(await repo.adminTambahan('t@x.my'), null);
+});

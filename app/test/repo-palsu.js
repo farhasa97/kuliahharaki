@@ -2,7 +2,7 @@
 export function repoPalsu() {
   const bayaran = new Map(), langganan = new Map(), pengguna = new Map(), sesi = new Map();
   const pesanan = new Map(), itemPesanan = new Map(), akses = new Map();
-  const courses = new Map(), subjects = new Map(), progress = new Map(), notas = new Map(), tetapan = new Map(), artikel = new Map(), gurus = new Map(), semakan = new Map(), soalan = new Map(), kodD = new Map(), kodG = [], kodC = []; let idC = 1, idS = 1, idN = 1, idA = 1, idK = 1, idQ = 1, idKD = 1;
+  const courses = new Map(), subjects = new Map(), progress = new Map(), notas = new Map(), tetapan = new Map(), artikel = new Map(), gurus = new Map(), semakan = new Map(), soalan = new Map(), kodD = new Map(), kodG = [], kodC = [], adminT = new Map(); let idC = 1, idS = 1, idN = 1, idA = 1, idK = 1, idQ = 1, idKD = 1;
   let idSeterusnya = 1;
   return {
     _bayaran: bayaran, _langganan: langganan, _pengguna: pengguna, _sesi: sesi, _pesanan: pesanan, _akses: akses, _course: courses, _subject: subjects, _progress: progress,
@@ -29,9 +29,32 @@ export function repoPalsu() {
     async penggunaDariSesi(hash, masa) {
       const s = sesi.get(hash);
       if (!s || !(s.tamat_pada > masa)) return null;
-      return [...pengguna.values()].find((p) => p.id === s.pengguna_id) ?? null;
+      const p = [...pengguna.values()].find((x) => x.id === s.pengguna_id) ?? null;
+      return p && p.disekat ? null : p;
     },
     async padamSesi(hash) { sesi.delete(hash); },
+    async padamSemuaSesi(id) { for (const [h, s] of sesi) if (s.pengguna_id === id) sesi.delete(h); },
+    async catatLogMasuk(id, masa) { const p = [...pengguna.values()].find((x) => x.id === id); if (p) p.log_masuk_terakhir = masa; },
+    async penggunaDariId(id) { return [...pengguna.values()].find((x) => x.id === id) ?? null; },
+    async penggunaDariEmel(emel) { return pengguna.get(emel) ?? null; },
+    async senaraiPengguna({ cari = '', golongan = '', status = '', had = 50, ofset = 0 } = {}) {
+      const hari = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
+      const semua = [...pengguna.values()].map((p) => { const l = langganan.get(p.emel); return { ...p, langganan_pelan: l?.pelan ?? null, langganan_tamat: l?.tarikh_tamat ?? null }; })
+        .filter((p) => (!cari || p.emel.includes(cari) || String(p.nama || '').includes(cari))
+          && (golongan === 'belum' ? p.golongan === null : !golongan || p.golongan === golongan)
+          && (status !== 'disekat' || p.disekat === 1) && (status !== 'langganan' || (p.langganan_tamat && p.langganan_tamat >= hari)))
+        .sort((a, b) => b.id - a.id);
+      return { senarai: semua.slice(ofset, ofset + had), jumlah: semua.length };
+    },
+    async kemaskiniPengguna(id, n) {
+      const p = [...pengguna.values()].find((x) => x.id === id);
+      for (const k of ['golongan', 'golongan_tamat', 'disekat', 'hari_sesi']) if (k in n) p[k] = n[k];
+      return p;
+    },
+    async adminTambahan(emel) { return adminT.get(emel) ?? null; },
+    async senaraiAdminTambahan() { return [...adminT.values()]; },
+    async tambahAdmin(emel, oleh, masa) { if (!adminT.has(emel)) adminT.set(emel, { emel, ditambah_oleh: oleh, dicipta_pada: masa }); },
+    async buangAdmin(emel) { adminT.delete(emel); },
     async senaraiLangganan() { return [...langganan.values()]; },
     async senaraiBayaran() { return [...bayaran.values()]; },
     async tetapkanLangganan(emel, l, masa) { langganan.set(emel, { emel, ...l, dikemas_kini_pada: masa }); },

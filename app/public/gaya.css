@@ -398,3 +398,6 @@ a.course:hover .thumb>div:first-child{transform:scale(1.07)}
 .pg-kod input,.kod-baris input{height:44px;padding:0 14px;border:1px solid var(--line);border-radius:var(--r-md);font:inherit;letter-spacing:.08em;text-transform:uppercase;background:var(--surface);color:var(--ink);min-width:0}
 .kod-baris{display:flex;gap:8px;margin-top:0;min-width:0}.kod-baris input{flex:1;width:100%}.row-list>*{min-width:0}
 .p-admin .kod-teks{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.06em;font-size:16px}
+.p-admin .dua-lajur{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}.p-admin .dua-lajur>*{min-width:0}
+@media (max-width:520px){.p-admin .dua-lajur{grid-template-columns:1fr}}
+.p-admin .lencana.bahaya-l{background:var(--bad-soft);color:var(--bad);border-color:transparent}

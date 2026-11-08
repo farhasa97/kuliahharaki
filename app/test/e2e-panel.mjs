@@ -12,12 +12,13 @@ const { chromium } = createRequire(import.meta.url)('playwright');
 const PORT = 8791;
 const ADMIN = 'admin-e2e@contoh.my', PELAJAR = 'pelajar-e2e@contoh.my', GURU = 'guru-e2e@contoh.my';
 const SKRIN = process.env.SKRIN_DIR;
-const tokenAdmin = tokenRawak(), tokenPelajar = tokenRawak(), tokenGuru = tokenRawak();
+const tokenAdmin = tokenRawak(), tokenPelajar = tokenRawak(), tokenGuru = tokenRawak(), tokenSekat = tokenRawak();
+const SEKAT = 'sekat-e2e@contoh.my';
 const masa = new Date().toISOString(), tamat = new Date(Date.now() + 864e5).toISOString();
 // Peranan dalam pangkalan data sengaja 'pelajar': admin mesti datang daripada ADMIN_EMELS.
 const { B, henti } = await mulaWorker({ port: PORT, vars: { ADMIN_EMELS: ADMIN }, semaiSql:
-  `INSERT INTO pengguna (emel, nama, peranan, dicipta_pada, golongan) VALUES ('${ADMIN}', 'Admin E2E', 'pelajar', '${masa}', 'awam'), ('${PELAJAR}', 'Pelajar E2E', 'pelajar', '${masa}', 'awam'), ('${GURU}', 'Guru Google', 'pelajar', '${masa}', 'awam');
-   INSERT INTO sesi (token_hash, pengguna_id, tamat_pada) VALUES ('${hash(tokenAdmin)}', 1, '${tamat}'), ('${hash(tokenPelajar)}', 2, '${tamat}'), ('${hash(tokenGuru)}', 3, '${tamat}');
+  `INSERT INTO pengguna (emel, nama, peranan, dicipta_pada, golongan) VALUES ('${ADMIN}', 'Admin E2E', 'pelajar', '${masa}', 'awam'), ('${PELAJAR}', 'Pelajar E2E', 'pelajar', '${masa}', 'awam'), ('${GURU}', 'Guru Google', 'pelajar', '${masa}', 'awam'), ('${SEKAT}', 'Zaid Sekat', 'pelajar', '${masa}', 'awam');
+   INSERT INTO sesi (token_hash, pengguna_id, tamat_pada) VALUES ('${hash(tokenAdmin)}', 1, '${tamat}'), ('${hash(tokenPelajar)}', 2, '${tamat}'), ('${hash(tokenGuru)}', 3, '${tamat}'), ('${hash(tokenSekat)}', 4, '${tamat}');
    INSERT INTO guru (emel, nama, dicipta_pada) VALUES ('${GURU}', 'Ustaz Guru', '${masa}');` });
 
 const pelayar = await chromium.launch();
@@ -505,6 +506,57 @@ try {
     await page.getByRole('button', { name: 'Simpan' }).click();
     await page.locator('h1', { hasText: 'Course Khas Pelajar' }).waitFor();
     await page.locator('.lencana', { hasText: 'Pelajar' }).first().waitFor();
+  });
+
+  await langkah('pengguna: cari, tukar golongan dan tempoh sesi, sekat (sesi tamat serta-merta), nyahsekat, eksport CSV', async () => {
+    await page.goto(B + '/panel/#/pengguna');
+    await page.getByRole('heading', { name: 'Pengguna' }).waitFor();
+    await page.locator('#cariPengguna').fill('zaid');
+    await page.getByRole('button', { name: 'Tapis' }).click();
+    await page.getByText('1 pengguna').waitFor();
+    const kad = page.locator('.kad', { hasText: SEKAT });
+    await kad.getByRole('button', { name: 'Urus' }).click();
+    await kad.locator('select[name=golongan]').selectOption('pelajar');
+    await kad.locator('input[name=golongan_tamat]').fill('2026-12-31');
+    await kad.locator('input[name=hari_sesi]').fill('7');
+    await kad.getByRole('button', { name: 'Simpan' }).click();
+    await page.getByText('Disimpan.').waitFor();
+    await page.locator('.kad', { hasText: SEKAT }).getByText('Pelajar hingga 31/12/2026').waitFor();
+    await skrinHalaman(page, '14-pengguna');
+    const z = await bukaSesi(tokenSekat);
+    assert.equal((await z.pg.request.get(B + '/api/saya')).status(), 200);
+    const k2 = page.locator('.kad', { hasText: SEKAT });
+    await k2.getByRole('button', { name: 'Urus' }).click();
+    await k2.getByRole('button', { name: 'Sekat akaun' }).click();
+    await page.locator('.kad', { hasText: SEKAT }).getByText('Disekat').waitFor();
+    assert.equal((await z.pg.request.get(B + '/api/saya')).status(), 401);
+    await z.c.close();
+    const k3 = page.locator('.kad', { hasText: SEKAT });
+    await k3.getByRole('button', { name: 'Urus' }).click();
+    await k3.getByRole('button', { name: 'Nyahsekat' }).click();
+    await page.locator('.kad', { hasText: SEKAT }).getByRole('button', { name: 'Urus' }).waitFor();
+    assert.equal(await page.locator('.kad', { hasText: SEKAT }).getByText('Disekat').count(), 0);
+    // admin sendiri tidak boleh disekat
+    await page.locator('#cariPengguna').fill(ADMIN);
+    await page.getByRole('button', { name: 'Tapis' }).click();
+    const ka = page.locator('.kad', { hasText: ADMIN });
+    await ka.getByRole('button', { name: 'Urus' }).click();
+    await ka.getByRole('button', { name: 'Sekat akaun' }).click();
+    await ka.getByText('Tidak boleh menyekat akaun sendiri').waitFor();
+    const [muat] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Eksport CSV' }).click()]);
+    assert.match(muat.suggestedFilename(), /^pengguna-\d{4}-\d{2}-\d{2}\.csv$/);
+  });
+
+  await langkah('pasukan: admin utama menambah admin tambahan, kemudian membuangnya', async () => {
+    await page.goto(B + '/panel/#/guru');
+    await page.getByRole('heading', { name: 'Pasukan' }).waitFor();
+    await page.getByText('Admin utama (ditetapkan dalam Cloudflare').waitFor();
+    await page.locator('#emelAdmin').fill('Timbalan@Contoh.my');
+    await page.getByRole('button', { name: 'Tambah admin' }).click();
+    await page.getByText('timbalan@contoh.my').waitFor();
+    await skrinHalaman(page, '15-pasukan');
+    await page.locator('.baris', { hasText: 'timbalan@contoh.my' }).getByRole('button', { name: 'Buang' }).click();
+    await page.getByText('timbalan@contoh.my').waitFor({ state: 'detached' });
   });
 
   await langkah('tiada ralat JavaScript sepanjang sesi admin', async () => {

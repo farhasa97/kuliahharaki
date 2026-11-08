@@ -510,7 +510,11 @@ function halamanMasuk() {
 
 async function logMasuk(res) {
   const r = await fetch('/auth/google', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ credential: res.credential }) });
-  if (!r.ok) { document.querySelector('.auth-card .lede')?.replaceChildren('Log masuk gagal. Cuba lagi.'); return; }
+  if (!r.ok) {
+    const j = await r.json().catch(() => ({}));
+    document.querySelector('.auth-card .lede')?.replaceChildren(j.ralat === 'akaun-disekat' ? 'Akaun ini telah disekat. Hubungi admin untuk bantuan.' : 'Log masuk gagal. Cuba lagi.');
+    return;
+  }
   saya = await r.json();
   let kembali = '#/';
   try { kembali = sessionStorage.getItem('kh-kembali') || '#/'; sessionStorage.removeItem('kh-kembali'); } catch { /* storan disekat */ }
@@ -861,7 +865,7 @@ function halamanAkaun() {
           <div class="row-item ${l.akses ? 'done' : 'info'}"><div class="rt"><b>Ahli penuh: ${STATUS_LANGGANAN[l.status]}${l.tarikh_tamat ? ` hingga ${h(l.tarikh_tamat)}` : ''}</b><small>Keahlian ${l.akses ? 'ahli penuh' : 'percuma'}</small></div></div>
         </div>
         ${notis}
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px"><button class="btn outline" data-act="pasang" data-pasang hidden>Pasang app di telefon</button>${['admin', 'guru'].includes(saya.pengguna.peranan) ? `<a class="btn outline" href="/panel/">Panel ${saya.pengguna.peranan}</a>` : ''}<button class="btn outline" data-act="keluar">Log keluar</button></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px"><button class="btn outline" data-act="pasang" data-pasang hidden>Pasang app di telefon</button>${['admin', 'guru'].includes(saya.pengguna.peranan) ? `<a class="btn outline" href="/panel/">Panel ${saya.pengguna.peranan}</a>` : ''}<button class="btn outline" data-act="keluar">Log keluar</button><button class="btn outline" data-act="keluar-semua">Log keluar semua peranti</button></div>
       </div></div>
       <aside class="lesson-side">${l.akses && !l.notis ? '' : kadLanggan()}</aside>
     </div></div>`);
@@ -873,6 +877,10 @@ const TINDAKAN = {
   selesai: (el) => tandaSelesai(el.dataset.id),
   async semak() { await muatSaya(); laluan(); },
   async keluar() { await fetch('/auth/keluar', { method: 'POST' }); saya = null; location.hash = '#/'; laluan(); },
+  async 'keluar-semua'() {
+    if (!confirm('Log keluar dari semua peranti, termasuk telefon dan komputer lain? Anda perlu log masuk semula.')) return;
+    await fetch('/auth/keluar-semua', { method: 'POST' }); saya = null; location.hash = '#/'; laluan();
+  },
   tab(el) {
     const panel = el.closest('.panel');
     panel.querySelectorAll('[role=tab]').forEach((t) => t.setAttribute('aria-selected', String(t === el)));

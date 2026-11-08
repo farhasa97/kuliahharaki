@@ -29,7 +29,7 @@ const IKON = {
 // Menu pil di header. Item aktif ditanda ikut bahagian pertama hash.
 function binaMenu() {
   const item = PERANAN === 'admin'
-    ? [['course', '#/', 'Course'], ['kelulusan', '#/kelulusan', 'Kelulusan'], ['soalan', '#/soalan', 'Soal jawab'], ['guru', '#/guru', 'Guru'], ['kod', '#/kod', 'Kod golongan'], ['artikel', '#/artikel', 'Artikel'], ['tetapan', '#/tetapan', 'Tetapan laman']]
+    ? [['course', '#/', 'Course'], ['kelulusan', '#/kelulusan', 'Kelulusan'], ['soalan', '#/soalan', 'Soal jawab'], ['pengguna', '#/pengguna', 'Pengguna'], ['guru', '#/guru', 'Pasukan'], ['kod', '#/kod', 'Kod golongan'], ['artikel', '#/artikel', 'Artikel'], ['tetapan', '#/tetapan', 'Tetapan laman']]
     : [['course', '#/', 'Course saya'], ['soalan', '#/soalan', 'Soal jawab']];
   menuPanel.innerHTML = item.map(([k, href, label]) => `<a href="${href}" data-menu="${k}">${IKON[k]}<span>${label}</span>${k === 'kelulusan' ? '<span class="bil-pil" id="bilKelulusan" hidden></span>' : ''}${k === 'soalan' ? '<span class="bil-pil" id="bilSoalan" hidden></span>' : ''}</a>`).join('')
     + `<a href="/" data-menu="luar">${IKON.luar}<span>Laman pelajar</span></a>`;
@@ -37,7 +37,7 @@ function binaMenu() {
 }
 function tandaMenu() {
   const bahagian = (location.hash || '#/').slice(2).split('/')[0];
-  const aktif = ['kelulusan', 'soalan', 'guru', 'kod', 'artikel', 'tetapan'].includes(bahagian) ? bahagian : 'course';
+  const aktif = ['kelulusan', 'soalan', 'pengguna', 'guru', 'kod', 'artikel', 'tetapan'].includes(bahagian) ? bahagian : 'course';
   menuPanel.querySelectorAll('a[data-menu]').forEach((a) => { if (a.dataset.menu === aktif) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
 }
 async function kemaskiniBilSoalan() {
@@ -94,6 +94,10 @@ const RALAT = {
   'had-nota': 'Setiap subject maksimum 10 nota. Padam nota lama dahulu.',
   'r2-belum-sedia': 'Storan fail (R2) belum disambungkan pada Worker.',
   'golongan-tidak-sah': 'Pilih golongan.',
+  'hari-sesi-tidak-sah': 'Tempoh log masuk mesti 1 hingga 365 hari.',
+  'tidak-boleh-sekat': 'Tidak boleh menyekat akaun sendiri atau admin utama.',
+  'admin-utama-sahaja': 'Hanya admin utama boleh menambah atau membuang admin.',
+  'sudah-admin-utama': 'Emel ini sudah admin utama.',
   'label-tidak-sah': 'Label maksimum 60 aksara.',
   'bulan-tidak-sah': 'Tempoh akses mesti 1 hingga 36 bulan.',
   'had-tidak-sah': 'Had guna mesti nombor 1 hingga 100000, atau kosong untuk tanpa had.',
@@ -340,10 +344,23 @@ async function halamanSoalan(status) {
 // ---------- guru (admin) ----------
 
 async function halamanGuru() {
-  const senarai = await api('GET', 'guru');
+  const [senarai, adm] = await Promise.all([api('GET', 'guru'), api('GET', 'admin')]);
   app.innerHTML = `
     <p><a href="#/">&larr; Senarai course</a></p>
-    <h1>Guru</h1>
+    <h1>Pasukan</h1>
+    <h2 style="margin-top:8px">Admin</h2>
+    <div class="kad">
+      ${adm.utama.map((e) => `<div class="baris antara" style="margin:0 0 8px"><div><b>${h(e)}</b><div class="kecil">Admin utama (ditetapkan dalam Cloudflare, ADMIN_EMELS)</div></div></div>`).join('')}
+      ${adm.tambahan.map((a) => `<div class="baris antara" style="margin:0 0 8px"><div><b>${h(a.emel)}</b><div class="kecil">Admin tambahan · ditambah oleh ${h(a.ditambah_oleh)} pada ${h(tarikhMy(a.dicipta_pada))}</div></div>
+        ${adm.bolehUrus ? `<button class="bahaya" data-act="buang-admin" data-emel="${h(a.emel)}">Buang</button>` : ''}</div>`).join('')}
+      ${adm.bolehUrus ? `<form data-borang="admin" novalidate style="margin-top:12px"><div class="ralat" hidden></div>
+        <label for="emelAdmin">Tambah admin (emel Google)</label>
+        <input type="text" id="emelAdmin" name="emel" inputmode="email" maxlength="120" placeholder="nama@gmail.com">
+        <div class="bantuan">Admin tambahan mempunyai kuasa penuh panel kecuali menambah atau membuang admin. Bila dibuang, sesi mereka ditamatkan serta-merta.</div>
+        <div class="tindakan"><button type="submit">Tambah admin</button></div></form>`
+        : '<div class="bantuan">Hanya admin utama boleh menambah atau membuang admin.</div>'}
+    </div>
+    <h2>Guru</h2>
     <form class="kad" data-borang="guru" novalidate>
       <div class="ralat" hidden></div>
       <label for="emel">Emel Google guru</label>
@@ -355,6 +372,58 @@ async function halamanGuru() {
     </form>
     ${senarai.length ? senarai.map((g) => `<div class="kad"><div class="baris antara" style="margin:0"><div><b>${h(g.nama)}</b><div class="kecil">${h(g.emel)} · ${g.bil_course} course</div></div>
       <button class="bahaya" data-act="buang-guru" data-emel="${h(g.emel)}">Buang</button></div></div>`).join('') : '<div class="kad kosong">Belum ada guru.</div>'}`;
+}
+
+// ---------- pengguna (admin) ----------
+const tapisPengguna = { cari: '', golongan: '', status: '' };
+const LABEL_GOL_P = { awam: 'Orang awam', pelajar: 'Pelajar', ahli: 'Ahli organisasi' };
+async function halamanPengguna(halaman = 0) {
+  const kotakCari = document.getElementById('cariPengguna');
+  if (kotakCari) { tapisPengguna.cari = kotakCari.value.trim(); tapisPengguna.golongan = document.getElementById('tapisGolongan').value; tapisPengguna.status = document.getElementById('tapisStatus').value; }
+  const d = await api('GET', 'pengguna?' + new URLSearchParams({ ...tapisPengguna, halaman }));
+  const hari = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
+  const pilih = (id, nilai, pilihan) => `<select id="${id}">${pilihan.map(([v, t]) => `<option value="${v}" ${nilai === v ? 'selected' : ''}>${t}</option>`).join('')}</select>`;
+  const golTeks = (p) => (p.golongan === null || p.golongan === undefined ? 'Belum memilih' : LABEL_GOL_P[p.golongan] + (p.golongan_tamat ? ` hingga ${tarikhMy(p.golongan_tamat + 'T00:00:00+08:00')}${p.golongan_tamat < hari ? ' (tamat)' : ''}` : ''));
+  const langTeks = (p) => (p.langganan_tamat ? (p.langganan_tamat >= hari ? `Langganan aktif hingga ${tarikhMy(p.langganan_tamat + 'T00:00:00+08:00')}` : `Langganan tamat ${tarikhMy(p.langganan_tamat + 'T00:00:00+08:00')}`) : 'Tiada langganan');
+  const akhir = Math.max(0, Math.ceil(d.jumlah / d.saiz) - 1);
+  app.innerHTML = `
+    <p><a href="#/">&larr; Senarai course</a></p>
+    <div class="baris antara"><h1>Pengguna</h1><button class="kedua" data-act="eksport-pengguna">Eksport CSV</button></div>
+    <form class="kad tapis-pengguna" data-borang="tapis-pengguna" novalidate><div class="ralat" hidden></div>
+      <label for="cariPengguna">Cari nama atau emel</label>
+      <input type="text" id="cariPengguna" maxlength="80" value="${h(tapisPengguna.cari)}" placeholder="contoh: aminah">
+      <div class="dua-lajur">
+        <div><label for="tapisGolongan">Golongan</label>${pilih('tapisGolongan', tapisPengguna.golongan, [['', 'Semua'], ['awam', 'Orang awam'], ['pelajar', 'Pelajar'], ['ahli', 'Ahli organisasi'], ['belum', 'Belum memilih']])}</div>
+        <div><label for="tapisStatus">Status</label>${pilih('tapisStatus', tapisPengguna.status, [['', 'Semua'], ['langganan', 'Langganan aktif'], ['disekat', 'Disekat']])}</div>
+      </div>
+      <div class="tindakan"><button type="submit">Tapis</button></div>
+    </form>
+    <p class="kecil">${d.jumlah} pengguna${d.jumlah > d.saiz ? ` · halaman ${d.halaman + 1} daripada ${akhir + 1}` : ''}</p>
+    ${d.senarai.length ? d.senarai.map((p) => `<div class="kad" id="pg-${p.id}">
+      <div class="baris antara" style="margin:0;align-items:flex-start"><div style="min-width:0">
+        <div class="baris" style="margin:0"><b>${h(p.nama || '(tiada nama)')}</b>${p.disekat ? '<span class="lencana bahaya-l">Disekat</span>' : ''}</div>
+        <div class="kecil" style="overflow-wrap:anywhere">${h(p.emel)}</div>
+        <div class="kecil" style="margin-top:4px">${h(golTeks(p))} · ${h(langTeks(p))}</div>
+        <div class="kecil">Daftar ${h(tarikhMy(p.dicipta_pada))}${p.log_masuk_terakhir ? ` · log masuk terakhir ${h(tarikhMy(p.log_masuk_terakhir))}` : ''}${p.hari_sesi ? ` · sesi ${p.hari_sesi} hari` : ''}</div></div>
+        <button class="kedua" data-act="buka-pengguna" data-id="${p.id}">Urus</button></div>
+      <form id="pf-${p.id}" data-borang="urus-pengguna" data-id="${p.id}" hidden novalidate style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
+        <div class="ralat" hidden></div>
+        <div class="dua-lajur">
+          <div><label for="g-${p.id}">Golongan</label><select id="g-${p.id}" name="golongan">${['awam', 'pelajar', 'ahli'].map((g) => `<option value="${g}" ${(p.golongan || 'awam') === g ? 'selected' : ''}>${LABEL_GOL_P[g]}</option>`).join('')}</select></div>
+          <div><label for="gt-${p.id}">Golongan tamat</label><input type="date" id="gt-${p.id}" name="golongan_tamat" value="${h(p.golongan_tamat || '')}"></div>
+        </div>
+        <div class="bantuan">Kosongkan tarikh untuk akses kekal. Orang awam tiada tarikh tamat.</div>
+        <label for="hs-${p.id}">Tempoh log masuk khas (hari)</label>
+        <input type="number" id="hs-${p.id}" name="hari_sesi" min="1" max="365" value="${p.hari_sesi ?? ''}" placeholder="kosong = ikut tetapan laman">
+        <div class="tindakan" style="flex-wrap:wrap">
+          <button type="submit">Simpan</button>
+          <button type="button" class="kedua" data-act="keluar-pengguna" data-id="${p.id}">Log keluar semua peranti</button>
+          <button type="button" class="${p.disekat ? 'kedua' : 'bahaya'}" data-act="sekat-pengguna" data-id="${p.id}" data-sekat="${p.disekat ? 0 : 1}">${p.disekat ? 'Nyahsekat' : 'Sekat akaun'}</button>
+        </div>
+      </form></div>`).join('') : '<div class="kad kosong">Tiada pengguna sepadan.</div>'}
+    ${d.jumlah > d.saiz ? `<div class="baris antara">
+      ${d.halaman > 0 ? `<button class="kedua" data-act="halaman-pengguna" data-halaman="${d.halaman - 1}">&larr; Sebelum</button>` : '<span></span>'}
+      ${d.halaman < akhir ? `<button class="kedua" data-act="halaman-pengguna" data-halaman="${d.halaman + 1}">Seterusnya &rarr;</button>` : ''}</div>` : ''}`;
 }
 
 // ---------- kod golongan (admin) ----------
@@ -554,6 +623,7 @@ const MEDAN_TETAPAN = [
   ['hero_teks', 'Teks pengenalan (laman awam)', 'textarea', ''],
   ['footer_teks', 'Teks footer', 'textarea', ''],
   ['emel_hubungan', 'Emel hubungan', 'input', 'Dipaparkan di footer jika diisi.'],
+  ['hari_sesi', 'Tempoh log masuk (hari)', 'nombor', 'Berapa hari pengguna kekal log masuk sebelum perlu log masuk semula. Lalai 30. Boleh ditetapkan khas untuk pengguna tertentu di halaman Pengguna. Berkuat kuasa pada log masuk seterusnya.'],
   ['papar_peserta', 'Bilangan peserta di laman utama', 'pilih', 'Papar "N peserta berdaftar" di hero. Admin dan guru tidak dikira. Pilih Sembunyi jika bilangan masih kecil.'],
 ];
 
@@ -569,6 +639,8 @@ async function borangTetapan() {
         <label for="${k}">${label}</label>
         ${jenis === 'pilih'
           ? `<select id="${k}" name="${k}"><option value="ya" ${t.nilai[k] !== 'tidak' ? 'selected' : ''}>Papar</option><option value="tidak" ${t.nilai[k] === 'tidak' ? 'selected' : ''}>Sembunyi</option></select>`
+          : jenis === 'nombor'
+          ? `<input type="number" id="${k}" name="${k}" min="1" max="365" placeholder="${h(t.lalai[k])}" value="${t.nilai[k] === t.lalai[k] ? '' : h(t.nilai[k])}">`
           : jenis === 'textarea'
           ? `<textarea id="${k}" name="${k}" maxlength="300" placeholder="${h(t.lalai[k])}">${t.nilai[k] === t.lalai[k] ? '' : h(t.nilai[k])}</textarea>`
           : `<input type="text" id="${k}" name="${k}" maxlength="${k === 'hero_tajuk' || k === 'emel_hubungan' ? 120 : 60}" placeholder="${h(t.lalai[k])}" value="${t.nilai[k] === t.lalai[k] ? '' : h(t.nilai[k])}">`}
@@ -689,6 +761,18 @@ const BORANG = {
     await borangArtikel(id); // muat semula borang daripada data tersimpan (slug dikunci, pautan pratonton dikemas kini)
     const ok = document.getElementById('artikel-ok'); ok.hidden = false; ok.scrollIntoView({ block: 'center' });
   },
+  async admin(b) {
+    const d = new FormData(b);
+    await api('POST', 'admin', { emel: d.get('emel') });
+    halamanGuru();
+  },
+  async 'tapis-pengguna'() { await halamanPengguna(0); },
+  async 'urus-pengguna'(b) {
+    const d = new FormData(b), id = b.dataset.id;
+    await api('PUT', `pengguna/${id}`, { golongan: d.get('golongan'), golongan_tamat: d.get('golongan_tamat') || null, hari_sesi: String(d.get('hari_sesi') || '').trim() || null });
+    await halamanPengguna();
+    const kad = document.getElementById('pg-' + id); if (kad) { kad.insertAdjacentHTML('afterbegin', '<div class="info">Disimpan.</div>'); kad.scrollIntoView({ block: 'center' }); }
+  },
   async guru(b) {
     const d = new FormData(b);
     await api('POST', 'guru', { emel: d.get('emel'), nama: d.get('nama') });
@@ -759,6 +843,31 @@ const TINDAKAN = {
     await api('POST', `kelulusan/${el.dataset.jenis}/${el.dataset.id}/tolak`, { catatan });
     halamanKelulusan();
   },
+  async 'buang-admin'(el) {
+    if (!confirm(`Buang ${el.dataset.emel} sebagai admin? Sesi mereka akan ditamatkan.`)) return;
+    await api('DELETE', `admin/${encodeURIComponent(el.dataset.emel)}`);
+    halamanGuru();
+  },
+  'buka-pengguna'(el) { const f = document.getElementById('pf-' + el.dataset.id); f.hidden = !f.hidden; el.textContent = f.hidden ? 'Urus' : 'Tutup'; },
+  async 'sekat-pengguna'(el) {
+    const sekat = el.dataset.sekat === '1';
+    if (sekat && !confirm('Sekat akaun ini? Pengguna dilog keluar dari semua peranti dan tidak boleh log masuk sehingga dinyahsekat.')) return;
+    await api('PUT', `pengguna/${el.dataset.id}`, { disekat: sekat });
+    await halamanPengguna();
+  },
+  async 'keluar-pengguna'(el) {
+    if (!confirm('Log keluar pengguna ini dari semua peranti?')) return;
+    await api('POST', `pengguna/${el.dataset.id}/keluar-semua`);
+    el.textContent = 'Sudah dilog keluar';
+  },
+  'halaman-pengguna'(el) { halamanPengguna(Number(el.dataset.halaman)); },
+  async 'eksport-pengguna'(el) {
+    const r = await fetch('/api/admin/pengguna/eksport?' + new URLSearchParams(tapisPengguna));
+    if (!r.ok) { alert('Eksport gagal.'); return; }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(await r.blob());
+    a.download = (r.headers.get('content-disposition') || '').match(/filename="([^"]+)"/)?.[1] || 'pengguna.csv';
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  },
   async 'buang-guru'(el) {
     if (!confirm(`Buang ${el.dataset.emel} sebagai guru? Course mereka kekal; guru tidak lagi boleh masuk panel.`)) return;
     await api('DELETE', `guru/${encodeURIComponent(el.dataset.emel)}`);
@@ -825,6 +934,7 @@ async function laluan() {
     else if (m[0] === 'kelulusan') await halamanKelulusan();
     else if (m[0] === 'soalan') await halamanSoalan(m[1] === 'dijawab' ? 'dijawab' : 'menunggu');
     else if (m[0] === 'guru') await halamanGuru();
+    else if (m[0] === 'pengguna') await halamanPengguna(0);
     else if (m[0] === 'kod') await halamanKod();
     else if (m[0] === 'artikel' && !m[1]) await senaraiArtikel();
     else if (m[0] === 'artikel' && m[1] === 'baru') await borangArtikel(null);
@@ -846,7 +956,9 @@ async function laluan() {
 
 async function logMasukGoogle(res) {
   const r = await fetch('/auth/google', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ credential: res.credential }) });
-  if (r.ok) mula(); else app.innerHTML = '<div class="ralat">Log masuk gagal. Cuba lagi.</div>';
+  if (r.ok) { mula(); return; }
+  const j = await r.json().catch(() => ({}));
+  app.innerHTML = `<div class="ralat">${j.ralat === 'akaun-disekat' ? 'Akaun ini telah disekat. Hubungi admin.' : 'Log masuk gagal. Cuba lagi.'}</div>`;
 }
 
 let dengarLaluan = false;

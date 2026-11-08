@@ -8,6 +8,7 @@ export const MEDAN = {
   footer_teks: { maks: 300, lalai: 'Platform kuliah dalam talian untuk peserta usrah, halaqah dan sesiapa yang mahu menuntut ilmu secara berterusan.' },
   emel_hubungan: { maks: 120, lalai: '' },
   papar_peserta: { maks: 5, lalai: 'ya' }, // 'ya' | 'tidak': papar bilangan peserta berdaftar di laman utama
+  hari_sesi: { maks: 3, lalai: '30' }, // tempoh log masuk (hari) sebelum perlu log masuk semula; 1 hingga 365
 };
 export const LALAI = Object.fromEntries(Object.entries(MEDAN).map(([k, v]) => [k, v.lalai]));
 
@@ -33,6 +34,7 @@ export function sahkanTetapan(b) {
     if (typeof b[k] !== 'string') return { ok: false, sebab: 'medan-tidak-sah', medan: k };
     const t = b[k].replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, '').trim();
     if (t.length > m.maks) return { ok: false, sebab: 'terlalu-panjang', medan: k };
+    if (k === 'hari_sesi' && t && !(/^\d{1,3}$/.test(t) && Number(t) >= 1 && Number(t) <= 365)) return { ok: false, sebab: 'hari-sesi-tidak-sah', medan: k };
     if (k === 'papar_peserta' && t && t !== 'ya' && t !== 'tidak') return { ok: false, sebab: 'medan-tidak-sah', medan: k };
     if (k === 'emel_hubungan' && t && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(t)) return { ok: false, sebab: 'emel-tidak-sah', medan: k };
     nilai[k] = t;

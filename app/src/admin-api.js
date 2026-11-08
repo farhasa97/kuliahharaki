@@ -6,7 +6,7 @@
 
 import { json } from './lib/http.js';
 import { bacaKuki, hashToken } from './lib/sesi.js';
-import { perananPenuh } from './lib/peranan.js';
+import { perananPenuh, adminEmel, senaraiAdmin } from './lib/peranan.js';
 import { sahkanCourse, sahkanSubject, buatSlug } from './lib/kandungan.js';
 import { sahkanArtikel, slugArtikel, MAKS_ISI } from './lib/artikel.js';
 import { MAKS_LOGO, sahkanTetapan, gabungTetapan, jenisGambar, urlLogo, LALAI } from './lib/tetapan.js';
@@ -67,7 +67,82 @@ export async function adminApi(req, env, url, repo, now) {
     return milik(c) ? { s, c } : null;
   };
 
-  if (sumber === 'saya' && req.method === 'GET') return json({ emel: saya, peranan });
+  if (sumber === 'saya' && req.method === 'GET') return json({ emel: saya, peranan, adminUtama: adminEmel(env, saya) });
+
+  // ---------------- pengguna (admin) ----------------
+  if (sumber === 'pengguna') {
+    const tapis = { cari: (url.searchParams.get('cari') || '').trim().slice(0, 80), golongan: url.searchParams.get('golongan') || '', status: url.searchParams.get('status') || '' };
+    if (!['', 'belum', 'awam', 'pelajar', 'ahli'].includes(tapis.golongan) || !['', 'disekat', 'langganan'].includes(tapis.status)) return json({ ralat: 'medan-tidak-sah' }, 400);
+    if (bahagian.length === 1 && req.method === 'GET') {
+      const halaman = Math.max(0, Math.min(10000, Number(url.searchParams.get('halaman')) || 0));
+      const r = await repo.senaraiPengguna({ ...tapis, had: 50, ofset: halaman * 50 });
+      return json({ ...r, halaman, saiz: 50 });
+    }
+    if (bahagian.length === 2 && idMentah === 'eksport' && req.method === 'GET') {
+      const { senarai } = await repo.senaraiPengguna({ ...tapis, had: 20000, ofset: 0 });
+      // Elak suntikan formula dalam Excel/Sheets: sel bermula = + - @ diawali petikan tunggal.
+      const sel = (v) => { let t = String(v ?? ''); if (/^[=+\-@\t\r]/.test(t)) t = "'" + t; return /[",\n\r]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
+      const kepala = ['id', 'nama', 'emel', 'golongan', 'golongan_tamat', 'langganan_pelan', 'langganan_tamat', 'disekat', 'hari_sesi', 'log_masuk_terakhir', 'dicipta_pada'];
+      const csv = '\uFEFF' + [kepala.join(','), ...senarai.map((p) => kepala.map((k) => sel(p[k])).join(','))].join('\r\n');
+      return new Response(csv, { headers: { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="pengguna-${masa.slice(0, 10)}.csv"`, 'cache-control': 'no-store' } });
+    }
+    if (!id) return json({ ralat: 'id-tidak-sah' }, 400);
+    const p = await repo.penggunaDariId(id);
+    if (!p) return json({ ralat: 'tidak-dijumpai' }, 404);
+    const dilindungi = adminEmel(env, p.emel) || String(p.emel).toLowerCase() === saya;
+    if (bahagian.length === 2 && req.method === 'PUT') {
+      const b = await bacaJson(req); if (b.gagal) return b.gagal;
+      const v = b.nilai || {}, n = {};
+      if ('golongan' in v) {
+        if (!['awam', 'pelajar', 'ahli'].includes(v.golongan)) return json({ ralat: 'golongan-tidak-sah', medan: 'golongan' }, 400);
+        n.golongan = v.golongan;
+        const t = v.golongan === 'awam' ? null : (v.golongan_tamat || null);
+        if (t && !/^\d{4}-\d{2}-\d{2}$/.test(t)) return json({ ralat: 'tarikh-tidak-sah', medan: 'golongan_tamat' }, 400);
+        n.golongan_tamat = t;
+      }
+      if ('hari_sesi' in v) {
+        const h = v.hari_sesi === null || v.hari_sesi === '' ? null : Number(v.hari_sesi);
+        if (h !== null && (!Number.isInteger(h) || h < 1 || h > 365)) return json({ ralat: 'hari-sesi-tidak-sah', medan: 'hari_sesi' }, 400);
+        n.hari_sesi = h;
+      }
+      if ('disekat' in v) {
+        if (v.disekat && dilindungi) return json({ ralat: 'tidak-boleh-sekat' }, 409);
+        n.disekat = v.disekat ? 1 : 0;
+      }
+      const baru = await repo.kemaskiniPengguna(id, n);
+      if (n.disekat) await repo.padamSemuaSesi(id); // sekat berkuat kuasa serta-merta di semua peranti
+      return json(baru);
+    }
+    if (bahagian.length === 3 && anak === 'keluar-semua' && req.method === 'POST') {
+      await repo.padamSemuaSesi(id);
+      return json({ ok: true });
+    }
+    return json({ ralat: 'kaedah-tidak-disokong' }, 405);
+  }
+
+  // ---------------- admin tambahan: hanya admin utama (ADMIN_EMELS) boleh menambah atau membuang ----------------
+  if (sumber === 'admin') {
+    const utama = senaraiAdmin(env);
+    if (bahagian.length === 1 && req.method === 'GET') return json({ utama, tambahan: await repo.senaraiAdminTambahan().catch(() => []), bolehUrus: adminEmel(env, saya) });
+    if (!adminEmel(env, saya)) return json({ ralat: 'admin-utama-sahaja' }, 403);
+    if (bahagian.length === 1 && req.method === 'POST') {
+      const b = await bacaJson(req); if (b.gagal) return b.gagal;
+      const emel = String(b.nilai?.emel || '').trim().toLowerCase();
+      if (!EMEL.test(emel) || emel.length > 120) return json({ ralat: 'emel-tidak-sah', medan: 'emel' }, 400);
+      if (utama.includes(emel)) return json({ ralat: 'sudah-admin-utama', medan: 'emel' }, 409);
+      await repo.tambahAdmin(emel, saya, masa);
+      return json({ utama, tambahan: await repo.senaraiAdminTambahan(), bolehUrus: true }, 201);
+    }
+    if (bahagian.length === 2 && req.method === 'DELETE') {
+      let emel; try { emel = decodeURIComponent(idMentah).toLowerCase(); } catch { return json({ ralat: 'emel-tidak-sah' }, 400); }
+      await repo.buangAdmin(emel);
+      // Sesi admin yang dibuang ditamatkan supaya kuasanya hilang serta-merta.
+      const p = await repo.penggunaDariEmel(emel);
+      if (p) await repo.padamSemuaSesi(p.id);
+      return json({ utama, tambahan: await repo.senaraiAdminTambahan(), bolehUrus: true });
+    }
+    return json({ ralat: 'kaedah-tidak-disokong' }, 405);
+  }
 
   // ---------------- soal jawab (admin dan guru pemilik course) ----------------
   if (sumber === 'soalan') {
