@@ -32,6 +32,8 @@ Ringkasan; butiran penuh dalam `references/keputusan-produk.md`.
 - Video **YouTube unlisted** (risiko pautan boleh dikongsi diterima, "bersifat dalaman"); Bunny Stream kemudian jika perlu. `video_id` hanya diserahkan pelayan kepada yang layak.
 - Beli satu video (RM2) **ditangguh**; kod ada tetapi migrasi `0002` tidak dijalankan.
 - Guru ramai; semua penerbitan dan perubahan kandungan terbit perlu kelulusan admin. Jawapan soal jawab guru terus tersiar. Paparan soalan: awam selepas dijawab.
+- **Golongan** (awam / pelajar / ahli organisasi) menentukan kandungan yang *dilihat*; **langganan** kekal paywall. Kod: satu mekanisme "had guna" (kosong = kongsi kelas, 1 = peribadi), akses 1 bulan lalai. Naik taraf sendiri dengan kod; turun taraf oleh admin sahaja. Awam nampak course lebih tinggi berkunci; pelajar tidak nampak course ahli.
+- Admin utama dalam `ADMIN_EMELS`; admin tambahan (jadual `admin_tambahan`) hanya diurus admin utama. Akaun disekat tiada sesi sah dan tidak boleh log masuk.
 
 ## Seni bina dalam satu pandangan
 
