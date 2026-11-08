@@ -65,6 +65,16 @@ export function repoD1(db) {
       if (k.length) await jalan(`UPDATE pengguna SET ${k.map((x) => x + ' = ?').join(', ')} WHERE id = ?`, ...k.map((x) => nilai[x]), id);
       return satu('SELECT * FROM pengguna WHERE id = ?', id);
     },
+    // ---- sijil ----
+    sijilDariKod: (kod) => satu('SELECT * FROM sijil WHERE kod = ?', kod),
+    sijilPengguna: (penggunaId, courseId) => satu('SELECT * FROM sijil WHERE pengguna_id = ? AND course_id = ?', penggunaId, courseId),
+    async senaraiSijilPengguna(penggunaId) { return (await db.prepare('SELECT * FROM sijil WHERE pengguna_id = ? ORDER BY dikeluarkan_pada DESC').bind(penggunaId).all()).results; },
+    // Satu sijil bagi setiap pengguna dan course: permintaan serentak tidak mencipta dua.
+    async ciptaSijil(s) {
+      await jalan(`INSERT INTO sijil (kod, pengguna_id, course_id, nama, tajuk_course, guru, dikeluarkan_pada) VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(pengguna_id, course_id) DO NOTHING`, s.kod, s.pengguna_id, s.course_id, s.nama, s.tajuk_course, s.guru ?? null, s.dikeluarkan_pada);
+      return satu('SELECT * FROM sijil WHERE pengguna_id = ? AND course_id = ?', s.pengguna_id, s.course_id);
+    },
     // ---- admin tambahan (admin utama kekal dalam ADMIN_EMELS) ----
     adminTambahan: (emel) => satu('SELECT * FROM admin_tambahan WHERE emel = ?', emel),
     async senaraiAdminTambahan() { return (await db.prepare('SELECT * FROM admin_tambahan ORDER BY dicipta_pada').all()).results; },

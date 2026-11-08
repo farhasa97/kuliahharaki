@@ -198,6 +198,14 @@ Tiada SQL baharu (jadual sudah dicipta dalam A1i).
 - **Pelajar** boleh menekan **Log keluar semua peranti** di halaman Akaun (contoh: telefon hilang, atau akaun dikongsi).
 - **Panel, Pasukan** (dahulu Guru): senarai admin dan guru. **Admin utama** ialah emel dalam `ADMIN_EMELS` di Cloudflare dan hanya mereka boleh menambah atau membuang **admin tambahan** di sini. Admin tambahan mempunyai kuasa penuh panel kecuali mengurus admin. Untuk menukar admin utama, sunting `ADMIN_EMELS` di Cloudflare (Workers, kuliahharaki, Settings, Variables and Secrets).
 
+### A1k. Sijil (08/11/2026)
+Tiada SQL baharu (jadual `sijil` sudah dicipta dalam A1i).
+- Bila pelajar khatam **semua kuliah terbit** dalam satu siri, kad **Tahniah** muncul di halaman siri. Pelajar menulis nama penuh dan menekan **Dapatkan sijil**. Nama tidak boleh ditukar selepas itu (jika salah eja, admin padam baris dalam jadual `sijil` di D1 Console dan pelajar minta semula).
+- Sijil dibuka di `/sijil/<kod>`: halaman awam untuk pengesahan (sesiapa yang ada pautan boleh menyemak) dan butang **Cetak atau simpan PDF** (A4 melintang). Tidak diindeks Google.
+- **Tetapan laman**: Tajuk sijil (lalai Sijil Penyertaan), Nama penandatangan (kosong = nama guru siri), Jawatan.
+- Senarai sijil pelajar ada di halaman **Akaun**, bahagian **Sijil saya**.
+- Sijil kekal walaupun course dipadam atau tajuknya ditukar kemudian (nama dan tajuk disimpan semasa sijil dikeluarkan).
+
 ### A2. Worker dari GitHub
 Workers & Pages, Create, import repository `farhasa97/kuliahharaki`:
 - Project name: `kuliahharaki` (mesti sama dengan `name` dalam `app/wrangler.toml`)

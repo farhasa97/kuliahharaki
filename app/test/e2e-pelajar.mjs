@@ -420,6 +420,29 @@ try {
     assert.equal(r.status(), 400);
   });
 
+  await langkah('sijil: khatam semua kuliah siri, tulis nama, sijil dikeluarkan dan halaman pengesahan boleh dibuka tanpa log masuk', async () => {
+    const p = pelajar.page;
+    for (const s of [a1, a2]) assert.equal((await p.request.post(`${B}/api/subject/${s.id}/selesai`)).status(), 200);
+    await p.goto(`${B}/#/course/${asas.slug}`);
+    const kad = p.locator('.kad-sijil');
+    await kad.getByText('Tahniah, anda telah khatam siri ini').waitFor();
+    await kad.locator('#namaSijil').fill('Nur Aminah binti Ali');
+    await kad.getByRole('button', { name: 'Dapatkan sijil' }).click();
+    const lihat = p.getByRole('link', { name: 'Lihat sijil' });
+    await lihat.waitFor();
+    const href = await lihat.getAttribute('href');
+    await p.goto(`${B}/#/akaun`);
+    await p.getByRole('heading', { name: 'Sijil saya' }).waitFor();
+    await p.getByText('Asas Percuma').first().waitFor();
+    const { ctx: cv, page: v } = await konteks(null, { width: 1280, height: 900 });
+    await v.goto(B + href);
+    await v.getByText('Sijil ini sah.').waitFor();
+    await v.locator('.nama', { hasText: 'Nur Aminah binti Ali' }).waitFor();
+    await v.locator('.course', { hasText: 'Asas Percuma' }).waitFor();
+    await skrin(v, '20-sijil');
+    await cv.close();
+  });
+
   await langkah('tiada ralat JavaScript dalam mana-mana sesi', async () => {
     assert.deepEqual(ralatHalaman, []);
   });

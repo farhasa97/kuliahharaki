@@ -127,7 +127,7 @@ Had diketahui: pelajar tanpa akaun Google perlu cara lain (kod emel) jika ramai 
 
 ## 11. Sijil
 
-Bila semua subject dalam course selesai, cipta rekod `sijil` dengan kod pengesahan. Halaman awam `/sijil/<kod>` mengesahkan nama, course dan tarikh. Papar sijil sebagai halaman bercetak (print CSS) supaya tak berat di server. Tidak menjana PDF di Worker.
+(Dilaksanakan 08/11/2026, lihat OPERASI A1k.) Bila semua subject dalam course selesai, cipta rekod `sijil` dengan kod pengesahan. Halaman awam `/sijil/<kod>` mengesahkan nama, course dan tarikh. Papar sijil sebagai halaman bercetak (print CSS) supaya tak berat di server. Tidak menjana PDF di Worker.
 
 ## 12. Tetapan laman
 

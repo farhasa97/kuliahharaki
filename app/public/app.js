@@ -638,6 +638,17 @@ function senaraiKuliah(d, aktifId) {
   </div>`;
 }
 
+// ---------- sijil: bila semua kuliah terbit dalam siri selesai ----------
+const RALAT_SIJIL = { 'nama-tidak-sah': 'Nama mesti 3 hingga 80 aksara.', 'belum-khatam': 'Selesaikan semua kuliah dalam siri ini dahulu.', 'belum-log-masuk': 'Sila log masuk semula.' };
+function kadSijil(d) {
+  if (d.sijil) return `<div class="panel-card kad-sijil" style="margin-bottom:16px"><span class="badge free">KHATAM</span><h3 style="margin-top:8px">Tahniah, anda telah khatam siri ini</h3>
+    <p>Sijil anda sudah dikeluarkan.</p><div class="baris-butang" style="justify-content:flex-start"><a class="btn primary" href="/sijil/${encodeURIComponent(d.sijil.kod)}" target="_blank" rel="noopener">Lihat sijil</a></div></div>`;
+  return `<div class="panel-card kad-sijil" style="margin-bottom:16px" data-sijil-borang data-slug="${h(d.course.slug)}"><span class="badge free">KHATAM</span><h3 style="margin-top:8px">Tahniah, anda telah khatam siri ini</h3>
+    <p>Tulis nama penuh seperti yang mahu dicetak pada sijil. Nama tidak boleh ditukar selepas sijil dikeluarkan.</p>
+    <div class="kod-baris" style="margin-top:12px"><input type="text" id="namaSijil" maxlength="80" autocomplete="name" aria-label="Nama pada sijil" value="${h(saya?.pengguna.nama || '')}" style="text-transform:none;letter-spacing:0">
+      <button type="button" class="btn primary" data-act="dapat-sijil">Dapatkan sijil</button></div><div class="qa-ralat" role="alert" hidden></div></div>`;
+}
+
 async function halamanCourse(slug) {
   const d = await dapat('/api/course/' + encodeURIComponent(slug));
   const n = d.subject.length, s = d.subject.filter((x) => x.selesai).length;
@@ -656,7 +667,7 @@ async function halamanCourse(slug) {
       </div>
     </div>
     <div class="lesson-grid" style="margin-top:16px">
-      <div class="lesson-main">${senaraiKuliah(d, null)}</div>
+      <div class="lesson-main">${d.log_masuk && n && s === n ? kadSijil(d) : ''}${senaraiKuliah(d, null)}</div>
       ${berkunci && !saya?.langganan.akses ? `<aside class="lesson-side">${kadLanggan()}</aside>` : ''}
     </div>
   </div>`);
@@ -865,10 +876,17 @@ function halamanAkaun() {
           <div class="row-item ${l.akses ? 'done' : 'info'}"><div class="rt"><b>Ahli penuh: ${STATUS_LANGGANAN[l.status]}${l.tarikh_tamat ? ` hingga ${h(l.tarikh_tamat)}` : ''}</b><small>Keahlian ${l.akses ? 'ahli penuh' : 'percuma'}</small></div></div>
         </div>
         ${notis}
+        <div id="sijilSaya"></div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px"><button class="btn outline" data-act="pasang" data-pasang hidden>Pasang app di telefon</button>${['admin', 'guru'].includes(saya.pengguna.peranan) ? `<a class="btn outline" href="/panel/">Panel ${saya.pengguna.peranan}</a>` : ''}<button class="btn outline" data-act="keluar">Log keluar</button><button class="btn outline" data-act="keluar-semua">Log keluar semua peranti</button></div>
       </div></div>
       <aside class="lesson-side">${l.akses && !l.notis ? '' : kadLanggan()}</aside>
     </div></div>`);
+  fetch('/api/sijil').then((r) => (r.ok ? r.json() : [])).then((senarai) => {
+    const kotak = document.getElementById('sijilSaya');
+    if (!kotak || !senarai.length) return;
+    kotak.innerHTML = `<h3 style="margin:22px 0 10px">Sijil saya</h3><div class="row-list">${senarai.map((s) => `<a class="row-item done" href="/sijil/${encodeURIComponent(s.kod)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">
+      <div class="rt"><b>${h(s.tajuk_course)}</b><small>Dikeluarkan ${h(tarikhMy(s.dikeluarkan_pada))}</small></div><span class="btn sm outline">Lihat</span></a>`).join('')}</div>`;
+  }).catch(() => {});
 }
 
 // ---------- tindakan ----------
@@ -900,6 +918,13 @@ const TINDAKAN = {
     if (!ok) return;
     let ke = '#/'; try { ke = sessionStorage.getItem('kh-kembali') || '#/'; } catch { /* storan disekat */ }
     location.hash = ke; if (location.hash === ke) laluan();
+  },
+  async 'dapat-sijil'(el) {
+    const kotak = el.closest('[data-sijil-borang]'), ralat = kotak.querySelector('.qa-ralat'); ralat.hidden = true;
+    const r = await fetch(`/api/course/${encodeURIComponent(kotak.dataset.slug)}/sijil`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ nama: kotak.querySelector('#namaSijil').value }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { ralat.textContent = RALAT_SIJIL[j.ralat] || 'Tidak berjaya. Cuba lagi.'; ralat.hidden = false; return; }
+    laluan();
   },
   async 'tebus-kod'(el) {
     const kotak = el.closest('.panel-card') || document;

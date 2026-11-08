@@ -8,6 +8,9 @@ export const MEDAN = {
   footer_teks: { maks: 300, lalai: 'Platform kuliah dalam talian untuk peserta usrah, halaqah dan sesiapa yang mahu menuntut ilmu secara berterusan.' },
   emel_hubungan: { maks: 120, lalai: '' },
   papar_peserta: { maks: 5, lalai: 'ya' }, // 'ya' | 'tidak': papar bilangan peserta berdaftar di laman utama
+  sijil_tajuk: { maks: 60, lalai: 'Sijil Penyertaan' },
+  sijil_penandatangan: { maks: 80, lalai: '' }, // nama di bawah garis tandatangan; kosong = nama guru course
+  sijil_jawatan: { maks: 80, lalai: '' },
   hari_sesi: { maks: 3, lalai: '30' }, // tempoh log masuk (hari) sebelum perlu log masuk semula; 1 hingga 365
 };
 export const LALAI = Object.fromEntries(Object.entries(MEDAN).map(([k, v]) => [k, v.lalai]));

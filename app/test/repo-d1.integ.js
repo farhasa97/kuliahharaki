@@ -373,3 +373,15 @@ test('pengguna: senarai dengan tapis dan langganan, kemas kini, sekat menyembuny
   await repo.buangAdmin('t@x.my');
   assert.equal(await repo.adminTambahan('t@x.my'), null);
 });
+
+test('sijil: satu bagi setiap pengguna dan course walaupun dipanggil dua kali; kod unik', async () => {
+  const p = await repo.simpanPengguna({ emel: 'sijil@x.my', sub: 'sj', nama: 'Sijil' }, 't');
+  const a = await repo.ciptaSijil({ kod: 'AAAAABBBBB', pengguna_id: p.id, course_id: 999, nama: 'Nur', tajuk_course: 'Siri', guru: null, dikeluarkan_pada: '2026-11-08T00:00:00Z' });
+  const b = await repo.ciptaSijil({ kod: 'CCCCCDDDDD', pengguna_id: p.id, course_id: 999, nama: 'Lain', tajuk_course: 'Siri', guru: null, dikeluarkan_pada: 't' });
+  assert.equal(b.kod, 'AAAAABBBBB'); assert.equal(b.nama, 'Nur'); assert.equal(a.id, b.id);
+  assert.equal((await repo.sijilDariKod('AAAAABBBBB')).pengguna_id, p.id);
+  assert.equal((await repo.sijilPengguna(p.id, 999)).kod, 'AAAAABBBBB');
+  assert.equal((await repo.senaraiSijilPengguna(p.id)).length, 1);
+  const p2 = await repo.simpanPengguna({ emel: 'sijil2@x.my', sub: 'sj2', nama: 'S2' }, 't');
+  await assert.rejects(repo.ciptaSijil({ kod: 'AAAAABBBBB', pengguna_id: p2.id, course_id: 999, nama: 'X', tajuk_course: 'S', dikeluarkan_pada: 't' }));
+});

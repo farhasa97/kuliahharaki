@@ -623,6 +623,9 @@ const MEDAN_TETAPAN = [
   ['hero_teks', 'Teks pengenalan (laman awam)', 'textarea', ''],
   ['footer_teks', 'Teks footer', 'textarea', ''],
   ['emel_hubungan', 'Emel hubungan', 'input', 'Dipaparkan di footer jika diisi.'],
+  ['sijil_tajuk', 'Tajuk sijil', 'input', 'Contoh: Sijil Penyertaan atau Sijil Tamat Kursus. Sijil dikeluarkan bila pelajar khatam semua kuliah dalam satu siri.'],
+  ['sijil_penandatangan', 'Nama penandatangan sijil', 'input', 'Kosongkan untuk guna nama guru siri (atau nama laman jika tiada guru).'],
+  ['sijil_jawatan', 'Jawatan penandatangan', 'input', 'Contoh: Pengerusi, Pengetua. Pilihan.'],
   ['hari_sesi', 'Tempoh log masuk (hari)', 'nombor', 'Berapa hari pengguna kekal log masuk sebelum perlu log masuk semula. Lalai 30. Boleh ditetapkan khas untuk pengguna tertentu di halaman Pengguna. Berkuat kuasa pada log masuk seterusnya.'],
   ['papar_peserta', 'Bilangan peserta di laman utama', 'pilih', 'Papar "N peserta berdaftar" di hero. Admin dan guru tidak dikira. Pilih Sembunyi jika bilangan masih kecil.'],
 ];
@@ -643,7 +646,7 @@ async function borangTetapan() {
           ? `<input type="number" id="${k}" name="${k}" min="1" max="365" placeholder="${h(t.lalai[k])}" value="${t.nilai[k] === t.lalai[k] ? '' : h(t.nilai[k])}">`
           : jenis === 'textarea'
           ? `<textarea id="${k}" name="${k}" maxlength="300" placeholder="${h(t.lalai[k])}">${t.nilai[k] === t.lalai[k] ? '' : h(t.nilai[k])}</textarea>`
-          : `<input type="text" id="${k}" name="${k}" maxlength="${k === 'hero_tajuk' || k === 'emel_hubungan' ? 120 : 60}" placeholder="${h(t.lalai[k])}" value="${t.nilai[k] === t.lalai[k] ? '' : h(t.nilai[k])}">`}
+          : `<input type="text" id="${k}" name="${k}" maxlength="${k === 'hero_tajuk' || k === 'emel_hubungan' ? 120 : k.startsWith('sijil_') && k !== 'sijil_tajuk' ? 80 : 60}" placeholder="${h(t.lalai[k])}" value="${t.nilai[k] === t.lalai[k] ? '' : h(t.nilai[k])}">`}
         ${bantuan ? `<div class="bantuan">${bantuan}</div>` : ''}`).join('')}
       <div class="tindakan"><button type="submit">Simpan</button></div>
     </form>

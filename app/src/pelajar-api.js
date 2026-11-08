@@ -9,6 +9,7 @@ import { keputusanSubject, subjectRingkas, subjectPenuh } from './lib/pelajar.js
 import { kepalaKandungan } from './lib/nota.js';
 import { golonganEfektif, keterlihatan, normalKod, kodBolehGuna, tamatSelepasTebus, LABEL } from './lib/golongan.js';
 import { perananPenuh } from './lib/peranan.js';
+import { kodSijil, sahkanNamaSijil, layakSijil } from './lib/sijil.js';
 import { sahkanSoalan, namaPertama, awalHari, HAD_SEHARI } from './lib/soalan.js';
 
 const idDari = (x) => { const n = Number(x); return Number.isInteger(n) && n > 0 ? n : null; };
@@ -54,7 +55,38 @@ export async function pelajarApi(req, env, url, repo, now) {
     const selesai = new Set(logMasuk ? await repo.subjectSelesai(k.pengguna.id) : []);
     const subject = (await repo.senaraiSubject(c.id)).map((s) =>
       subjectRingkas(s, keputusanSubject({ course: c, subject: s, langganan: k.langganan, hari: k.hari, logMasuk, golongan: k.golongan }), selesai.has(s.id)));
-    return json({ course: courseAwam(c, await petaGuru(repo)), subject, log_masuk: logMasuk });
+    let sijil = null;
+    if (logMasuk) { try { const x = await repo.sijilPengguna(k.pengguna.id, c.id); if (x) sijil = { kod: x.kod }; } catch { /* jadual sijil belum wujud */ } }
+    return json({ course: courseAwam(c, await petaGuru(repo)), subject, log_masuk: logMasuk, sijil });
+  }
+
+  // Dapatkan sijil: semua kuliah terbit dalam course mesti selesai. Nama boleh ditukar sekali sebelum dikeluarkan sahaja.
+  if (bahagian[0] === 'course' && bahagian[2] === 'sijil' && bahagian.length === 3 && req.method === 'POST') {
+    const asal = req.headers.get('origin');
+    if (asal && asal !== url.origin) return json({ ralat: 'asal-tidak-dibenarkan' }, 403);
+    if (!logMasuk) return json({ ralat: 'belum-log-masuk' }, 401);
+    const c = await repo.courseDariSlug(decodeURIComponent(bahagian[1]));
+    if (!c || c.status !== 'terbit' || keterlihatan(c.golongan, k.golongan) === 'sembunyi') return json({ ralat: 'tidak-dijumpai' }, 404);
+    const ada = await repo.sijilPengguna(k.pengguna.id, c.id);
+    if (ada) return json({ kod: ada.kod, nama: ada.nama });
+    const subject = await repo.senaraiSubject(c.id);
+    if (!layakSijil(subject.map((s) => s.id), await repo.subjectSelesai(k.pengguna.id))) return json({ ralat: 'belum-khatam' }, 409);
+    let b; try { b = await req.json(); } catch { return json({ ralat: 'json-tidak-sah' }, 400); }
+    const nama = sahkanNamaSijil(b?.nama);
+    if (!nama.ok) return json({ ralat: nama.sebab, medan: nama.medan }, 400);
+    const guru = (c.guru_emel && (await petaGuru(repo)).get(c.guru_emel)) || null;
+    for (let cuba = 0; ; cuba++) {
+      try {
+        const s = await repo.ciptaSijil({ kod: kodSijil(), pengguna_id: k.pengguna.id, course_id: c.id, nama: nama.nilai, tajuk_course: c.tajuk, guru, dikeluarkan_pada: new Date(now).toISOString() });
+        return json({ kod: s.kod, nama: s.nama }, 201);
+      } catch (e) { if (cuba >= 3) throw e; } // kod bertembung: cuba semula
+    }
+  }
+
+  if (bahagian[0] === 'sijil' && bahagian.length === 1 && req.method === 'GET') {
+    if (!logMasuk) return json({ ralat: 'belum-log-masuk' }, 401);
+    let senarai = []; try { senarai = await repo.senaraiSijilPengguna(k.pengguna.id); } catch { /* jadual belum wujud */ }
+    return json(senarai.map((s) => ({ kod: s.kod, tajuk_course: s.tajuk_course, nama: s.nama, dikeluarkan_pada: s.dikeluarkan_pada })));
   }
 
   if (bahagian[0] === 'subject' && bahagian.length === 2 && req.method === 'GET') {

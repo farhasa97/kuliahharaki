@@ -18,6 +18,7 @@ import { pelajarApi } from './pelajar-api.js';
 import { halamanArtikel } from './artikel-halaman.js';
 import { tangguhHari } from './lib/konfig.js';
 import { gabungTetapan, urlLogo, LALAI } from './lib/tetapan.js';
+import { sijilHalaman } from './sijil-halaman.js';
 import { golonganEfektif, LABEL as LABEL_GOLONGAN } from './lib/golongan.js';
 
 async function profil(repo, env, p, now) {
@@ -128,6 +129,8 @@ export async function handle(req, env, opts = {}) {
       'cache-control': 'public, max-age=31536000, immutable', 'x-content-type-options': 'nosniff' } });
   }
 
+  if (p.startsWith('/sijil/') && req.method === 'GET') return sijilHalaman(req, env, url, repo);
+
   if (p === '/api/logo' && req.method === 'GET') {
     let g; try { g = gabungTetapan(await repo.semuaTetapan()); } catch { g = null; }
     const obj = g?.logoKunci && env.NOTA ? await env.NOTA.get(g.logoKunci) : null;
@@ -135,7 +138,7 @@ export async function handle(req, env, opts = {}) {
     return new Response(obj.body, { headers: { 'content-type': g.logoJenis || 'image/png', 'cache-control': 'public, max-age=3600', 'x-content-type-options': 'nosniff' } });
   }
 
-  if (p.startsWith('/api/course') || p.startsWith('/api/subject') || p.startsWith('/api/nota') || p.startsWith('/api/soalan') || p === '/api/golongan') return pelajarApi(req, env, url, repo, now);
+  if (p.startsWith('/api/course') || p.startsWith('/api/subject') || p.startsWith('/api/nota') || p.startsWith('/api/soalan') || p === '/api/golongan' || p === '/api/sijil') return pelajarApi(req, env, url, repo, now);
 
   if (p === '/auth/google' && req.method === 'POST') {
     // JSON sahaja: borang silang laman tidak boleh menghantar application/json tanpa CORS

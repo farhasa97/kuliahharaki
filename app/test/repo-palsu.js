@@ -2,7 +2,7 @@
 export function repoPalsu() {
   const bayaran = new Map(), langganan = new Map(), pengguna = new Map(), sesi = new Map();
   const pesanan = new Map(), itemPesanan = new Map(), akses = new Map();
-  const courses = new Map(), subjects = new Map(), progress = new Map(), notas = new Map(), tetapan = new Map(), artikel = new Map(), gurus = new Map(), semakan = new Map(), soalan = new Map(), kodD = new Map(), kodG = [], kodC = [], adminT = new Map(); let idC = 1, idS = 1, idN = 1, idA = 1, idK = 1, idQ = 1, idKD = 1;
+  const courses = new Map(), subjects = new Map(), progress = new Map(), notas = new Map(), tetapan = new Map(), artikel = new Map(), gurus = new Map(), semakan = new Map(), soalan = new Map(), kodD = new Map(), kodG = [], kodC = [], adminT = new Map(), sijilM = []; let idC = 1, idS = 1, idN = 1, idA = 1, idK = 1, idQ = 1, idKD = 1;
   let idSeterusnya = 1;
   return {
     _bayaran: bayaran, _langganan: langganan, _pengguna: pengguna, _sesi: sesi, _pesanan: pesanan, _akses: akses, _course: courses, _subject: subjects, _progress: progress,
@@ -50,6 +50,14 @@ export function repoPalsu() {
       const p = [...pengguna.values()].find((x) => x.id === id);
       for (const k of ['golongan', 'golongan_tamat', 'disekat', 'hari_sesi']) if (k in n) p[k] = n[k];
       return p;
+    },
+    async sijilDariKod(kod) { return sijilM.find((x) => x.kod === kod) ?? null; },
+    async sijilPengguna(p, c) { return sijilM.find((x) => x.pengguna_id === p && x.course_id === c) ?? null; },
+    async senaraiSijilPengguna(p) { return sijilM.filter((x) => x.pengguna_id === p).reverse(); },
+    async ciptaSijil(s) {
+      if (sijilM.some((x) => x.kod === s.kod)) throw new Error('UNIQUE kod');
+      if (!sijilM.some((x) => x.pengguna_id === s.pengguna_id && x.course_id === s.course_id)) sijilM.push({ id: sijilM.length + 1, guru: null, ...s });
+      return sijilM.find((x) => x.pengguna_id === s.pengguna_id && x.course_id === s.course_id);
     },
     async adminTambahan(emel) { return adminT.get(emel) ?? null; },
     async senaraiAdminTambahan() { return [...adminT.values()]; },
