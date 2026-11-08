@@ -385,3 +385,25 @@ test('sijil: satu bagi setiap pengguna dan course walaupun dipanggil dua kali; k
   const p2 = await repo.simpanPengguna({ emel: 'sijil2@x.my', sub: 'sj2', nama: 'S2' }, 't');
   await assert.rejects(repo.ciptaSijil({ kod: 'AAAAABBBBB', pengguna_id: p2.id, course_id: 999, nama: 'X', tajuk_course: 'S', dikeluarkan_pada: 't' }));
 });
+
+test('sandaran: semua jadual (kecuali sesi) ke R2 sebagai JSON dengan skema; nama ikut tarikh Malaysia; hanya 30 disimpan', async () => {
+  const { buatSandaran, senaraiSandaran, namaSandaranSah, SIMPAN } = await import('../src/sandaran.js');
+  const r2 = proksi.env.NOTA;
+  await repo.ciptaSesi('hash-sandaran', 1, '2099-01-01');
+  const now = Date.parse('2026-11-08T18:17:00Z'); // 02:17 9 Nov waktu Malaysia
+  const h = await buatSandaran(db, r2, now);
+  assert.equal(h.nama, 'sandaran/2026-11-09.json');
+  assert.ok(namaSandaranSah('2026-11-09.json') && namaSandaranSah('2026-11-09-manual-0217.json') && !namaSandaranSah('../x.json'));
+  const isi = JSON.parse(await (await r2.get(h.nama)).text());
+  assert.ok(isi.jadual.pengguna.length > 0 && isi.jadual.course && isi.jadual.sijil);
+  assert.equal(isi.jadual.sesi, undefined, 'sesi tidak disandar');
+  assert.ok(isi.skema.some((s) => s.name === 'pengguna' && /CREATE TABLE/.test(s.sql)));
+  assert.ok(!isi.skema.some((s) => s.name === 'sesi'));
+  const m = await buatSandaran(db, r2, now, { label: 'manual' });
+  assert.equal(m.nama, 'sandaran/2026-11-09-manual-0217.json');
+  for (let i = 0; i < SIMPAN + 3; i++) await r2.put(`sandaran/2020-01-${String(i + 1).padStart(2, '0')}.json`, '{}');
+  await buatSandaran(db, r2, now + 864e5);
+  const senarai = await senaraiSandaran(r2);
+  assert.equal(senarai.length, SIMPAN);
+  assert.equal(senarai[0].nama, '2026-11-10.json');
+});

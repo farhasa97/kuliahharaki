@@ -14,6 +14,7 @@ const menuPanel = document.getElementById('menuPanel');
 
 // Ikon menu (gaya sama dengan menu pelajar)
 const IKON = {
+  pengguna: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2" y="2.5" width="12" height="11" rx="2" stroke="currentColor" stroke-width="1.5"/><circle cx="6.2" cy="7" r="1.6" stroke="currentColor" stroke-width="1.4"/><path d="M3.9 11.2c.4-1.2 1.2-1.8 2.3-1.8s1.9.6 2.3 1.8M10 6.5h2.2M10 9h2.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
   kod: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="5.5" cy="10.5" r="3" stroke="currentColor" stroke-width="1.5"/><path d="m7.7 8.3 5.8-5.8M11.5 4.5 13 6M10 6l1.2 1.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
   course: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2" y="2" width="5" height="5" rx="1.3" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="2" width="5" height="5" rx="1.3" stroke="currentColor" stroke-width="1.5"/><rect x="2" y="9" width="5" height="5" rx="1.3" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="9" width="5" height="5" rx="1.3" stroke="currentColor" stroke-width="1.5"/></svg>',
   kelulusan: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="m5.3 8.2 1.8 1.8 3.6-3.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -626,6 +627,7 @@ const MEDAN_TETAPAN = [
   ['sijil_tajuk', 'Tajuk sijil', 'input', 'Contoh: Sijil Penyertaan atau Sijil Tamat Kursus. Sijil dikeluarkan bila pelajar khatam semua kuliah dalam satu siri.'],
   ['sijil_penandatangan', 'Nama penandatangan sijil', 'input', 'Kosongkan untuk guna nama guru siri (atau nama laman jika tiada guru).'],
   ['sijil_jawatan', 'Jawatan penandatangan', 'input', 'Contoh: Pengerusi, Pengetua. Pilihan.'],
+  ['warna', 'Warna tema', 'warna', 'Warna utama laman pelajar, panel, artikel dan sijil.'],
   ['hari_sesi', 'Tempoh log masuk (hari)', 'nombor', 'Berapa hari pengguna kekal log masuk sebelum perlu log masuk semula. Lalai 30. Boleh ditetapkan khas untuk pengguna tertentu di halaman Pengguna. Berkuat kuasa pada log masuk seterusnya.'],
   ['papar_peserta', 'Bilangan peserta di laman utama', 'pilih', 'Papar "N peserta berdaftar" di hero. Admin dan guru tidak dikira. Pilih Sembunyi jika bilangan masih kecil.'],
 ];
@@ -642,6 +644,8 @@ async function borangTetapan() {
         <label for="${k}">${label}</label>
         ${jenis === 'pilih'
           ? `<select id="${k}" name="${k}"><option value="ya" ${t.nilai[k] !== 'tidak' ? 'selected' : ''}>Papar</option><option value="tidak" ${t.nilai[k] === 'tidak' ? 'selected' : ''}>Sembunyi</option></select>`
+          : jenis === 'warna'
+          ? `<div class="pilih-warna" role="radiogroup" aria-label="Warna tema">${Object.entries(BRAND_WARNA).map(([w, kod]) => `<label><input type="radio" name="warna" value="${w}" ${(t.nilai.warna || 'hijau') === w ? 'checked' : ''}><i style="background:${kod}"></i>${{ hijau: 'Hijau zamrud', biru: 'Biru laut', ungu: 'Ungu', marun: 'Marun', arang: 'Arang' }[w]}</label>`).join('')}</div>`
           : jenis === 'nombor'
           ? `<input type="number" id="${k}" name="${k}" min="1" max="365" placeholder="${h(t.lalai[k])}" value="${t.nilai[k] === t.lalai[k] ? '' : h(t.nilai[k])}">`
           : jenis === 'textarea'
@@ -650,8 +654,26 @@ async function borangTetapan() {
         ${bantuan ? `<div class="bantuan">${bantuan}</div>` : ''}`).join('')}
       <div class="tindakan"><button type="submit">Simpan</button></div>
     </form>
-    <div class="kad" id="kad-logo"></div>`;
+    <div class="kad" id="kad-logo"></div>
+    <div class="kad" id="kad-sandaran" hidden></div>`;
   paparLogo(t.logo);
+  paparSandaran();
+}
+
+// Sandaran D1 (admin utama sahaja; admin tambahan tidak nampak bahagian ini).
+async function paparSandaran(mesej) {
+  const kotak = document.getElementById('kad-sandaran');
+  if (!kotak) return;
+  let senarai;
+  try { senarai = await api('GET', 'sandaran'); } catch (e) { if (e.kod === 'r2-belum-sedia') { kotak.hidden = false; kotak.innerHTML = '<h2>Sandaran data</h2><p class="kecil">Storan R2 belum disambungkan.</p>'; } return; }
+  const saiz = (b) => (b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB');
+  kotak.hidden = false;
+  kotak.innerHTML = `<h2>Sandaran data</h2>
+    <p class="kecil">Semua data (pengguna, langganan, bayaran, course, kemajuan, sijil, artikel dan lain-lain) disandarkan setiap hari jam 2:17 pagi ke storan R2. 30 sandaran terbaharu disimpan. Fail video YouTube dan nota PDF tidak termasuk (nota sudah tersimpan dalam R2).</p>
+    ${mesej ? `<div class="info">${mesej}</div>` : ''}
+    <div class="tindakan" style="margin:12px 0"><button type="button" class="kedua" data-act="buat-sandaran">Sandarkan sekarang</button></div>
+    ${senarai.length ? `<ul class="senarai-sandaran">${senarai.map((f) => `<li><span><b>${h(f.nama)}</b> <span class="kecil">${saiz(f.saiz)}</span></span>
+      <a class="butang kedua" href="/api/admin/sandaran/${encodeURIComponent(f.nama)}" download>Muat turun</a></li>`).join('')}</ul>` : '<p class="kecil">Belum ada sandaran. Sandaran pertama dibuat malam ini, atau tekan Sandarkan sekarang.</p>'}`;
 }
 
 function paparLogo(logo, ralat) {
@@ -785,6 +807,7 @@ const BORANG = {
     const d = new FormData(b);
     const badan = Object.fromEntries(MEDAN_TETAPAN.map(([k]) => [k, d.get(k) ?? '']));
     await api('PUT', 'tetapan', badan);
+    pasangWarna(badan.warna);
     b.querySelector('.ralat').hidden = true;
     b.querySelectorAll('.salah').forEach((x) => x.classList.remove('salah'));
     const ok = document.getElementById('tetapan-ok'); ok.hidden = false; ok.scrollIntoView({ block: 'center' });
@@ -845,6 +868,10 @@ const TINDAKAN = {
     if (catatan === null) return;
     await api('POST', `kelulusan/${el.dataset.jenis}/${el.dataset.id}/tolak`, { catatan });
     halamanKelulusan();
+  },
+  async 'buat-sandaran'() {
+    const r = await api('POST', 'sandaran');
+    await paparSandaran(`Sandaran ${h(r.nama.replace('sandaran/', ''))} dibuat (${Object.values(r.jadual).reduce((a, b) => a + b, 0)} baris).`);
   },
   async 'buang-admin'(el) {
     if (!confirm(`Buang ${el.dataset.emel} sebagai admin? Sesi mereka akan ditamatkan.`)) return;
@@ -966,7 +993,16 @@ async function logMasukGoogle(res) {
 
 let dengarLaluan = false;
 
+const BRAND_WARNA = { hijau: '#0B6B4F', biru: '#1D4ED8', ungu: '#6D28D9', marun: '#8B1E3F', arang: '#1F2937' };
+function pasangWarna(w) {
+  const warna = BRAND_WARNA[w] ? w : 'hijau';
+  if (warna === 'hijau') document.documentElement.removeAttribute('data-warna'); else document.documentElement.setAttribute('data-warna', warna);
+  document.querySelector('meta[name=theme-color]')?.setAttribute('content', BRAND_WARNA[warna]);
+  try { localStorage.setItem('kh-warna', warna); } catch { /* storan disekat */ }
+}
+
 async function mula() {
+  fetch('/api/konfig').then((r) => r.json()).then((k) => pasangWarna(k.laman?.warna)).catch(() => {});
   const saya = await fetch('/api/saya');
   if (saya.ok) {
     const d = await saya.json();

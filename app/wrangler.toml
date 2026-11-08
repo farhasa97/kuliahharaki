@@ -31,5 +31,9 @@ migrations_dir = "migrations"
 binding = "NOTA"
 bucket_name = "kuliahharaki-fail"
 
+# Sandaran D1 harian ke R2 (sandaran/YYYY-MM-DD.json), 02:17 waktu Malaysia (18:17 UTC). 30 fail terbaharu disimpan.
+[triggers]
+crons = ["17 18 * * *"]
+
 [observability]
 enabled = true

@@ -1,5 +1,14 @@
 // Tetapan laman yang boleh diubah admin. Nilai kosong = guna lalai. Fungsi tulen.
 
+// Pilihan warna tema. Nilai CSS penuh dalam public/gaya.css (:root[data-warna=...]); `brand` untuk theme-color dan sijil.
+export const WARNA = {
+  hijau: { nama: 'Hijau zamrud (asal)', brand: '#0B6B4F' },
+  biru: { nama: 'Biru laut', brand: '#1D4ED8' },
+  ungu: { nama: 'Ungu', brand: '#6D28D9' },
+  marun: { nama: 'Marun', brand: '#8B1E3F' },
+  arang: { nama: 'Arang', brand: '#1F2937' },
+};
+
 export const MEDAN = {
   nama: { maks: 60, lalai: 'Kuliah Haraki' },
   tagline: { maks: 60, lalai: 'Ilmu · Tarbiyah · Amal' },
@@ -11,7 +20,8 @@ export const MEDAN = {
   sijil_tajuk: { maks: 60, lalai: 'Sijil Penyertaan' },
   sijil_penandatangan: { maks: 80, lalai: '' }, // nama di bawah garis tandatangan; kosong = nama guru course
   sijil_jawatan: { maks: 80, lalai: '' },
-  hari_sesi: { maks: 3, lalai: '30' }, // tempoh log masuk (hari) sebelum perlu log masuk semula; 1 hingga 365
+  hari_sesi: { maks: 3, lalai: '30' },
+  warna: { maks: 10, lalai: 'hijau' }, // tempoh log masuk (hari) sebelum perlu log masuk semula; 1 hingga 365
 };
 export const LALAI = Object.fromEntries(Object.entries(MEDAN).map(([k, v]) => [k, v.lalai]));
 
@@ -37,6 +47,7 @@ export function sahkanTetapan(b) {
     if (typeof b[k] !== 'string') return { ok: false, sebab: 'medan-tidak-sah', medan: k };
     const t = b[k].replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, '').trim();
     if (t.length > m.maks) return { ok: false, sebab: 'terlalu-panjang', medan: k };
+    if (k === 'warna' && t && !WARNA[t]) return { ok: false, sebab: 'medan-tidak-sah', medan: k };
     if (k === 'hari_sesi' && t && !(/^\d{1,3}$/.test(t) && Number(t) >= 1 && Number(t) <= 365)) return { ok: false, sebab: 'hari-sesi-tidak-sah', medan: k };
     if (k === 'papar_peserta' && t && t !== 'ya' && t !== 'tidak') return { ok: false, sebab: 'medan-tidak-sah', medan: k };
     if (k === 'emel_hubungan' && t && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(t)) return { ok: false, sebab: 'emel-tidak-sah', medan: k };

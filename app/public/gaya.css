@@ -401,3 +401,18 @@ a.course:hover .thumb>div:first-child{transform:scale(1.07)}
 .p-admin .dua-lajur{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}.p-admin .dua-lajur>*{min-width:0}
 @media (max-width:520px){.p-admin .dua-lajur{grid-template-columns:1fr}}
 .p-admin .lencana.bahaya-l{background:var(--bad-soft);color:var(--bad);border-color:transparent}
+
+/* Warna tema (Tetapan laman). Hijau ialah asal dalam tema.css; pilihan lain menimpa token warna. */
+:root[data-warna=biru]{--brand:#1D4ED8;--accent:#1E4FD0;--accent-strong:#173EA6;--accent-soft:#E6EDFC;--app-bg:#E8EEFA;--surface-2:#F5F8FE;--line:#E0E7F4;--line-strong:#C6D3EC;--navy-card-a:#1E3A8A;--navy-card-b:#0B1A45;--night:#050A18;--night-2:#0B1630;--ink:#0F1A2E;--ink-2:#4E5B74;--ink-3:#8591A8}
+:root[data-warna=ungu]{--brand:#6D28D9;--accent:#6B2BCB;--accent-strong:#5420A3;--accent-soft:#F0E9FC;--app-bg:#EFEAF8;--surface-2:#F8F5FD;--line:#E7E1F2;--line-strong:#D3C8EA;--navy-card-a:#4C1D95;--navy-card-b:#1E0B3F;--night:#0C0618;--night-2:#1A0E30;--ink:#1A1328;--ink-2:#5D5470;--ink-3:#9389A6}
+:root[data-warna=marun]{--brand:#8B1E3F;--accent:#8E2142;--accent-strong:#6E1832;--accent-soft:#F8E8ED;--app-bg:#F4E9EC;--surface-2:#FBF6F7;--line:#EFE2E6;--line-strong:#E0C7CF;--navy-card-a:#6B1730;--navy-card-b:#2A0812;--night:#12040A;--night-2:#240A14;--ink:#22141A;--ink-2:#66525A;--ink-3:#9E8A92}
+:root[data-warna=arang]{--brand:#1F2937;--accent:#2B3644;--accent-strong:#111827;--accent-soft:#ECEEF1;--app-bg:#ECEEF0;--surface-2:#F7F8F9;--line:#E3E6EA;--line-strong:#CDD2D9;--navy-card-a:#273244;--navy-card-b:#0B1018;--night:#06080B;--night-2:#111722;--ink:#111827;--ink-2:#4B5563;--ink-3:#8B93A1}
+:root[data-warna] .skrin-isi{background:radial-gradient(120% 90% at 20% 10%,var(--navy-card-a) 0%,var(--navy-card-b) 60%,var(--night) 100%)}
+:root[data-warna] .art1{background:linear-gradient(140deg,var(--navy-card-a) 0%,var(--accent) 55%,var(--navy-card-b) 100%)}
+.p-admin .pilih-warna{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.p-admin .pilih-warna label{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--line-strong);border-radius:999px;cursor:pointer;font-weight:500;margin:0}
+.p-admin .pilih-warna label:has(input:checked){border-color:var(--brand);box-shadow:0 0 0 3px var(--accent-soft)}
+.p-admin .pilih-warna i{width:18px;height:18px;border-radius:50%;display:inline-block}
+.p-admin .pilih-warna input{accent-color:var(--brand)}
+.p-admin .senarai-sandaran{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.p-admin .senarai-sandaran li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-md);flex-wrap:wrap}

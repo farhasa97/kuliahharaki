@@ -5,7 +5,7 @@
 
 import { bacaKuki, hashToken } from './lib/sesi.js';
 import { perananPenuh } from './lib/peranan.js';
-import { gabungTetapan, urlLogo, LALAI } from './lib/tetapan.js';
+import { gabungTetapan, urlLogo, LALAI, WARNA } from './lib/tetapan.js';
 import { h, paparMarkdown, tarikhMy } from './lib/artikel.js';
 
 const HTML = { 'content-type': 'text/html; charset=utf-8' };
@@ -23,7 +23,7 @@ function bingkai({ laman, tapak, tajuk, deskripsi, kanonik, noindex, jsonld, jen
   const gambarOg = tapak + (gambar || (laman.logo ? '/api/logo' : '/ikon/ikon-512.png'));
   const brand = `<a class="brand" href="/">${logo}<span><span class="brand-name">${h(laman.nama)}</span>${laman.tagline ? `<span class="brand-sub">${h(laman.tagline)}</span>` : ''}</span></a>`;
   return `<!doctype html>
-<html lang="ms">
+<html lang="ms"${WARNA[laman.warna] && laman.warna !== 'hijau' ? ` data-warna="${laman.warna}"` : ''}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -38,7 +38,7 @@ ${noindex ? '<meta name="robots" content="noindex, nofollow">' : '<meta name="ro
 <meta property="og:url" content="${h(kanonik)}">
 <meta property="og:image" content="${h(gambarOg)}">
 <meta name="twitter:card" content="${gambar ? 'summary_large_image' : 'summary'}">
-<meta name="theme-color" content="#0B6B4F">
+<meta name="theme-color" content="${(WARNA[laman.warna] || WARNA.hijau).brand}">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="${h(laman.nama)}">
 <link rel="icon" href="/ikon/ikon-192.png" type="image/png">

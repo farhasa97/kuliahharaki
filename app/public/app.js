@@ -1015,6 +1015,15 @@ async function laluan() {
   window.KH_efek?.semakSkrol();
 }
 
+// Warna tema daripada Tetapan laman; disimpan supaya muatan seterusnya terus berwarna betul.
+const BRAND_WARNA = { hijau: '#0B6B4F', biru: '#1D4ED8', ungu: '#6D28D9', marun: '#8B1E3F', arang: '#1F2937' };
+function pasangWarna(w) {
+  const warna = BRAND_WARNA[w] ? w : 'hijau';
+  if (warna === 'hijau') document.documentElement.removeAttribute('data-warna'); else document.documentElement.setAttribute('data-warna', warna);
+  document.querySelector('meta[name=theme-color]')?.setAttribute('content', BRAND_WARNA[warna]);
+  try { localStorage.setItem('kh-warna', warna); } catch { /* storan disekat */ }
+}
+
 async function muatSaya() {
   const r = await fetch('/api/saya');
   saya = r.ok ? await r.json() : null;
@@ -1023,6 +1032,7 @@ async function muatSaya() {
 async function mula() {
   try { const k = await dapat('/api/konfig'); konfig = { ...konfig, ...k, laman: { ...konfig.laman, ...(k.laman || {}) } }; } catch { /* guna lalai */ }
   document.title = konfig.laman.nama;
+  pasangWarna(konfig.laman.warna);
   await muatSaya();
   window.addEventListener('hashchange', laluan);
   await laluan();

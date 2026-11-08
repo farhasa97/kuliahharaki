@@ -19,6 +19,7 @@ import { halamanArtikel } from './artikel-halaman.js';
 import { tangguhHari } from './lib/konfig.js';
 import { gabungTetapan, urlLogo, LALAI } from './lib/tetapan.js';
 import { sijilHalaman } from './sijil-halaman.js';
+import { buatSandaran } from './sandaran.js';
 import { golonganEfektif, LABEL as LABEL_GOLONGAN } from './lib/golongan.js';
 
 async function profil(repo, env, p, now) {
@@ -186,4 +187,6 @@ export async function handle(req, env, opts = {}) {
 
 export default {
   fetch: (req, env, ctx) => handle(req, env, { waitUntil: ctx && ctx.waitUntil ? (x) => ctx.waitUntil(x) : null }),
+  // Cron harian (wrangler.toml [triggers]): sandaran D1 ke R2.
+  scheduled: (event, env, ctx) => ctx.waitUntil(buatSandaran(env.DB, env.NOTA, event.scheduledTime || Date.now()).catch((e) => console.error('sandaran gagal', e))),
 };

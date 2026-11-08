@@ -1,7 +1,7 @@
 // Halaman awam pengesahan sijil: /sijil/<kod>. HTML penuh dari pelayan, mesra cetak (A4 melintang).
 // Sesiapa yang ada pautan boleh mengesahkan sijil; noindex supaya nama peserta tidak diindeks enjin carian.
 
-import { gabungTetapan, urlLogo, LALAI } from './lib/tetapan.js';
+import { gabungTetapan, urlLogo, LALAI, WARNA } from './lib/tetapan.js';
 import { h } from './lib/artikel.js';
 import { normalKodSijil, paparKodSijil } from './lib/sijil.js';
 
@@ -49,7 +49,7 @@ function halaman({ tajuk, badan, laman }) {
 <link rel="icon" href="/ikon/ikon-192.png" type="image/png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Lora:wght@600;700&display=swap">
-<style>${GAYA}</style></head><body>${badan}</body></html>`;
+<style>${GAYA}:root{--hijau:${(WARNA[laman.warna] || WARNA.hijau).brand}}</style></head><body>${badan}</body></html>`;
 }
 
 const respons = (html, status = 200) => new Response(html, { status, headers: { 'content-type': 'text/html; charset=utf-8', 'x-content-type-options': 'nosniff', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' } });

@@ -12,6 +12,7 @@ import { sahkanArtikel, slugArtikel, MAKS_ISI } from './lib/artikel.js';
 import { MAKS_LOGO, sahkanTetapan, gabungTetapan, jenisGambar, urlLogo, LALAI } from './lib/tetapan.js';
 import { sahkanJawapan } from './lib/soalan.js';
 import { sahkanKodBaru, kodBaru, paparKod } from './lib/golongan.js';
+import { buatSandaran, senaraiSandaran, namaSandaranSah, AWALAN } from './sandaran.js';
 import { MAKS_SAIZ, MAKS_SETIAP_SUBJECT, namaNota, adaPdf, kunciBaru } from './lib/nota.js';
 
 const MAKS_BADAN = 50_000;
@@ -68,6 +69,22 @@ export async function adminApi(req, env, url, repo, now) {
   };
 
   if (sumber === 'saya' && req.method === 'GET') return json({ emel: saya, peranan, adminUtama: adminEmel(env, saya) });
+
+  // ---------------- sandaran D1 (admin utama sahaja: fail mengandungi semua emel dan rekod bayaran) ----------------
+  if (sumber === 'sandaran') {
+    if (!adminEmel(env, saya)) return json({ ralat: 'admin-utama-sahaja' }, 403);
+    if (!env.NOTA) return json({ ralat: 'r2-belum-sedia' }, 503);
+    if (bahagian.length === 1 && req.method === 'GET') return json(await senaraiSandaran(env.NOTA));
+    if (bahagian.length === 1 && req.method === 'POST') return json(await buatSandaran(env.DB, env.NOTA, now, { label: 'manual' }), 201);
+    if (bahagian.length === 2 && req.method === 'GET') {
+      const nama = decodeURIComponent(idMentah || '');
+      if (!namaSandaranSah(nama)) return json({ ralat: 'tidak-dijumpai' }, 404);
+      const obj = await env.NOTA.get(AWALAN + nama);
+      if (!obj) return json({ ralat: 'tidak-dijumpai' }, 404);
+      return new Response(obj.body, { headers: { 'content-type': 'application/json', 'content-disposition': `attachment; filename="kuliahharaki-${nama}"`, 'cache-control': 'no-store' } });
+    }
+    return json({ ralat: 'kaedah-tidak-disokong' }, 405);
+  }
 
   // ---------------- pengguna (admin) ----------------
   if (sumber === 'pengguna') {

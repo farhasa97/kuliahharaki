@@ -131,7 +131,7 @@ Had diketahui: pelajar tanpa akaun Google perlu cara lain (kod emel) jika ramai 
 
 ## 12. Tetapan laman
 
-Harga Advance diubah di borang BCL, bukan di panel LMS. Harga video lalai (RM2) ditetapkan dalam konfigurasi dan boleh ditimpa pada setiap subject. Admin ubah dari panel: hari tangguh, banner halaman utama (gambar di R2), warna jenama (disimpan sebagai CSS variable, terpakai pada seluruh laman), teks hero dan footer. Tiada CMS berasingan.
+(08/11/2026: warna jenama dilaksanakan sebagai 5 pilihan tema, tempoh log masuk, tajuk dan penandatangan sijil. Sandaran D1 harian ke R2, lihat OPERASI A1l.) Harga Advance diubah di borang BCL, bukan di panel LMS. Harga video lalai (RM2) ditetapkan dalam konfigurasi dan boleh ditimpa pada setiap subject. Admin ubah dari panel: hari tangguh, banner halaman utama (gambar di R2), warna jenama (disimpan sebagai CSS variable, terpakai pada seluruh laman), teks hero dan footer. Tiada CMS berasingan.
 
 ## 13. Stack
 

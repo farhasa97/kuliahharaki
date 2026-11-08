@@ -206,6 +206,14 @@ Tiada SQL baharu (jadual `sijil` sudah dicipta dalam A1i).
 - Senarai sijil pelajar ada di halaman **Akaun**, bahagian **Sijil saya**.
 - Sijil kekal walaupun course dipadam atau tajuknya ditukar kemudian (nama dan tajuk disimpan semasa sijil dikeluarkan).
 
+### A1l. Warna tema dan sandaran data (08/11/2026)
+Tiada SQL baharu.
+- **Warna tema**: Panel, Tetapan laman, **Warna tema**: Hijau zamrud (asal), Biru laut, Ungu, Marun, Arang. Berkuat kuasa serta-merta pada laman pelajar, panel, artikel dan sijil. Pelawat yang pernah buka laman mungkin nampak warna lama sesaat pada muatan pertama selepas tukar.
+- **Sandaran automatik**: Worker menyandarkan seluruh D1 setiap hari jam 2:17 pagi (waktu Malaysia) ke bucket R2 `kuliahharaki-fail`, folder `sandaran/`, satu fail JSON setiap hari. 30 fail terbaharu disimpan, yang lebih lama dipadam automatik. Jadual `sesi` tidak disandar.
+- Cron diisytiharkan dalam `app/wrangler.toml` (`[triggers]`), jadi ia aktif sendiri selepas deploy. Untuk semak: Cloudflare, Workers & Pages, kuliahharaki, **Settings**, **Trigger Events** (sepatutnya tertulis `17 18 * * *`).
+- **Panel, Tetapan laman, Sandaran data** (admin utama sahaja, kerana fail mengandungi semua emel dan rekod bayaran): senarai sandaran, **Muat turun**, dan **Sandarkan sekarang** (contoh sebelum perubahan besar).
+- **Memulihkan data**: cara pertama ialah **D1 Time Travel** di Cloudflare (Storage & Databases, D1, kuliahharaki, Time Travel), yang boleh memulihkan pangkalan data ke mana-mana minit dalam tempoh tertentu (ikut ingatan saya 7 hari untuk pelan Free dan 30 hari untuk Paid; semak di dashboard). Fail JSON sandaran ialah lapisan kedua untuk tempoh lebih lama atau jika akaun bermasalah; memulihkan daripadanya perlu skrip pembangun, jangan cuba manual dalam Console.
+
 ### A2. Worker dari GitHub
 Workers & Pages, Create, import repository `farhasa97/kuliahharaki`:
 - Project name: `kuliahharaki` (mesti sama dengan `name` dalam `app/wrangler.toml`)
