@@ -104,7 +104,7 @@ test('butiran subject: kedudukan, sebelum dan seterusnya melangkau draf', async 
   const { repo, s } = await sedia();
   const r = (await minta(repo)('GET', `/api/subject/${s.b1.id}`)).badan;
   assert.deepEqual([r.kedudukan, r.jumlah, r.sebelum, r.seterusnya], [1, 2, null, { id: s.b2.id, tajuk: 'Bab 1' }]);
-  assert.deepEqual(r.course, { id: r.course.id, slug: 'fiqh', tajuk: 'Fiqh', huraian: null, akses: 'ahli', guru: null });
+  assert.deepEqual(r.course, { id: r.course.id, slug: 'fiqh', tajuk: 'Fiqh', huraian: null, akses: 'ahli', golongan: 'awam', guru: null });
 });
 
 test('tanda selesai: perlu log masuk, perlu akses, idempoten, dan tercermin dalam senarai', async () => {

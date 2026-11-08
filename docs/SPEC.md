@@ -44,6 +44,8 @@ Platform pembelajaran untuk satu kuliah (single-tenant). Pelajar tonton video pe
 - **Guru (ramai, dilaksanakan 07/11/2026):** cipta dan sunting course/subject sendiri, upload nota, tampal link YouTube. Semua penerbitan, perubahan pada kandungan terbit dan nota PDF perlu kelulusan admin (versi terbit kekal sehingga diluluskan). Guru nampak bilangan khatam setiap kuliah. Soal jawab dilaksanakan 07/11/2026 (pada setiap kuliah; soalan awam selepas dijawab; guru menjawab tanpa kelulusan; admin moderasi; tanpa emel notifikasi). Komen umum ditangguh. Admin ditetapkan melalui `ADMIN_EMELS`; guru melalui panel (jadual `guru`).
 - **Admin:** semua kuasa guru ke atas semua course (termasuk upload bagi pihak guru), urus pengguna dan langganan, ubah tetapan laman.
 
+- **Golongan (dilaksanakan 08/11/2026):** orang awam / pelajar / ahli organisasi, diberi melalui kod (menu Kod golongan di panel). Golongan menentukan course yang dilihat; langganan kekal paywall. Course ditetapkan "siapa boleh lihat"; awam nampak course lebih tinggi dalam keadaan berkunci, pelajar tidak nampak course ahli organisasi. Pengguna baharu memilih golongan semasa log masuk pertama; naik taraf dan sambung dengan kod di Akaun; turun taraf oleh admin sahaja. Akses daripada kod lalai 1 bulan. Butiran di OPERASI A1i.
+
 ## 5. Skrin
 
 **Awam:** halaman utama (banner), senarai course, halaman course (senarai subject, ada pratonton), harga, daftar dan log masuk.

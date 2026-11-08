@@ -21,7 +21,8 @@ const tamatAhli = new Date(Date.now() + 8 * 3600e3 + 40 * 864e5).toISOString().s
 const { B, henti } = await mulaWorker({
   port: 8792,
   vars: { ADMIN_EMELS: ADMIN, BUY_URL: BELI, HARGA_TEKS: 'RM10 sebulan atau RM100 setahun', HARGA_BULANAN: '10', HARGA_TAHUNAN: '100' },
-  semaiSql: `INSERT INTO pengguna (emel, nama, peranan, dicipta_pada) VALUES ('${ADMIN}', 'Admin', 'pelajar', '${masa}'), ('${PELAJAR}', 'Aminah', 'pelajar', '${masa}'), ('${AHLI}', 'Ahmad', 'pelajar', '${masa}');
+  // Aminah belum memilih golongan (NULL) supaya aliran "Anda siapa?" diuji; yang lain sudah awam.
+  semaiSql: `INSERT INTO pengguna (emel, nama, peranan, dicipta_pada, golongan) VALUES ('${ADMIN}', 'Admin', 'pelajar', '${masa}', 'awam'), ('${PELAJAR}', 'Aminah', 'pelajar', '${masa}', NULL), ('${AHLI}', 'Ahmad', 'pelajar', '${masa}', 'awam');
     INSERT INTO sesi (token_hash, pengguna_id, tamat_pada) VALUES ('${sha256(token.admin)}', 1, '${sesiTamat}'), ('${sha256(token.pelajar)}', 2, '${sesiTamat}'), ('${sha256(token.ahli)}', 3, '${sesiTamat}');
     INSERT INTO langganan (emel, pelan, tarikh_tamat, hari_labuh, dikemas_kini_pada) VALUES ('${AHLI}', 'bulanan', '${tamatAhli}', 1, '${masa}');`,
 });
@@ -203,6 +204,22 @@ try {
     await skrin(p, '11-pelawat-kunci');
   });
 
+  await langkah('pelajar baharu: wajib memilih golongan dahulu; kod salah ditolak; orang awam diteruskan ke halaman asal', async () => {
+    const p = pelajar.page;
+    await p.goto(`${B}/#/subject/${b1.id}`);
+    await p.waitForURL(/#\/golongan$/);
+    await p.getByRole('heading', { name: 'Anda siapa?' }).waitFor();
+    await p.getByText('Pelajar', { exact: true }).click();
+    await p.locator('#kodDaftar').fill('SALAH-123');
+    await p.getByRole('button', { name: 'Teruskan' }).click();
+    await p.getByText('Kod tidak sah').waitFor();
+    await skrin(p, '12a-pilih-golongan');
+    await p.getByText('Orang awam', { exact: true }).click();
+    await p.getByRole('button', { name: 'Teruskan' }).click();
+    await p.waitForURL(new RegExp(`#/subject/${b1.id}$`));
+    await p.locator(`[data-video="${V.b1}"]`).waitFor();
+  });
+
   await langkah('pelajar tanpa langganan: pratonton boleh, berbayar ajak langgan dengan emel sendiri', async () => {
     const p = pelajar.page;
     await p.goto(`${B}/#/subject/${b1.id}`);
@@ -376,6 +393,31 @@ try {
     const skop = await p.evaluate(async () => (await navigator.serviceWorker.ready).scope);
     assert.equal(skop, B + '/');
     await ctx.close();
+  });
+
+  await langkah('golongan: awam nampak course pelajar berkunci, course ahli tersembunyi; kod pelajar membuka, ahli kekal tersembunyi', async () => {
+    const cPelajar = await post('course', { tajuk: 'Tafsir Kelas Pelajar', akses: 'percuma', golongan: 'pelajar', status: 'terbit' });
+    const sPelajar = await post(`course/${cPelajar.id}/subject`, { tajuk: 'Tafsir 1', video: 'ggggggggggg', status: 'terbit' });
+    const cAhli = await post('course', { tajuk: 'Usrah Ahli Dalaman', akses: 'percuma', golongan: 'ahli', status: 'terbit' });
+    const [kod] = await post('kod', { golongan: 'pelajar', label: 'Kelas E2E', had_guna: 1 });
+    const p = pelajar.page;
+    await p.goto(`${B}/#/subject/${sPelajar.id}`);
+    await p.getByText('Kuliah ini untuk Pelajar').waitFor();
+    tiadaBocor(await p.content(), 'ggggggggggg');
+    const awamAhli = await (await p.request.get(`${B}/api/course/${cAhli.slug}`)).json(); // orang awam nampak tetapi berkunci
+    assert.ok(awamAhli.subject.every((x) => !x.boleh_tonton));
+    await p.getByRole('link', { name: 'Masukkan kod' }).click();
+    await p.waitForURL(/#\/akaun$/);
+    await p.locator('#kodAkaun').fill(kod.kod_papar.toLowerCase());
+    await p.getByRole('button', { name: 'Guna kod' }).click();
+    await p.getByText(/Golongan: Pelajar hingga/).waitFor();
+    await skrin(p, '19-akaun-golongan');
+    await p.goto(`${B}/#/subject/${sPelajar.id}`);
+    await p.locator('[data-video="ggggggggggg"]').waitFor();
+    assert.equal((await p.request.get(`${B}/api/course/${cAhli.slug}`)).status(), 404, 'pelajar tidak nampak course ahli');
+    // kod sekali guna: orang lain ditolak
+    const r = await ahli.page.request.post(`${B}/api/golongan`, { data: { kod: kod.kod } });
+    assert.equal(r.status(), 400);
   });
 
   await langkah('tiada ralat JavaScript dalam mana-mana sesi', async () => {

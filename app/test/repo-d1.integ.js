@@ -8,7 +8,7 @@ import { repoD1 } from '../src/repo.js';
 
 const proksi = await getPlatformProxy({ configPath: 'wrangler.toml', persist: false });
 const db = proksi.env.DB;
-const sql = ['migrations/0001_skema.sql', 'migrations/0002_video.sql', 'migrations/0003_kandungan.sql', 'migrations/0004_nota.sql', 'migrations/0005_tetapan.sql', 'migrations/0006_artikel.sql', 'migrations/0007_guru.sql', 'migrations/0008_artikel_gambar.sql', 'migrations/0009_soalan.sql'].map((f) => readFileSync(f, 'utf8')).join(';').replace(/--[^\n]*/g, '');
+const sql = ['migrations/0001_skema.sql', 'migrations/0002_video.sql', 'migrations/0003_kandungan.sql', 'migrations/0004_nota.sql', 'migrations/0005_tetapan.sql', 'migrations/0006_artikel.sql', 'migrations/0007_guru.sql', 'migrations/0008_artikel_gambar.sql', 'migrations/0009_soalan.sql', 'migrations/0010_golongan_pengguna_sijil.sql'].map((f) => readFileSync(f, 'utf8')).join(';').replace(/--[^\n]*/g, '');
 await db.batch(sql.split(';').map((s) => s.trim()).filter(Boolean).map((s) => db.prepare(s)));
 const repo = repoD1(db);
 test.after(() => proksi.dispose());
@@ -310,4 +310,39 @@ test('soal jawab: cipta, menunggu hanya milik penanya, awam selepas dijawab dan 
   assert.equal(await repo.soalanDariId(b.id), null);
   await repo.padamSubject(s1.id); // soalan dipadam dalam batch yang sama
   assert.equal(await repo.soalanDariId(a.id), null);
+});
+
+test('golongan dan kod: tebus atomik hormati had guna, tamat dan aktif; log guna; golongan pengguna; cubaan; course golongan', async () => {
+  const p1 = await repo.simpanPengguna({ emel: 'k1@x.my', sub: 'k1', nama: 'K1' }, 't');
+  const p2 = await repo.simpanPengguna({ emel: 'k2@x.my', sub: 'k2', nama: 'K2' }, 't');
+  assert.equal(p1.golongan, null); // lajur wujud, belum memilih
+  const k = await repo.ciptaKod({ kod: 'SATU2026', golongan: 'ahli', label: 'x', bulan_akses: 1, had_guna: 1 }, 't');
+  assert.deepEqual([k.bil_guna, k.aktif], [0, 1]);
+  await assert.rejects(repo.ciptaKod({ kod: 'SATU2026', golongan: 'ahli' }, 't')); // unik
+  assert.equal(await repo.tebusKod(k.id, p1.id, 'ahli', '2026-12-08', 'T1', '2026-11-08'), true);
+  assert.equal(await repo.tebusKod(k.id, p2.id, 'ahli', '2026-12-08', 'T2', '2026-11-08'), false); // penuh: tiada kesan
+  const u1 = await db.prepare('SELECT golongan, golongan_tamat, kod_id FROM pengguna WHERE id = ?').bind(p1.id).first();
+  const u2 = await db.prepare('SELECT golongan, kod_id FROM pengguna WHERE id = ?').bind(p2.id).first();
+  assert.deepEqual(u1, { golongan: 'ahli', golongan_tamat: '2026-12-08', kod_id: k.id });
+  assert.deepEqual(u2, { golongan: null, kod_id: null });
+  assert.equal((await repo.kodDariId(k.id)).bil_guna, 1);
+  assert.deepEqual((await repo.penggunaKod(k.id)).map((x) => x.emel), ['k1@x.my']);
+  const tamat = await repo.ciptaKod({ kod: 'TAMAT2026', golongan: 'pelajar', tamat_pada: '2026-11-07' }, 't');
+  assert.equal(await repo.tebusKod(tamat.id, p2.id, 'pelajar', null, 'T', '2026-11-08'), false);
+  const kongsi = await repo.ciptaKod({ kod: 'KONGSI26', golongan: 'pelajar' }, 't');
+  await repo.aktifkanKod(kongsi.id, false);
+  assert.equal(await repo.tebusKod(kongsi.id, p2.id, 'pelajar', null, 'T', '2026-11-08'), false);
+  await repo.aktifkanKod(kongsi.id, true);
+  assert.equal(await repo.tebusKod(kongsi.id, p2.id, 'pelajar', null, 'T', '2026-11-08'), true);
+  await repo.padamKod(kongsi.id); // sudah digunakan: tidak dipadam
+  assert.ok(await repo.kodDariId(kongsi.id));
+  await repo.tetapkanGolongan(p2.id, 'awam', null);
+  assert.equal((await db.prepare('SELECT golongan FROM pengguna WHERE id = ?').bind(p2.id).first()).golongan, 'awam');
+  await repo.catatCubaanKod(p2.id, '2026-11-08T01:00:00.000Z');
+  await repo.catatCubaanKod(p2.id, '2026-11-08T03:00:00.000Z');
+  assert.equal(await repo.bilCubaanKod(p2.id, '2026-11-08T02:00:00.000Z'), 1);
+  const c = await repo.ciptaCourse({ tajuk: 'G', slug: 'g-golongan', akses: 'percuma', status: 'draf', golongan: 'pelajar' }, 't');
+  const c2 = await repo.ciptaCourse({ tajuk: 'G2', slug: 'g-golongan-2', akses: 'percuma', status: 'draf' }, 't');
+  assert.deepEqual([c.golongan, c2.golongan], ['pelajar', 'awam']);
+  assert.equal((await repo.kemaskiniCourse(c2.id, { golongan: 'ahli' }, 't')).golongan, 'ahli');
 });

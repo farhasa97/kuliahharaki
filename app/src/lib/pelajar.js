@@ -2,11 +2,18 @@
 // Peraturan utama (docs/SPEC.md bahagian 8): video_id hanya diserahkan bila pelajar layak menonton.
 
 import { aksesSubject } from './akses.js';
+import { keterlihatan } from './golongan.js';
 
 // Subject kelihatan hanya bila course dan subject kedua-duanya terbit. Pelawat (belum log masuk) yang
 // perlu bayar diminta log masuk dahulu, supaya bayaran nanti terikat pada emel akaun.
-export function keputusanSubject({ course, subject, langganan, hari, logMasuk }) {
+// Golongan (awam, pelajar, ahli) ditapis dahulu: kandungan di atas golongan pengguna sama ada terkunci (awam nampak
+// tetapi perlu kod) atau tersembunyi (pelajar tidak nampak kandungan ahli). Selepas itu peraturan bayaran biasa.
+export function keputusanSubject({ course, subject, langganan, hari, logMasuk, golongan = 'awam' }) {
   const terbit = course.status === 'terbit' && subject.status === 'terbit';
+  if (terbit) {
+    const v = keterlihatan(course.golongan, golongan);
+    if (v !== 'nampak') return { akses: false, sebab: v === 'berkunci' ? 'perlu-golongan' : 'tersembunyi', golongan_perlu: course.golongan };
+  }
   const k = aksesSubject({
     subject: { status: terbit ? 'terbit' : 'draf', akses: course.akses, pratonton: !!subject.pratonton },
     langganan, aksesVideo: null, hari,

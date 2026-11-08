@@ -16,7 +16,7 @@ const tokenAdmin = tokenRawak(), tokenPelajar = tokenRawak(), tokenGuru = tokenR
 const masa = new Date().toISOString(), tamat = new Date(Date.now() + 864e5).toISOString();
 // Peranan dalam pangkalan data sengaja 'pelajar': admin mesti datang daripada ADMIN_EMELS.
 const { B, henti } = await mulaWorker({ port: PORT, vars: { ADMIN_EMELS: ADMIN }, semaiSql:
-  `INSERT INTO pengguna (emel, nama, peranan, dicipta_pada) VALUES ('${ADMIN}', 'Admin E2E', 'pelajar', '${masa}'), ('${PELAJAR}', 'Pelajar E2E', 'pelajar', '${masa}'), ('${GURU}', 'Guru Google', 'pelajar', '${masa}');
+  `INSERT INTO pengguna (emel, nama, peranan, dicipta_pada, golongan) VALUES ('${ADMIN}', 'Admin E2E', 'pelajar', '${masa}', 'awam'), ('${PELAJAR}', 'Pelajar E2E', 'pelajar', '${masa}', 'awam'), ('${GURU}', 'Guru Google', 'pelajar', '${masa}', 'awam');
    INSERT INTO sesi (token_hash, pengguna_id, tamat_pada) VALUES ('${hash(tokenAdmin)}', 1, '${tamat}'), ('${hash(tokenPelajar)}', 2, '${tamat}'), ('${hash(tokenGuru)}', 3, '${tamat}');
    INSERT INTO guru (emel, nama, dicipta_pada) VALUES ('${GURU}', 'Ustaz Guru', '${masa}');` });
 
@@ -476,6 +476,35 @@ try {
     await v.pg.reload(); await v.pg.getByRole('tab', { name: /Soal jawab/ }).click();
     await v.pg.getByText('Belum ada soal jawab untuk kuliah ini').waitFor();
     await p1.c.close(); await v.c.close();
+  });
+
+  await langkah('kod golongan: admin mencipta 3 kod rawak, mematikan satu, memadam satu; course boleh dihadkan kepada pelajar', async () => {
+    await page.goto(B + '/panel/#/kod');
+    await page.getByRole('heading', { name: 'Kod golongan' }).waitFor();
+    await page.locator('#klabel').fill('Kelas Tafsir E2E');
+    await page.locator('#kbilangan').fill('3');
+    await page.getByRole('button', { name: 'Cipta kod' }).click();
+    await page.getByText('3 kod dicipta.').waitFor();
+    const kod = (await page.locator('#kodBaru textarea').inputValue()).split('\n');
+    assert.equal(kod.length, 3); kod.forEach((k) => assert.match(k, /^[A-Z2-9]{4}-[A-Z2-9]{4}$/));
+    await skrinHalaman(page, '13-kod-golongan');
+    const kad = page.locator('.kad', { hasText: kod[0] });
+    await kad.getByRole('button', { name: 'Matikan' }).click();
+    await page.locator('.kad', { hasText: kod[0] }).getByText('Dimatikan').waitFor();
+    await page.locator('.kad', { hasText: kod[1] }).getByRole('button', { name: 'Padam' }).click();
+    await page.locator('.kad', { hasText: kod[1] }).waitFor({ state: 'detached' });
+    await page.locator('.kad', { hasText: kod[2] }).waitFor();
+    // kod sendiri yang bertembung ditolak
+    await page.locator('#kkod').fill(kod[2]);
+    await page.getByRole('button', { name: 'Cipta kod' }).click();
+    await page.getByText('Kod ini sudah wujud').waitFor();
+    // course: pilihan golongan
+    await page.goto(B + '/panel/#/course/baru');
+    await page.locator('#tajuk').fill('Course Khas Pelajar');
+    await page.locator('#golongan').selectOption('pelajar');
+    await page.getByRole('button', { name: 'Simpan' }).click();
+    await page.locator('h1', { hasText: 'Course Khas Pelajar' }).waitFor();
+    await page.locator('.lencana', { hasText: 'Pelajar' }).first().waitFor();
   });
 
   await langkah('tiada ralat JavaScript sepanjang sesi admin', async () => {

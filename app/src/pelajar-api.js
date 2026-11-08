@@ -7,6 +7,8 @@ import { hariIni, status } from './lib/langganan.js';
 import { tangguhHari } from './lib/konfig.js';
 import { keputusanSubject, subjectRingkas, subjectPenuh } from './lib/pelajar.js';
 import { kepalaKandungan } from './lib/nota.js';
+import { golonganEfektif, keterlihatan, normalKod, kodBolehGuna, tamatSelepasTebus, LABEL } from './lib/golongan.js';
+import { perananPenuh } from './lib/peranan.js';
 import { sahkanSoalan, namaPertama, awalHari, HAD_SEHARI } from './lib/soalan.js';
 
 const idDari = (x) => { const n = Number(x); return Number.isInteger(n) && n > 0 ? n : null; };
@@ -16,10 +18,11 @@ async function konteks(req, env, repo, now) {
   const pengguna = token ? await repo.penggunaDariSesi(await hashToken(token), new Date(now).toISOString()) : null;
   const hari = hariIni(now);
   const langganan = pengguna ? status(await repo.langganan(pengguna.emel), hari, tangguhHari(env)) : null;
-  return { pengguna, langganan, hari };
+  const peranan = pengguna ? await perananPenuh(env, repo, pengguna) : null;
+  return { pengguna, langganan, hari, peranan, golongan: golonganEfektif(pengguna, hari, peranan).golongan };
 }
 
-const courseAwam = (c, guru) => ({ id: c.id, slug: c.slug, tajuk: c.tajuk, huraian: c.huraian ?? null, akses: c.akses, guru: (c.guru_emel && guru?.get(c.guru_emel)) || null });
+const courseAwam = (c, guru) => ({ id: c.id, slug: c.slug, tajuk: c.tajuk, huraian: c.huraian ?? null, akses: c.akses, golongan: c.golongan || 'awam', guru: (c.guru_emel && guru?.get(c.guru_emel)) || null });
 // Nama guru untuk paparan. Jadual guru mungkin belum wujud (migrasi 0007): pulangkan peta kosong.
 const petaGuru = async (repo) => { try { return new Map((await repo.senaraiGuru()).map((g) => [g.emel, g.nama])); } catch { return new Map(); } };
 
@@ -40,24 +43,24 @@ export async function pelajarApi(req, env, url, repo, now) {
   if (bahagian[0] === 'course' && bahagian.length === 1 && req.method === 'GET') {
     const selesai = logMasuk ? new Map((await repo.kiraanSelesai(k.pengguna.id)).map((r) => [r.course_id, r.bil])) : null;
     const guru = await petaGuru(repo);
-    const senarai = (await repo.senaraiCourse()).filter((c) => c.bil_subject_terbit > 0)
-      .map((c) => ({ ...courseAwam(c, guru), bil_subject: c.bil_subject_terbit, selesai: selesai ? (selesai.get(c.id) ?? 0) : null }));
+    const senarai = (await repo.senaraiCourse()).filter((c) => c.bil_subject_terbit > 0 && keterlihatan(c.golongan, k.golongan) !== 'sembunyi')
+      .map((c) => ({ ...courseAwam(c, guru), terkunci_golongan: keterlihatan(c.golongan, k.golongan) === 'berkunci', bil_subject: c.bil_subject_terbit, selesai: selesai ? (selesai.get(c.id) ?? 0) : null }));
     return json(senarai);
   }
 
   if (bahagian[0] === 'course' && bahagian.length === 2 && req.method === 'GET') {
     const c = await repo.courseDariSlug(decodeURIComponent(bahagian[1]));
-    if (!c || c.status !== 'terbit') return json({ ralat: 'tidak-dijumpai' }, 404);
+    if (!c || c.status !== 'terbit' || keterlihatan(c.golongan, k.golongan) === 'sembunyi') return json({ ralat: 'tidak-dijumpai' }, 404);
     const selesai = new Set(logMasuk ? await repo.subjectSelesai(k.pengguna.id) : []);
     const subject = (await repo.senaraiSubject(c.id)).map((s) =>
-      subjectRingkas(s, keputusanSubject({ course: c, subject: s, langganan: k.langganan, hari: k.hari, logMasuk }), selesai.has(s.id)));
+      subjectRingkas(s, keputusanSubject({ course: c, subject: s, langganan: k.langganan, hari: k.hari, logMasuk, golongan: k.golongan }), selesai.has(s.id)));
     return json({ course: courseAwam(c, await petaGuru(repo)), subject, log_masuk: logMasuk });
   }
 
   if (bahagian[0] === 'subject' && bahagian.length === 2 && req.method === 'GET') {
     const t = await subjectTerbit(repo, idDari(bahagian[1]));
-    if (!t) return json({ ralat: 'tidak-dijumpai' }, 404);
-    const keputusan = keputusanSubject({ course: t.c, subject: t.s, langganan: k.langganan, hari: k.hari, logMasuk });
+    if (!t || keterlihatan(t.c.golongan, k.golongan) === 'sembunyi') return json({ ralat: 'tidak-dijumpai' }, 404);
+    const keputusan = keputusanSubject({ course: t.c, subject: t.s, langganan: k.langganan, hari: k.hari, logMasuk, golongan: k.golongan });
     const selesai = logMasuk && (await repo.subjectSelesai(k.pengguna.id)).includes(t.s.id);
     const adik = await repo.senaraiSubject(t.c.id);
     const i = adik.findIndex((x) => x.id === t.s.id);
@@ -89,11 +92,40 @@ export async function pelajarApi(req, env, url, repo, now) {
     if (asal && asal !== url.origin) return json({ ralat: 'asal-tidak-dibenarkan' }, 403);
     if (!logMasuk) return json({ ralat: 'belum-log-masuk' }, 401);
     const t = await subjectTerbit(repo, idDari(bahagian[1]));
-    if (!t) return json({ ralat: 'tidak-dijumpai' }, 404);
+    if (!t || keterlihatan(t.c.golongan, k.golongan) === 'sembunyi') return json({ ralat: 'tidak-dijumpai' }, 404); // tersembunyi = tidak wujud baginya
     // Tidak boleh menanda selesai subject yang tidak boleh ditonton.
-    if (!keputusanSubject({ course: t.c, subject: t.s, langganan: k.langganan, hari: k.hari, logMasuk }).akses) return json({ ralat: 'tiada-akses' }, 403);
+    if (!keputusanSubject({ course: t.c, subject: t.s, langganan: k.langganan, hari: k.hari, logMasuk, golongan: k.golongan }).akses) return json({ ralat: 'tiada-akses' }, 403);
     await repo.tandaSelesai(k.pengguna.id, t.s.id, new Date(now).toISOString());
     return json({ ok: true, selesai: true });
+  }
+
+  // Pilih golongan semasa mendaftar, atau naik taraf / lanjut dengan kod (halaman Akaun).
+  //   { pilihan: 'awam' }  hanya jika belum memilih atau sedang awam (turun taraf hanya oleh admin)
+  //   { kod: 'ABCD-EFGH' } pelajar atau ahli organisasi; had 5 cubaan gagal sejam
+  if (bahagian[0] === 'golongan' && bahagian.length === 1 && req.method === 'POST') {
+    const asal = req.headers.get('origin');
+    if (asal && asal !== url.origin) return json({ ralat: 'asal-tidak-dibenarkan' }, 403);
+    if (!logMasuk) return json({ ralat: 'belum-log-masuk' }, 401);
+    if (!(req.headers.get('content-type') || '').includes('application/json')) return json({ ralat: 'JSON sahaja' }, 415);
+    let b; try { b = JSON.parse(await req.text()); } catch { return json({ ralat: 'JSON tidak sah' }, 400); }
+    const p = k.pengguna, masa = new Date(now).toISOString();
+    const semasa = golonganEfektif(p, k.hari, null);
+    if (b?.pilihan === 'awam') {
+      if (semasa.golongan !== 'awam') return json({ ralat: 'turun-taraf-admin' }, 409);
+      await repo.tetapkanGolongan(p.id, 'awam', null);
+      return json({ golongan: 'awam', label: LABEL.awam, tamat: null });
+    }
+    const teks = normalKod(b?.kod);
+    if (!teks) return json({ ralat: 'kod-diperlukan', medan: 'kod' }, 400);
+    const sejamLalu = new Date(now - 3600e3).toISOString();
+    if ((await repo.bilCubaanKod(p.id, sejamLalu)) >= 5) return json({ ralat: 'terlalu-banyak-cubaan' }, 429);
+    const kod = await repo.kodDariTeks(teks);
+    if (!kodBolehGuna(kod, k.hari)) { await repo.catatCubaanKod(p.id, masa); return json({ ralat: 'kod-tidak-sah', medan: 'kod' }, 400); }
+    // Tiada turun taraf sendiri: ahli organisasi yang aktif tidak boleh menukar kepada pelajar dengan kod.
+    if (semasa.golongan === 'ahli' && kod.golongan === 'pelajar') return json({ ralat: 'turun-taraf-admin' }, 409);
+    const tamat = tamatSelepasTebus(kod, { golongan: semasa.golongan, golongan_tamat: semasa.tamat }, k.hari);
+    if (!(await repo.tebusKod(kod.id, p.id, kod.golongan, tamat, masa, k.hari))) { await repo.catatCubaanKod(p.id, masa); return json({ ralat: 'kod-tidak-sah', medan: 'kod' }, 400); }
+    return json({ golongan: kod.golongan, label: LABEL[kod.golongan], tamat });
   }
 
   // Tanya soalan pada kuliah: mesti log masuk dan layak menonton kuliah itu. Had beberapa soalan sehari.
@@ -102,8 +134,8 @@ export async function pelajarApi(req, env, url, repo, now) {
     if (asal && asal !== url.origin) return json({ ralat: 'asal-tidak-dibenarkan' }, 403);
     if (!logMasuk) return json({ ralat: 'belum-log-masuk' }, 401);
     const t = await subjectTerbit(repo, idDari(bahagian[1]));
-    if (!t) return json({ ralat: 'tidak-dijumpai' }, 404);
-    if (!keputusanSubject({ course: t.c, subject: t.s, langganan: k.langganan, hari: k.hari, logMasuk }).akses) return json({ ralat: 'tiada-akses' }, 403);
+    if (!t || keterlihatan(t.c.golongan, k.golongan) === 'sembunyi') return json({ ralat: 'tidak-dijumpai' }, 404); // tersembunyi = tidak wujud baginya
+    if (!keputusanSubject({ course: t.c, subject: t.s, langganan: k.langganan, hari: k.hari, logMasuk, golongan: k.golongan }).akses) return json({ ralat: 'tiada-akses' }, 403);
     if (!(req.headers.get('content-type') || '').includes('application/json')) return json({ ralat: 'JSON sahaja' }, 415);
     let b; try { b = JSON.parse(await req.text()); } catch { return json({ ralat: 'JSON tidak sah' }, 400); }
     const v = sahkanSoalan(b?.teks); if (!v.ok) return json({ ralat: v.sebab, medan: 'teks' }, 400);
@@ -128,8 +160,8 @@ export async function pelajarApi(req, env, url, repo, now) {
   if (bahagian[0] === 'nota' && bahagian.length === 2 && req.method === 'GET') {
     const n = await repo.notaDariId(idDari(bahagian[1]));
     const t = n && (n.status ?? 'terbit') === 'terbit' && await subjectTerbit(repo, n.subject_id); // nota menunggu kelulusan = tiada
-    if (!t) return json({ ralat: 'tidak-dijumpai' }, 404);
-    const keputusan = keputusanSubject({ course: t.c, subject: t.s, langganan: k.langganan, hari: k.hari, logMasuk });
+    if (!t || keterlihatan(t.c.golongan, k.golongan) === 'sembunyi') return json({ ralat: 'tidak-dijumpai' }, 404); // tersembunyi = tidak wujud baginya
+    const keputusan = keputusanSubject({ course: t.c, subject: t.s, langganan: k.langganan, hari: k.hari, logMasuk, golongan: k.golongan });
     if (!logMasuk) return json({ ralat: 'belum-log-masuk' }, 401);
     if (!keputusan.akses) return json({ ralat: 'tiada-akses' }, 403);
     if (!env.NOTA) return json({ ralat: 'r2-belum-sedia' }, 503);

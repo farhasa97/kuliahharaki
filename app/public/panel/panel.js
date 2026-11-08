@@ -14,6 +14,7 @@ const menuPanel = document.getElementById('menuPanel');
 
 // Ikon menu (gaya sama dengan menu pelajar)
 const IKON = {
+  kod: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="5.5" cy="10.5" r="3" stroke="currentColor" stroke-width="1.5"/><path d="m7.7 8.3 5.8-5.8M11.5 4.5 13 6M10 6l1.2 1.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
   course: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2" y="2" width="5" height="5" rx="1.3" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="2" width="5" height="5" rx="1.3" stroke="currentColor" stroke-width="1.5"/><rect x="2" y="9" width="5" height="5" rx="1.3" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="9" width="5" height="5" rx="1.3" stroke="currentColor" stroke-width="1.5"/></svg>',
   kelulusan: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="m5.3 8.2 1.8 1.8 3.6-3.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   guru: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="6" cy="5.5" r="2.4" stroke="currentColor" stroke-width="1.5"/><path d="M1.8 13c.5-2 2.2-3.1 4.2-3.1s3.7 1.1 4.2 3.1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M10.6 3.4a2.3 2.3 0 0 1 0 4.3M12 9.9c1.2.4 2 1.4 2.3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
@@ -28,7 +29,7 @@ const IKON = {
 // Menu pil di header. Item aktif ditanda ikut bahagian pertama hash.
 function binaMenu() {
   const item = PERANAN === 'admin'
-    ? [['course', '#/', 'Course'], ['kelulusan', '#/kelulusan', 'Kelulusan'], ['soalan', '#/soalan', 'Soal jawab'], ['guru', '#/guru', 'Guru'], ['artikel', '#/artikel', 'Artikel'], ['tetapan', '#/tetapan', 'Tetapan laman']]
+    ? [['course', '#/', 'Course'], ['kelulusan', '#/kelulusan', 'Kelulusan'], ['soalan', '#/soalan', 'Soal jawab'], ['guru', '#/guru', 'Guru'], ['kod', '#/kod', 'Kod golongan'], ['artikel', '#/artikel', 'Artikel'], ['tetapan', '#/tetapan', 'Tetapan laman']]
     : [['course', '#/', 'Course saya'], ['soalan', '#/soalan', 'Soal jawab']];
   menuPanel.innerHTML = item.map(([k, href, label]) => `<a href="${href}" data-menu="${k}">${IKON[k]}<span>${label}</span>${k === 'kelulusan' ? '<span class="bil-pil" id="bilKelulusan" hidden></span>' : ''}${k === 'soalan' ? '<span class="bil-pil" id="bilSoalan" hidden></span>' : ''}</a>`).join('')
     + `<a href="/" data-menu="luar">${IKON.luar}<span>Laman pelajar</span></a>`;
@@ -36,7 +37,7 @@ function binaMenu() {
 }
 function tandaMenu() {
   const bahagian = (location.hash || '#/').slice(2).split('/')[0];
-  const aktif = ['kelulusan', 'soalan', 'guru', 'artikel', 'tetapan'].includes(bahagian) ? bahagian : 'course';
+  const aktif = ['kelulusan', 'soalan', 'guru', 'kod', 'artikel', 'tetapan'].includes(bahagian) ? bahagian : 'course';
   menuPanel.querySelectorAll('a[data-menu]').forEach((a) => { if (a.dataset.menu === aktif) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
 }
 async function kemaskiniBilSoalan() {
@@ -92,6 +93,16 @@ const RALAT = {
   'fail-kosong': 'Fail kosong.',
   'had-nota': 'Setiap subject maksimum 10 nota. Padam nota lama dahulu.',
   'r2-belum-sedia': 'Storan fail (R2) belum disambungkan pada Worker.',
+  'golongan-tidak-sah': 'Pilih golongan.',
+  'label-tidak-sah': 'Label maksimum 60 aksara.',
+  'bulan-tidak-sah': 'Tempoh akses mesti 1 hingga 36 bulan.',
+  'had-tidak-sah': 'Had guna mesti nombor 1 hingga 100000, atau kosong untuk tanpa had.',
+  'tarikh-tidak-sah': 'Tarikh tamat kod tidak sah.',
+  'bilangan-tidak-sah': 'Bilangan kod mesti 1 hingga 200.',
+  'kod-tidak-sah': 'Kod sendiri mesti 4 hingga 20 huruf atau nombor.',
+  'kod-satu-sahaja': 'Kod sendiri hanya untuk satu kod. Kosongkan medan kod untuk menjana berbilang kod rawak.',
+  'kod-sudah-ada': 'Kod ini sudah wujud. Pilih kod lain.',
+  'kod-sudah-digunakan': 'Kod ini sudah digunakan, jadi tidak boleh dipadam. Matikan sahaja.',
 };
 
 class RalatApi extends Error {
@@ -111,6 +122,8 @@ async function api(kaedah, laluan, badan) {
 
 const pergi = (hash) => { if (location.hash === hash) laluan(); else location.hash = hash; };
 const lencanaAkses = (a) => (a === 'percuma' ? '<span class="lencana">Percuma</span>' : '<span class="lencana ahli">Berbayar</span>');
+const LABEL_GOLONGAN = { awam: 'Semua (orang awam)', pelajar: 'Pelajar dan ahli organisasi', ahli: 'Ahli organisasi sahaja' };
+const lencanaGolongan = (g) => (g && g !== 'awam' ? `<span class="lencana pratonton">${g === 'ahli' ? 'Ahli organisasi' : 'Pelajar'}</span>` : '');
 const lencanaStatus = (s) => (s === 'terbit' ? '<span class="lencana">Terbit</span>' : s === 'menunggu' ? '<span class="lencana pratonton">Menunggu kelulusan</span>' : '<span class="lencana draf">Draf</span>');
 const gambarVideo = (id) => (id
   ? `<img src="https://i.ytimg.com/vi/${h(id)}/mqdefault.jpg" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'tiada-video',textContent:'Video'}))">`
@@ -151,13 +164,13 @@ async function senaraiCourse() {
     <div class="baris antara"><h1>${ADMIN() ? 'Course' : 'Course saya'}</h1><a class="butang" href="#/course/baru">Tambah course</a></div>
     ${senarai.length ? senarai.map((c) => `
       <a class="kad" href="#/course/${c.id}">
-        <div class="baris"><b>${h(c.tajuk)}</b> ${lencanaAkses(c.akses)} ${lencanaStatus(c.status)} ${c.ada_semakan ? '<span class="lencana pratonton">Perubahan menunggu</span>' : ''}</div>
+        <div class="baris"><b>${h(c.tajuk)}</b> ${lencanaAkses(c.akses)} ${lencanaGolongan(c.golongan)} ${lencanaStatus(c.status)} ${c.ada_semakan ? '<span class="lencana pratonton">Perubahan menunggu</span>' : ''}</div>
         <div class="kecil">${c.bil_subject_terbit} daripada ${c.bil_subject} subject diterbitkan${ADMIN() && c.guru_nama ? ` · Guru: ${h(c.guru_nama)}` : ''}</div>
       </a>`).join('') : '<div class="kad kosong">Belum ada course. Mula dengan <b>Tambah course</b>.</div>'}`;
 }
 
 async function borangCourse(id) {
-  const c = id ? await api('GET', `course/${id}`) : { tajuk: '', huraian: '', akses: 'ahli', status: 'draf', urutan: '', guru_emel: null, semakan: null };
+  const c = id ? await api('GET', `course/${id}`) : { tajuk: '', huraian: '', akses: 'ahli', golongan: 'awam', status: 'draf', urutan: '', guru_emel: null, semakan: null };
   const v = { ...c, ...(c.semakan || {}) }; // guru menyunting versi cadangan jika ada
   const guru = ADMIN() ? await api('GET', 'guru').catch(() => []) : [];
   app.innerHTML = `
@@ -175,6 +188,9 @@ async function borangCourse(id) {
         <label><input type="radio" name="akses" value="ahli" ${v.akses === 'ahli' ? 'checked' : ''}> Berbayar (pelanggan Advance)</label>
         <label><input type="radio" name="akses" value="percuma" ${v.akses === 'percuma' ? 'checked' : ''}> Percuma (semua pelajar)</label>
       </div>
+      <label for="golongan">Siapa boleh lihat</label>
+      <select id="golongan" name="golongan">${Object.entries(LABEL_GOLONGAN).map(([k, t]) => `<option value="${k}" ${(v.golongan || 'awam') === k ? 'selected' : ''}>${t}</option>`).join('')}</select>
+      <div class="bantuan">Orang awam nampak course pelajar dan ahli organisasi dalam keadaan berkunci. Pelajar tidak nampak course ahli organisasi langsung. Golongan diberi melalui kod di menu <b>Kod golongan</b>.</div>
       ${pilihanStatus(c.status, 'course')}
       ${ADMIN() ? `
       <label for="guru_emel">Guru</label>
@@ -202,7 +218,7 @@ async function butiranCourse(id) {
   app.innerHTML = `
     <p><a href="#/">&larr; Semua course</a></p>
     <div class="baris antara">
-      <div><h1>${h(c.tajuk)}</h1><div class="baris" style="margin-top:6px">${lencanaAkses(c.akses)} ${lencanaStatus(c.status)} ${c.semakan ? '<span class="lencana pratonton">Perubahan menunggu</span>' : ''}${ADMIN() && c.guru_nama ? `<span class="kecil">Guru: ${h(c.guru_nama)}</span>` : ''}</div></div>
+      <div><h1>${h(c.tajuk)}</h1><div class="baris" style="margin-top:6px">${lencanaAkses(c.akses)} ${lencanaGolongan(c.golongan)} ${lencanaStatus(c.status)} ${c.semakan ? '<span class="lencana pratonton">Perubahan menunggu</span>' : ''}${ADMIN() && c.guru_nama ? `<span class="kecil">Guru: ${h(c.guru_nama)}</span>` : ''}</div></div>
       <div class="baris"><a class="butang kedua" href="#/course/${id}/sunting">Sunting course</a><a class="butang" href="#/course/${id}/subject/baru">Tambah subject</a></div>
     </div>
     ${c.huraian ? `<p>${h(c.huraian)}</p>` : ''}
@@ -339,6 +355,50 @@ async function halamanGuru() {
     </form>
     ${senarai.length ? senarai.map((g) => `<div class="kad"><div class="baris antara" style="margin:0"><div><b>${h(g.nama)}</b><div class="kecil">${h(g.emel)} · ${g.bil_course} course</div></div>
       <button class="bahaya" data-act="buang-guru" data-emel="${h(g.emel)}">Buang</button></div></div>`).join('') : '<div class="kad kosong">Belum ada guru.</div>'}`;
+}
+
+// ---------- kod golongan (admin) ----------
+// Satu mekanisme sahaja: "had guna". Kosong = kod kongsi untuk satu kelas/kumpulan; 1 = kod peribadi sekali guna.
+async function halamanKod() {
+  const senarai = await api('GET', 'kod');
+  const statusKod = (k) => (!k.aktif ? '<span class="lencana draf">Dimatikan</span>'
+    : k.tamat_pada && k.tamat_pada < new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10) ? '<span class="lencana draf">Tamat</span>'
+    : k.had_guna != null && k.bil_guna >= k.had_guna ? '<span class="lencana draf">Penuh</span>' : '<span class="lencana">Aktif</span>');
+  app.innerHTML = `
+    <p><a href="#/">&larr; Senarai course</a></p>
+    <h1>Kod golongan</h1>
+    <div class="bantuan" style="margin-bottom:12px">Pelajar dan ahli organisasi memasukkan kod semasa mendaftar (atau di halaman Akaun) untuk membuka course golongan mereka. Langganan masih diperlukan untuk kandungan berbayar.</div>
+    <form class="kad" data-borang="kod" novalidate>
+      <div class="ralat" hidden></div>
+      <label for="kgolongan">Golongan</label>
+      <select id="kgolongan" name="golongan"><option value="pelajar">Pelajar</option><option value="ahli">Ahli organisasi</option></select>
+      <label for="klabel">Label (untuk rujukan anda)</label>
+      <input type="text" id="klabel" name="label" maxlength="60" placeholder="contoh: Kelas Tafsir UIA 2026">
+      <label for="kbulan">Tempoh akses selepas kod dimasukkan</label>
+      <select id="kbulan" name="bulan_akses">${[1, 2, 3, 6, 12].map((n) => `<option value="${n}" ${n === 1 ? 'selected' : ''}>${n} bulan</option>`).join('')}<option value="0">Kekal (tiada tamat)</option></select>
+      <div class="bantuan">Pengguna yang memasukkan kod sama sekali lagi sebelum tamat akan disambung dari tarikh tamat sedia ada.</div>
+      <label for="khad">Had guna</label>
+      <input type="number" id="khad" name="had_guna" min="1" max="100000" placeholder="kosong = tanpa had">
+      <div class="bantuan"><b>Kosong</b>: satu kod dikongsi seluruh kelas. <b>1</b>: kod peribadi, hanya seorang boleh guna. Nombor lain: had bilangan orang.</div>
+      <label for="ktamat">Kod boleh dimasukkan sehingga (pilihan)</label>
+      <input type="date" id="ktamat" name="tamat_pada">
+      <label for="kbilangan">Bilangan kod</label>
+      <input type="number" id="kbilangan" name="bilangan" min="1" max="200" value="1">
+      <label for="kkod">Kod sendiri (pilihan, hanya jika bilangan 1)</label>
+      <input type="text" id="kkod" name="kod" maxlength="24" placeholder="kosong = dijana rawak, contoh TAFSIR2026">
+      <div class="tindakan"><button type="submit">Cipta kod</button></div>
+    </form>
+    <div id="kodBaru"></div>
+    ${senarai.length ? senarai.map((k) => `<div class="kad"><div class="baris antara" style="margin:0;align-items:flex-start"><div>
+        <div class="baris" style="margin:0"><b class="kod-teks">${h(k.kod_papar)}</b> <span class="lencana ${k.golongan === 'ahli' ? 'ahli' : ''}">${k.golongan === 'ahli' ? 'Ahli organisasi' : 'Pelajar'}</span> ${statusKod(k)}</div>
+        <div class="kecil" style="margin-top:4px">${k.label ? h(k.label) + ' · ' : ''}${k.bulan_akses ? `${k.bulan_akses} bulan akses` : 'akses kekal'} · digunakan ${k.bil_guna}${k.had_guna != null ? '/' + k.had_guna : ''} kali${k.tamat_pada ? ' · boleh dimasukkan hingga ' + h(tarikhMy(k.tamat_pada + 'T00:00:00+08:00')) : ''}</div>
+        <div class="kod-pengguna" id="kp-${k.id}"></div></div>
+      <div class="baris" style="margin:0;flex-wrap:wrap;justify-content:flex-end">
+        <button class="kedua" data-act="salin-kod" data-kod="${h(k.kod_papar)}">Salin</button>
+        ${k.bil_guna ? `<button class="kedua" data-act="pengguna-kod" data-id="${k.id}">Pengguna</button>` : ''}
+        <button class="kedua" data-act="aktif-kod" data-id="${k.id}" data-aktif="${k.aktif ? 0 : 1}">${k.aktif ? 'Matikan' : 'Hidupkan'}</button>
+        ${k.bil_guna ? '' : `<button class="bahaya" data-act="padam-kod" data-id="${k.id}">Padam</button>`}</div></div></div>`).join('')
+      : '<div class="kad kosong">Belum ada kod.</div>'}`;
 }
 
 // ---------- artikel ----------
@@ -598,12 +658,23 @@ const BORANG = {
   async course(b) {
     const d = new FormData(b);
     const urutan = String(d.get('urutan') ?? '').trim();
-    const badan = { tajuk: d.get('tajuk'), huraian: d.get('huraian'), akses: d.get('akses') };
+    const badan = { tajuk: d.get('tajuk'), huraian: d.get('huraian'), akses: d.get('akses'), golongan: d.get('golongan') || 'awam' };
     if (d.get('status')) badan.status = d.get('status'); // guru: tiada pilihan status bila course sudah terbit
     if (ADMIN()) { badan.urutan = urutan === '' ? null : Number(urutan); badan.guru_emel = d.get('guru_emel') || ''; }
     const id = b.dataset.id;
     const c = id ? await api('PUT', `course/${id}`, badan) : await api('POST', 'course', badan);
     pergi(`#/course/${c.id}`);
+  },
+  async kod(b) {
+    const d = new FormData(b);
+    const nom = (x) => { const t = String(d.get(x) ?? '').trim(); return t === '' ? null : Number(t); };
+    const badan = { golongan: d.get('golongan'), label: d.get('label'), bulan_akses: Number(d.get('bulan_akses')), had_guna: nom('had_guna'),
+      tamat_pada: d.get('tamat_pada') || null, bilangan: nom('bilangan') ?? 1, kod: String(d.get('kod') || '').trim() || undefined };
+    const baru = await api('POST', 'kod', badan);
+    await halamanKod();
+    const kotak = document.getElementById('kodBaru');
+    kotak.innerHTML = `<div class="info"><b>${baru.length} kod dicipta.</b> Salin dan edarkan:<textarea readonly style="margin-top:8px;height:${Math.min(240, 40 + baru.length * 22)}px">${h(baru.map((k) => k.kod_papar).join('\n'))}</textarea></div>`;
+    kotak.scrollIntoView({ block: 'center' });
   },
   async artikel(b) {
     const d = new FormData(b);
@@ -662,6 +733,15 @@ const TINDAKAN = {
     try { await api('PUT', `soalan/${el.dataset.id}`, { jawapan: kad.querySelector('textarea').value }); }
     catch (e) { if (e.status === 401) return mula(); ralat.textContent = e.message; ralat.hidden = false; return; }
     await laluan();
+  },
+  async 'aktif-kod'(el) { await api('PUT', `kod/${el.dataset.id}`, { aktif: el.dataset.aktif === '1' }); await laluan(); },
+  async 'padam-kod'(el) { if (!confirm('Padam kod ini?')) return; await api('DELETE', `kod/${el.dataset.id}`); await laluan(); },
+  async 'salin-kod'(el) { try { await navigator.clipboard.writeText(el.dataset.kod); el.textContent = 'Disalin'; } catch { prompt('Salin kod ini:', el.dataset.kod); } },
+  async 'pengguna-kod'(el) {
+    const kotak = document.getElementById('kp-' + el.dataset.id);
+    if (kotak.innerHTML) { kotak.innerHTML = ''; return; }
+    const p = await api('GET', `kod/${el.dataset.id}/pengguna`);
+    kotak.innerHTML = `<ul class="kecil" style="margin:8px 0 0;padding-left:18px">${p.map((x) => `<li>${h(x.nama)} (${h(x.emel)}) · ${h(tarikhMy(x.digunakan_pada))}${x.golongan_tamat ? ' · tamat ' + h(tarikhMy(x.golongan_tamat + 'T00:00:00+08:00')) : ''}</li>`).join('')}</ul>`;
   },
   async 'sorok-soalan'(el) { await api('POST', `soalan/${el.dataset.id}/sorok`, { tersembunyi: el.dataset.sorok === '1' }); await laluan(); },
   async 'padam-soalan'(el) {
@@ -745,6 +825,7 @@ async function laluan() {
     else if (m[0] === 'kelulusan') await halamanKelulusan();
     else if (m[0] === 'soalan') await halamanSoalan(m[1] === 'dijawab' ? 'dijawab' : 'menunggu');
     else if (m[0] === 'guru') await halamanGuru();
+    else if (m[0] === 'kod') await halamanKod();
     else if (m[0] === 'artikel' && !m[1]) await senaraiArtikel();
     else if (m[0] === 'artikel' && m[1] === 'baru') await borangArtikel(null);
     else if (m[0] === 'artikel') await borangArtikel(m[1]);

@@ -2,7 +2,7 @@
 export function repoPalsu() {
   const bayaran = new Map(), langganan = new Map(), pengguna = new Map(), sesi = new Map();
   const pesanan = new Map(), itemPesanan = new Map(), akses = new Map();
-  const courses = new Map(), subjects = new Map(), progress = new Map(), notas = new Map(), tetapan = new Map(), artikel = new Map(), gurus = new Map(), semakan = new Map(), soalan = new Map(); let idC = 1, idS = 1, idN = 1, idA = 1, idK = 1, idQ = 1;
+  const courses = new Map(), subjects = new Map(), progress = new Map(), notas = new Map(), tetapan = new Map(), artikel = new Map(), gurus = new Map(), semakan = new Map(), soalan = new Map(), kodD = new Map(), kodG = [], kodC = []; let idC = 1, idS = 1, idN = 1, idA = 1, idK = 1, idQ = 1, idKD = 1;
   let idSeterusnya = 1;
   return {
     _bayaran: bayaran, _langganan: langganan, _pengguna: pengguna, _sesi: sesi, _pesanan: pesanan, _akses: akses, _course: courses, _subject: subjects, _progress: progress,
@@ -21,7 +21,7 @@ export function repoPalsu() {
     async simpanPengguna(p, masa) {
       const ada = pengguna.get(p.emel);
       if (ada) { Object.assign(ada, { google_sub: p.sub, nama: p.nama ?? ada.nama }, p.peranan === 'admin' ? { peranan: 'admin' } : {}); return ada; }
-      const baru = { id: idSeterusnya++, emel: p.emel, google_sub: p.sub, nama: p.nama, peranan: p.peranan || 'pelajar', dicipta_pada: masa };
+      const baru = { id: idSeterusnya++, emel: p.emel, google_sub: p.sub, nama: p.nama, peranan: p.peranan || 'pelajar', golongan: null, golongan_tamat: null, kod_id: null, disekat: 0, hari_sesi: null, log_masuk_terakhir: null, dicipta_pada: masa };
       pengguna.set(p.emel, baru);
       return baru;
     },
@@ -73,14 +73,15 @@ export function repoPalsu() {
       return asas + '-x';
     },
     async ciptaCourse(c, masa) {
+      const golongan = c.golongan || 'awam';
       const urutan = c.urutan ?? Math.max(0, ...[...courses.values()].map((x) => x.urutan)) + 1;
-      const baris = { id: idC++, tajuk: c.tajuk, slug: c.slug, huraian: c.huraian ?? null, akses: c.akses, status: c.status, urutan, guru_emel: c.guru_emel ?? null, catatan_semakan: null, dicipta_pada: masa, dikemas_kini_pada: masa };
+      const baris = { id: idC++, tajuk: c.tajuk, slug: c.slug, huraian: c.huraian ?? null, akses: c.akses, status: c.status, urutan, guru_emel: c.guru_emel ?? null, catatan_semakan: null, golongan, dicipta_pada: masa, dikemas_kini_pada: masa };
       courses.set(baris.id, baris);
       return baris;
     },
     async kemaskiniCourse(id, nilai, masa) {
       const c = courses.get(id);
-      for (const k of ['tajuk', 'huraian', 'akses', 'status', 'urutan', 'guru_emel', 'catatan_semakan']) if (k in nilai) c[k] = nilai[k];
+      for (const k of ['tajuk', 'huraian', 'akses', 'status', 'urutan', 'guru_emel', 'catatan_semakan', 'golongan']) if (k in nilai) c[k] = nilai[k];
       c.dikemas_kini_pada = masa;
       return c;
     },
@@ -127,6 +128,27 @@ export function repoPalsu() {
       a.dikemas_kini_pada = masa; return a;
     },
     async padamArtikel(id) { artikel.delete(id); },
+    async tetapkanGolongan(id, golongan, tamat) { const p = [...pengguna.values()].find((x) => x.id === id); p.golongan = golongan; p.golongan_tamat = tamat ?? null; },
+    async kodDariTeks(kod) { return [...kodD.values()].find((k) => k.kod === kod) ?? null; },
+    async kodDariId(id) { return kodD.get(id) ?? null; },
+    async senaraiKod() { return [...kodD.values()].sort((a, b) => b.id - a.id); },
+    async ciptaKod(k, masa) {
+      if ([...kodD.values()].some((x) => x.kod === k.kod)) throw new Error('UNIQUE constraint failed: kod_daftar.kod');
+      const b = { id: idKD++, kod: k.kod, golongan: k.golongan, label: k.label ?? '', bulan_akses: k.bulan_akses ?? null, had_guna: k.had_guna ?? null, bil_guna: 0, tamat_pada: k.tamat_pada ?? null, aktif: 1, dicipta_pada: masa };
+      kodD.set(b.id, b); return b;
+    },
+    async aktifkanKod(id, aktif) { kodD.get(id).aktif = aktif ? 1 : 0; },
+    async padamKod(id) { if (kodD.get(id)?.bil_guna === 0) kodD.delete(id); },
+    async penggunaKod(id) { return kodG.filter((g) => g.kod_id === id).map((g) => { const p = [...pengguna.values()].find((x) => x.id === g.pengguna_id); return { digunakan_pada: g.digunakan_pada, golongan_tamat: g.golongan_tamat, nama: p.nama, emel: p.emel }; }).reverse(); },
+    async tebusKod(kodId, pid, golongan, tamat, masa, hari) {
+      const k = kodD.get(kodId);
+      if (!k || !k.aktif || (k.had_guna != null && k.bil_guna >= k.had_guna) || (k.tamat_pada && k.tamat_pada < hari)) return false;
+      k.bil_guna++; kodG.push({ kod_id: kodId, pengguna_id: pid, golongan_tamat: tamat ?? null, digunakan_pada: masa });
+      const p = [...pengguna.values()].find((x) => x.id === pid); Object.assign(p, { golongan, golongan_tamat: tamat ?? null, kod_id: kodId });
+      return true;
+    },
+    async bilCubaanKod(pid, sejak) { return kodC.filter((c) => c.pengguna_id === pid && c.masa >= sejak).length; },
+    async catatCubaanKod(pid, masa) { kodC.push({ pengguna_id: pid, masa }); },
     async soalanAwam(sid) {
       return [...soalan.values()].filter((q) => q.subject_id === sid && q.jawapan != null && !q.tersembunyi)
         .sort((a, b) => String(b.dijawab_pada).localeCompare(String(a.dijawab_pada)) || b.id - a.id)

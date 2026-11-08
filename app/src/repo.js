@@ -1,6 +1,6 @@
 // Semua akses D1 di satu tempat. Ujian memakai repo dalam memori dengan antara muka yang sama (test/repo-palsu.js).
 
-const KOLUM_COURSE = ['tajuk', 'huraian', 'akses', 'status', 'urutan', 'guru_emel', 'catatan_semakan'];
+const KOLUM_COURSE = ['tajuk', 'huraian', 'akses', 'status', 'urutan', 'guru_emel', 'catatan_semakan', 'golongan'];
 const KOLUM_ARTIKEL = ['slug', 'tajuk', 'ringkasan', 'meta_description', 'gambar', 'gambar_alt', 'isi', 'bil_perkataan', 'status', 'diterbit_pada'];
 const KOLUM_SUBJECT = ['tajuk', 'huraian', 'urutan', 'pratonton', 'status', 'video_id', 'tempoh_saat', 'catatan_semakan'];
 
@@ -82,13 +82,19 @@ export function repoD1(db) {
     },
     async ciptaCourse(c, masa) {
       const r = await jalan(
-        `INSERT INTO course (tajuk, slug, huraian, akses, status, urutan, guru_emel, dicipta_pada, dikemas_kini_pada)
-         VALUES (?, ?, ?, ?, ?, COALESCE(?, (SELECT COALESCE(MAX(urutan), 0) + 1 FROM course)), ?, ?, ?)`,
-        c.tajuk, c.slug, c.huraian ?? null, c.akses, c.status, c.urutan ?? null, c.guru_emel ?? null, masa, masa);
+        // Lajur golongan hanya ditulis bila bukan lalai, supaya mencipta course tetap berfungsi sebelum migrasi 0010 dijalankan.
+        `INSERT INTO course (tajuk, slug, huraian, akses, status, urutan, guru_emel, ${c.golongan && c.golongan !== 'awam' ? 'golongan, ' : ''}dicipta_pada, dikemas_kini_pada)
+         VALUES (?, ?, ?, ?, ?, COALESCE(?, (SELECT COALESCE(MAX(urutan), 0) + 1 FROM course)), ?, ${c.golongan && c.golongan !== 'awam' ? '?, ' : ''}?, ?)`,
+        ...[c.tajuk, c.slug, c.huraian ?? null, c.akses, c.status, c.urutan ?? null, c.guru_emel ?? null, ...(c.golongan && c.golongan !== 'awam' ? [c.golongan] : []), masa, masa]);
       return satu('SELECT * FROM course WHERE id = ?', r.meta.last_row_id);
     },
     async kemaskiniCourse(id, nilai, masa) {
-      const k = Object.keys(nilai).filter((x) => KOLUM_COURSE.includes(x));
+      let k = Object.keys(nilai).filter((x) => KOLUM_COURSE.includes(x));
+      // Sebelum migrasi 0010 lajur golongan belum wujud: abaikan nilai lalai 'awam' supaya menyunting course tetap berfungsi.
+      if (nilai.golongan === 'awam' && k.includes('golongan')) {
+        const lama = await satu('SELECT * FROM course WHERE id = ?', id);
+        if (lama && !('golongan' in lama)) k = k.filter((x) => x !== 'golongan');
+      }
       if (k.length) await jalan(`UPDATE course SET ${k.map((x) => x + ' = ?').join(', ')}, dikemas_kini_pada = ? WHERE id = ?`, ...k.map((x) => nilai[x]), masa, id);
       return satu('SELECT * FROM course WHERE id = ?', id);
     },
@@ -171,6 +177,35 @@ export function repoD1(db) {
       return satu('SELECT * FROM artikel WHERE id = ?', id);
     },
     padamArtikel: (id) => jalan('DELETE FROM artikel WHERE id = ?', id),
+
+    // ---- golongan dan kod pendaftaran ----
+    tetapkanGolongan: (id, golongan, tamat) => jalan('UPDATE pengguna SET golongan = ?, golongan_tamat = ? WHERE id = ?', golongan, tamat ?? null, id),
+    kodDariTeks: (kod) => satu('SELECT * FROM kod_daftar WHERE kod = ?', kod),
+    kodDariId: (id) => satu('SELECT * FROM kod_daftar WHERE id = ?', id),
+    async senaraiKod() { return (await db.prepare('SELECT * FROM kod_daftar ORDER BY id DESC LIMIT 1000').all()).results; },
+    async ciptaKod(k, masa) {
+      const r = await jalan(`INSERT INTO kod_daftar (kod, golongan, label, bulan_akses, had_guna, tamat_pada, dicipta_pada) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        k.kod, k.golongan, k.label ?? '', k.bulan_akses ?? null, k.had_guna ?? null, k.tamat_pada ?? null, masa);
+      return satu('SELECT * FROM kod_daftar WHERE id = ?', r.meta.last_row_id);
+    },
+    aktifkanKod: (id, aktif) => jalan('UPDATE kod_daftar SET aktif = ? WHERE id = ?', aktif ? 1 : 0, id),
+    padamKod: (id) => jalan('DELETE FROM kod_daftar WHERE id = ? AND bil_guna = 0', id),
+    async penggunaKod(id) {
+      return (await db.prepare(`SELECT g.digunakan_pada, g.golongan_tamat, p.nama, p.emel FROM kod_guna g JOIN pengguna p ON p.id = g.pengguna_id
+        WHERE g.kod_id = ? ORDER BY g.id DESC LIMIT 500`).bind(id).all()).results;
+    },
+    // Tebus kod secara atomik: kiraan guna dinaikkan hanya jika kod masih aktif, belum tamat dan belum penuh; log guna
+    // dan golongan pengguna hanya ditulis jika kenyataan sebelumnya berjaya (changes() = 1). Pulangkan true jika berjaya.
+    async tebusKod(kodId, penggunaId, golongan, tamat, masa, hari) {
+      const r = await db.batch([
+        db.prepare(`UPDATE kod_daftar SET bil_guna = bil_guna + 1 WHERE id = ? AND aktif = 1 AND (had_guna IS NULL OR bil_guna < had_guna) AND (tamat_pada IS NULL OR tamat_pada >= ?)`).bind(kodId, hari),
+        db.prepare('INSERT INTO kod_guna (kod_id, pengguna_id, golongan_tamat, digunakan_pada) SELECT ?, ?, ?, ? WHERE changes() = 1').bind(kodId, penggunaId, tamat ?? null, masa),
+        db.prepare('UPDATE pengguna SET golongan = ?, golongan_tamat = ?, kod_id = ? WHERE id = ? AND changes() = 1').bind(golongan, tamat ?? null, kodId, penggunaId),
+      ]);
+      return r[0].meta.changes === 1;
+    },
+    async bilCubaanKod(penggunaId, sejak) { return (await satu('SELECT COUNT(*) AS c FROM kod_cubaan WHERE pengguna_id = ? AND masa >= ?', penggunaId, sejak)).c; },
+    catatCubaanKod: (penggunaId, masa) => jalan('INSERT INTO kod_cubaan (pengguna_id, masa) VALUES (?, ?)', penggunaId, masa),
 
     // ---- soal jawab ----
     async soalanAwam(subjectId) {

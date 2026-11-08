@@ -107,7 +107,7 @@ a.btn{text-decoration:none}
 .p-admin .lencana.ahli{background:var(--vip-soft);color:var(--vip);border-color:var(--vip-line)}
 .p-admin .lencana.pratonton{background:var(--accent-soft);color:var(--accent-strong);border-color:var(--line-strong)}
 .p-admin label{display:block;font-weight:600;font-size:14px;margin:16px 0 6px}
-.p-admin input[type=text],.p-admin input[type=url],.p-admin input[type=number],.p-admin textarea{width:100%;height:46px;padding:0 14px;border:1px solid var(--line-strong);border-radius:var(--r-md);font:inherit;background:var(--surface)}
+.p-admin input[type=text],.p-admin input[type=url],.p-admin input[type=number],.p-admin input[type=date],.p-admin textarea{width:100%;height:46px;padding:0 14px;border:1px solid var(--line-strong);border-radius:var(--r-md);font:inherit;background:var(--surface)}
 .p-admin textarea{height:auto;min-height:100px;padding:12px 14px;resize:vertical}
 .p-admin input:focus,.p-admin textarea:focus{outline:3px solid var(--accent-soft);border-color:var(--accent)}
 .p-admin .salah{border-color:var(--bad) !important}
@@ -388,3 +388,13 @@ a.course:hover .thumb>div:first-child{transform:scale(1.07)}
 .notes .qa-borang,.notes .qa-item,.notes .qa-menunggu,.notes .qa-nota,.notes .qa-tajuk{font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif}
 .notes .qa-item p,.notes .qa-menunggu p{color:var(--ink);max-width:none}
 .notes .qa-nota{max-width:none;line-height:1.5}
+/* golongan: pilih semasa mendaftar, kod di Akaun */
+.pg-senarai{display:grid;gap:10px}
+.pg-pilihan{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border:1px solid var(--line);border-radius:var(--r-md);cursor:pointer;background:var(--surface)}
+.pg-pilihan:has(input:checked){border-color:var(--brand);box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 18%,transparent)}
+.pg-pilihan input{margin-top:4px;accent-color:var(--brand)}
+.pg-isi{display:grid;gap:2px}.pg-isi small{color:var(--ink-3)}
+.pg-kod{margin-top:14px;display:grid;gap:6px}.pg-kod[hidden]{display:none}
+.pg-kod input,.kod-baris input{height:44px;padding:0 14px;border:1px solid var(--line);border-radius:var(--r-md);font:inherit;letter-spacing:.08em;text-transform:uppercase;background:var(--surface);color:var(--ink);min-width:0}
+.kod-baris{display:flex;gap:8px;margin-top:0;min-width:0}.kod-baris input{flex:1;width:100%}.row-list>*{min-width:0}
+.p-admin .kod-teks{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.06em;font-size:16px}

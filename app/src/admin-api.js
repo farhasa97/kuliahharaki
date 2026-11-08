@@ -11,13 +11,14 @@ import { sahkanCourse, sahkanSubject, buatSlug } from './lib/kandungan.js';
 import { sahkanArtikel, slugArtikel, MAKS_ISI } from './lib/artikel.js';
 import { MAKS_LOGO, sahkanTetapan, gabungTetapan, jenisGambar, urlLogo, LALAI } from './lib/tetapan.js';
 import { sahkanJawapan } from './lib/soalan.js';
+import { sahkanKodBaru, kodBaru, paparKod } from './lib/golongan.js';
 import { MAKS_SAIZ, MAKS_SETIAP_SUBJECT, namaNota, adaPdf, kunciBaru } from './lib/nota.js';
 
 const MAKS_BADAN = 50_000;
 const MAKS_MEDIA = 2 * 1024 * 1024; // selepas dikecilkan di pelayar, gambar biasanya < 300 KB
 const EMEL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 // Medan yang perubahannya pada kandungan terbit memerlukan kelulusan (urutan subject dikecualikan: susunan sahaja).
-const MEDAN_SEMAK = { course: ['tajuk', 'huraian', 'akses'], subject: ['tajuk', 'huraian', 'video_id', 'pratonton', 'tempoh_saat'] };
+const MEDAN_SEMAK = { course: ['tajuk', 'huraian', 'akses', 'golongan'], subject: ['tajuk', 'huraian', 'video_id', 'pratonton', 'tempoh_saat'] };
 
 const luarSubject = (s) => ({ ...s, pratonton: !!s.pratonton });
 
@@ -96,6 +97,44 @@ export async function adminApi(req, env, url, repo, now) {
       return json({ ok: true, tersembunyi: !!b.nilai?.tersembunyi });
     }
     if (bahagian.length === 2 && req.method === 'DELETE') { await repo.padamSoalan(id); return json({ ok: true }); }
+    return json({ ralat: 'kaedah-tidak-disokong' }, 405);
+  }
+
+  // ---------------- kod pendaftaran golongan (admin) ----------------
+  if (sumber === 'kod') {
+    const luarKod = (k) => ({ ...k, kod_papar: paparKod(k.kod) });
+    if (bahagian.length === 1 && req.method === 'GET') return json((await repo.senaraiKod()).map(luarKod));
+    if (bahagian.length === 1 && req.method === 'POST') {
+      const b = await bacaJson(req); if (b.gagal) return b.gagal;
+      const v = sahkanKodBaru(b.nilai); if (!v.ok) return ralatSah(v);
+      const { bilangan, kod, ...asas } = v.nilai;
+      const dicipta = [];
+      if (kod) {
+        if (await repo.kodDariTeks(kod)) return json({ ralat: 'kod-sudah-ada', medan: 'kod' }, 409);
+        dicipta.push(await repo.ciptaKod({ ...asas, kod }, masa));
+      } else {
+        for (let i = 0; i < bilangan; i++) {
+          for (let cuba = 0; ; cuba++) { // kod rawak bertembung amat jarang; cuba semula
+            try { dicipta.push(await repo.ciptaKod({ ...asas, kod: kodBaru() }, masa)); break; } catch (e) { if (cuba >= 3) throw e; }
+          }
+        }
+      }
+      return json(dicipta.map(luarKod), 201);
+    }
+    if (!id) return json({ ralat: 'id-tidak-sah' }, 400);
+    const k = await repo.kodDariId(id);
+    if (!k) return json({ ralat: 'tidak-dijumpai' }, 404);
+    if (bahagian.length === 2 && req.method === 'PUT') {
+      const b = await bacaJson(req); if (b.gagal) return b.gagal;
+      await repo.aktifkanKod(id, !!b.nilai?.aktif);
+      return json(luarKod(await repo.kodDariId(id)));
+    }
+    if (bahagian.length === 2 && req.method === 'DELETE') {
+      if (k.bil_guna > 0) return json({ ralat: 'kod-sudah-digunakan' }, 409); // matikan sahaja supaya rekod pengguna kekal
+      await repo.padamKod(id);
+      return json({ ok: true });
+    }
+    if (bahagian.length === 3 && anak === 'pengguna' && req.method === 'GET') return json(await repo.penggunaKod(id));
     return json({ ralat: 'kaedah-tidak-disokong' }, 405);
   }
 

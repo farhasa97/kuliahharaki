@@ -32,7 +32,9 @@ test('buatSlug: diakritik, ruang, simbol, kosong', () => {
 });
 
 test('sahkanCourse: cipta dengan lalai, tajuk wajib, nilai tidak sah ditolak', () => {
-  assert.deepEqual(sahkanCourse({ tajuk: '  Fiqh  ' }), { ok: true, nilai: { tajuk: 'Fiqh', akses: 'ahli', status: 'draf' } });
+  assert.deepEqual(sahkanCourse({ tajuk: '  Fiqh  ' }), { ok: true, nilai: { tajuk: 'Fiqh', akses: 'ahli', status: 'draf', golongan: 'awam' } });
+  assert.equal(sahkanCourse({ tajuk: 'A', golongan: 'vip' }).medan, 'golongan');
+  assert.equal(sahkanCourse({ tajuk: 'A', golongan: 'pelajar' }).nilai.golongan, 'pelajar');
   assert.equal(sahkanCourse({}).sebab, 'tajuk-tidak-sah');
   assert.equal(sahkanCourse({ tajuk: 'x'.repeat(121) }).sebab, 'tajuk-tidak-sah');
   assert.equal(sahkanCourse({ tajuk: 'A', akses: 'vip' }).medan, 'akses');

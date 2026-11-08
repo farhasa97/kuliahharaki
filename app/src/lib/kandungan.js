@@ -3,7 +3,8 @@
 const ID_YT = /^[A-Za-z0-9_-]{11}$/;
 const HOS_YT = new Set(['youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtube-nocookie.com', 'www.youtube-nocookie.com']);
 export const AKSES = ['percuma', 'ahli'];
-export const STATUS = ['draf', 'menunggu', 'terbit']; // menunggu = dihantar guru, menunggu kelulusan admin
+export const STATUS = ['draf', 'menunggu', 'terbit'];
+export const GOLONGAN_COURSE = ['awam', 'pelajar', 'ahli']; // golongan minimum yang boleh melihat course // menunggu = dihantar guru, menunggu kelulusan admin
 
 // Terima pautan YouTube (watch, youtu.be, embed, shorts, live) atau ID 11 aksara. Hos lain ditolak,
 // termasuk youtube.com.penipu.test. Pulangkan ID atau null.
@@ -64,7 +65,7 @@ export function sahkanCourse(m, { separa = false } = {}) {
   const n = {};
   const g = tajukHuraian(m, separa, n) || urutanUntuk(m, n);
   if (g) return g;
-  for (const [k, senarai, lalai] of [['akses', AKSES, 'ahli'], ['status', STATUS, 'draf']]) {
+  for (const [k, senarai, lalai] of [['akses', AKSES, 'ahli'], ['status', STATUS, 'draf'], ['golongan', GOLONGAN_COURSE, 'awam']]) {
     if (ada(m, k)) { if (!senarai.includes(m[k])) return gagal(`${k}-tidak-sah`, k); n[k] = m[k]; }
     else if (!separa) n[k] = lalai;
   }

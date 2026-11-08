@@ -36,6 +36,16 @@ const CHEV = '<svg class="chev" viewBox="0 0 12 12" fill="none" aria-hidden="tru
 
 const ART = (i) => `art art${(i % 6) + 1}`;
 const percuma = (c) => c.akses === 'percuma';
+const LABEL_GOL = { awam: 'Orang awam', pelajar: 'Pelajar', ahli: 'Ahli organisasi' };
+const hariIniMy = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
+const bezaHari = (a, b) => Math.round((Date.parse(a) - Date.parse(b)) / 864e5);
+const RALAT_KOD = {
+  'kod-tidak-sah': 'Kod tidak sah, sudah tamat atau sudah penuh. Semak semula dengan pemberi kod.',
+  'kod-diperlukan': 'Masukkan kod anda.',
+  'terlalu-banyak-cubaan': 'Terlalu banyak cubaan. Cuba lagi selepas sejam.',
+  'turun-taraf-admin': 'Untuk menukar ke golongan yang lebih rendah, hubungi admin.',
+  'belum-log-masuk': 'Sila log masuk dahulu.',
+};
 // "2026-11-07T01:00:00.000Z" -> "07/11/2026" (waktu Malaysia)
 const tarikhMy = (iso) => { if (!iso) return ''; const d = new Date(Date.parse(iso) + 8 * 3600e3).toISOString().slice(0, 10); return `${d.slice(8)}/${d.slice(5, 7)}/${d.slice(0, 4)}`; };
 const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
@@ -199,7 +209,7 @@ function kadCourse(c, i) {
   return `<a class="course" href="#/course/${encodeURIComponent(c.slug)}" data-akses="${h(c.akses)}" style="--i:${i}">
     <div class="thumb"><div class="${ART(i)}"></div><span class="acc badge ${bebas ? 'free' : 'vip'}">${bebas ? 'PERCUMA' : 'AHLI PENUH'}</span><span class="play"></span><span class="dur tnum">${c.bil_subject} kuliah</span></div>
     <div class="course-body">
-      <p class="course-level">${bebas ? 'Siri percuma' : 'Siri ahli penuh'}</p>
+      <p class="course-level">${bebas ? 'Siri percuma' : 'Siri ahli penuh'}${c.golongan && c.golongan !== 'awam' ? ` · ${c.golongan === 'ahli' ? 'Ahli organisasi' : 'Pelajar'}${c.terkunci_golongan ? ' (perlu kod)' : ''}` : ''}</p>
       <h3>${h(c.tajuk)}</h3>
       ${c.huraian ? `<p class="course-desc">${h(c.huraian)}</p>` : ''}
       <div class="course-meta">${c.guru ? `<span>Bersama ${h(c.guru)}</span>` : ''}<span>${c.bil_subject} kuliah video</span>${c.selesai != null ? `<span>${c.selesai} khatam</span>` : ''}</div>
@@ -544,6 +554,9 @@ async function dashboard() {
   const salam = jam < 12 ? 'Selamat pagi' : jam < 15 ? 'Selamat tengah hari' : jam < 19 ? 'Selamat petang' : 'Selamat malam';
 
   const tindakan = [];
+  const gol = saya.golongan || {};
+  if (gol.tamatTempoh) tindakan.push(`<div class="row-item crit"><div class="rt"><b>Akses ${h(LABEL_GOL[gol.asal] || '')} sudah tamat</b><small><em class="crit">Masukkan kod baharu</em> · kini sebagai orang awam</small></div><a class="btn sm outline" href="#/akaun">Kod</a></div>`);
+  else if (gol.tamat && bezaHari(gol.tamat, hariIniMy()) <= 7) tindakan.push(`<div class="row-item warn"><div class="rt"><b>Akses ${h(LABEL_GOL[gol.golongan])} tamat dalam ${Math.max(0, bezaHari(gol.tamat, hariIniMy()))} hari</b><small><em class="warn">Perhatian</em> · tarikh tamat ${h(tarikhMy(gol.tamat + 'T00:00:00+08:00'))}</small></div><a class="btn sm outline" href="#/akaun">Kod</a></div>`);
   if (l.notis) { const [teks, kelas, label] = NOTIS[l.notis](Math.max(0, l.bakiHari)); tindakan.push(`<div class="row-item ${kelas}"><div class="rt"><b>${teks}</b><small><em class="${kelas}">${label}</em>${l.tarikh_tamat ? ` · tarikh tamat ${h(l.tarikh_tamat)}` : ''}</small></div>${konfig.buyUrl ? `<a class="btn sm outline" href="${h(konfig.buyUrl)}" target="_blank" rel="noopener">Sambung</a>` : ''}</div>`); }
   if (!l.akses && kunci) tindakan.push(`<div class="row-item info"><div class="rt"><b>${kunci} kuliah ahli penuh berkunci</b><small><em class="info">Ahli penuh</em> · buka semua siri</small></div><button class="btn sm outline" data-pergi="#/akaun">Langgan</button></div>`);
   if (!tindakan.length) tindakan.push('<div class="row-item done"><div class="rt"><b>Tiada tindakan diperlukan</b><small><em class="done">Semua baik</em></small></div></div>');
@@ -605,7 +618,7 @@ async function kuliahSaya() {
 
 function barisKuliah(s, i, aktifId, siriPercuma) {
   const keadaan = s.selesai ? 'done' : s.id === aktifId ? 'now' : !s.boleh_tonton ? 'lock' : '';
-  const label = s.selesai ? 'Khatam' : !s.boleh_tonton ? 'Ahli penuh' : !siriPercuma && s.pratonton ? 'Percuma' : '';
+  const label = s.selesai ? 'Khatam' : !s.boleh_tonton ? (s.sebab === 'perlu-golongan' ? 'Perlu kod' : 'Ahli penuh') : !siriPercuma && s.pratonton ? 'Percuma' : '';
   return `<li><button class="lesson-row ${s.id === aktifId ? 'active' : ''} ${!s.boleh_tonton ? 'locked' : ''} ${s.selesai ? 'selesai' : ''}" type="button" data-pergi="#/subject/${s.id}">
     <span class="lr-state ${keadaan}">${s.selesai ? '&check;' : !s.boleh_tonton ? '&#128274;' : ''}</span>
     <span class="lr-body"><span class="lr-title">${dua(i + 1)} · ${h(s.tajuk)}</span>${label ? `<span class="lr-meta"><span>${label}</span></span>` : ''}</span>
@@ -704,8 +717,8 @@ async function halamanSubject(id) {
     ? `<div class="player"><div class="stage"><div class="${ART(d.kedudukan - 1)} stage-art"></div><div class="stage-veil"></div><div id="pemain"></div></div></div>`
     : `<div class="player"><div class="stage"><div class="${ART(d.kedudukan - 1)} stage-art"></div><div class="stage-veil"></div>
         <div class="stage-kunci"><span>${KUNCI}</span></div>
-        <div class="stage-caption"><small>${s.sebab === 'perlu-log-masuk' ? 'Untuk ahli penuh' : 'Ahli penuh'}</small><b>${h(s.tajuk)}</b></div></div></div>
-       <div style="margin-top:16px">${s.sebab === 'perlu-log-masuk'
+        <div class="stage-caption"><small>${s.sebab === 'perlu-golongan' ? `Untuk ${LABEL_GOL[d.course.golongan] || 'golongan tertentu'}` : s.sebab === 'perlu-log-masuk' ? 'Untuk ahli penuh' : 'Ahli penuh'}</small><b>${h(s.tajuk)}</b></div></div></div>
+       <div style="margin-top:16px">${s.sebab === 'perlu-golongan' ? kadGolongan(d.course.golongan) : s.sebab === 'perlu-log-masuk'
         ? '<div class="panel-card kad-langganan"><span class="badge vip">AHLI PENUH</span><h3 style="margin-top:8px">Video ini untuk pelanggan Advance</h3><p>Log masuk dahulu untuk melanggan atau menonton.</p><div class="baris-butang"><a class="btn primary" href="#/masuk">Log masuk</a></div></div>'
         : kadLanggan()}</div>`;
   akar.innerHTML = halamanApp('kuliah', `<div class="halaman">
@@ -784,6 +797,56 @@ async function mainkan(s) {
 
 // ---------- akaun ----------
 
+// ---------- golongan: pilih semasa mendaftar, naik taraf atau sambung dengan kod ----------
+function kadGolongan(g) {
+  const label = LABEL_GOL[g] || 'golongan tertentu';
+  return `<div class="panel-card kad-langganan"><span class="badge vip">${h(label.toUpperCase())}</span><h3 style="margin-top:8px">Kuliah ini untuk ${h(label)}</h3>
+    <p>${saya ? `Masukkan kod ${h(label.toLowerCase())} di halaman Akaun untuk membuka kandungan ini.` : `Log masuk, kemudian masukkan kod ${h(label.toLowerCase())} untuk membuka kandungan ini.`}</p>
+    <div class="baris-butang"><a class="btn primary" href="${saya ? '#/akaun' : '#/masuk'}">${saya ? 'Masukkan kod' : 'Log masuk'}</a></div></div>`;
+}
+
+function barisGolongan() {
+  const g = saya.golongan || {};
+  if (['admin', 'guru'].includes(saya.pengguna.peranan)) return `<div class="row-item done"><div class="rt"><b>Golongan: semua kandungan</b><small>Akaun ${h(saya.pengguna.peranan)}</small></div></div>`;
+  const status = g.tamatTempoh ? `Akses ${h(LABEL_GOL[g.asal] || '')} tamat pada ${h(tarikhMy(g.tamat + 'T00:00:00+08:00'))}, kini orang awam`
+    : `Golongan: ${h(LABEL_GOL[g.golongan] || 'Orang awam')}${g.tamat ? ` hingga ${h(tarikhMy(g.tamat + 'T00:00:00+08:00'))}` : ''}`;
+  return `<div class="row-item ${g.tamatTempoh ? 'crit' : 'info'}"><div class="rt"><b>${status}</b><small>Ada kod pelajar atau ahli organisasi? Masukkan di bawah untuk naik taraf atau menyambung.</small></div></div>
+    <div class="kod-baris" data-kod-borang><input type="text" id="kodAkaun" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Contoh: ABCD-EFGH" aria-label="Kod">
+      <button type="button" class="btn outline" data-act="tebus-kod">Guna kod</button></div><div class="qa-ralat" role="alert" hidden></div>`;
+}
+
+function halamanGolongan() {
+  if (!saya) { location.hash = '#/masuk'; return; }
+  const pilihan = [
+    ['awam', 'Orang awam', 'Kandungan umum. Tiada kod diperlukan.'],
+    ['pelajar', 'Pelajar', 'Kandungan untuk pelajar. Masukkan kod daripada institusi atau pensyarah anda.'],
+    ['ahli', 'Ahli organisasi', 'Semua kandungan. Masukkan kod ahli daripada organisasi anda.'],
+  ];
+  akar.innerHTML = halamanApp('', `<div class="halaman">
+    <div class="page-head"><h1>Anda siapa?</h1><p class="sub">Pilih golongan anda untuk menentukan kandungan yang dipaparkan. Kandungan berbayar masih memerlukan langganan.</p></div>
+    <div class="panel-card pilih-golongan" style="margin-top:16px" data-kod-borang>
+      <div class="pg-senarai" role="radiogroup" aria-label="Golongan">${pilihan.map(([n, t, d], i) => `<label class="pg-pilihan"><input type="radio" name="golongan" value="${n}" ${i === 0 ? 'checked' : ''}>
+        <span class="pg-isi"><b>${t}</b><small>${d}</small></span></label>`).join('')}</div>
+      <div class="pg-kod" hidden><label for="kodDaftar">Kod</label><input type="text" id="kodDaftar" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Contoh: ABCD-EFGH"></div>
+      <div class="qa-ralat" role="alert" hidden></div>
+      <div class="baris-butang" style="justify-content:flex-start;margin-top:18px"><button type="button" class="btn primary" data-act="simpan-golongan">Teruskan</button></div>
+    </div></div>`);
+  akar.querySelectorAll('input[name=golongan]').forEach((r) => r.addEventListener('change', () => {
+    const perlu = akar.querySelector('input[name=golongan]:checked').value !== 'awam';
+    akar.querySelector('.pg-kod').hidden = !perlu;
+    if (perlu) akar.querySelector('#kodDaftar').focus();
+  }));
+}
+
+async function hantarGolongan(badan, kotak) {
+  const ralat = kotak.querySelector('.qa-ralat'); ralat.hidden = true;
+  const r = await fetch('/api/golongan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(badan) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { ralat.textContent = RALAT_KOD[j.ralat] || 'Tidak berjaya. Cuba lagi.'; ralat.hidden = false; return false; }
+  await muatSaya();
+  return true;
+}
+
 function halamanAkaun() {
   if (!saya) { location.hash = '#/masuk'; return; }
   const l = saya.langganan;
@@ -794,7 +857,7 @@ function halamanAkaun() {
       <div class="lesson-main"><div class="panel-card">
         <div class="panel-title"><h3>Maklumat akaun</h3></div>
         <div class="mycourse" style="border:0"><span class="avatar lg" style="background:var(--accent)">${inisial(saya.pengguna)}</span><div class="mc"><b>${h(saya.pengguna.nama || '')}</b><small>${h(saya.pengguna.emel)}</small></div></div>
-        <div class="row-list" style="margin-top:14px">
+        <div class="row-list" style="margin-top:14px">${barisGolongan()}
           <div class="row-item ${l.akses ? 'done' : 'info'}"><div class="rt"><b>Ahli penuh: ${STATUS_LANGGANAN[l.status]}${l.tarikh_tamat ? ` hingga ${h(l.tarikh_tamat)}` : ''}</b><small>Keahlian ${l.akses ? 'ahli penuh' : 'percuma'}</small></div></div>
         </div>
         ${notis}
@@ -823,6 +886,17 @@ const TINDAKAN = {
     setTimeout(() => m.querySelector('.skrin-tutup')?.focus({ preventScroll: true }), 60);
   },
   'menu-tutup'() { tutupMenu(); },
+  async 'simpan-golongan'(el) {
+    const kotak = el.closest('[data-kod-borang]'), g = kotak.querySelector('input[name=golongan]:checked').value;
+    const ok = await hantarGolongan(g === 'awam' ? { pilihan: 'awam' } : { kod: kotak.querySelector('#kodDaftar').value }, kotak);
+    if (!ok) return;
+    let ke = '#/'; try { ke = sessionStorage.getItem('kh-kembali') || '#/'; } catch { /* storan disekat */ }
+    location.hash = ke; if (location.hash === ke) laluan();
+  },
+  async 'tebus-kod'(el) {
+    const kotak = el.closest('.panel-card') || document;
+    if (await hantarGolongan({ kod: kotak.querySelector('#kodAkaun').value }, kotak)) halamanAkaun();
+  },
   async 'hantar-soalan'(el) {
     const kotak = el.closest('[data-soalan-borang]'), ralat = kotak.querySelector('.qa-ralat'), teks = kotak.querySelector('textarea').value;
     ralat.hidden = true;
@@ -877,13 +951,15 @@ document.addEventListener('click', async (e) => {
 
 // ---------- laluan ----------
 
-const KEDALAMAN = { '': 0, kuliah: 1, akaun: 1, masuk: 1, course: 1, subject: 2 };
+const KEDALAMAN = { '': 0, kuliah: 1, akaun: 1, masuk: 1, golongan: 1, course: 1, subject: 2 };
 
 async function laluan() {
   document.body.style.overflow = ''; // buka kunci skrol jika menu skrin penuh terbuka semasa pindah halaman
   if (pemain) { try { pemain.destroy(); } catch { /* sudah dibuang */ } pemain = null; }
   const [nama, nilai] = (location.hash || '#/').slice(2).split('/');
-  if (nama !== 'masuk' && nama !== 'akaun') { try { sessionStorage.setItem('kh-kembali', location.hash || '#/'); } catch { /* storan disekat */ } }
+  if (nama !== 'masuk' && nama !== 'akaun' && nama !== 'golongan') { try { sessionStorage.setItem('kh-kembali', location.hash || '#/'); } catch { /* storan disekat */ } }
+  // Pengguna baharu mesti memilih golongan (awam, atau pelajar / ahli organisasi dengan kod) sebelum meneruskan.
+  if (saya?.golongan?.perluPilih && nama !== 'golongan' && nama !== 'masuk') { location.hash = '#/golongan'; return; }
   const dalam = KEDALAMAN[nama] ?? 0;
   const arah = dalam < kedalamanLalu ? 'dari-kiri' : '';
   kedalamanLalu = dalam;
@@ -894,6 +970,7 @@ async function laluan() {
     else if (nama === 'subject' && nilai) await halamanSubject(nilai);
     else if (nama === 'masuk') halamanMasuk();
     else if (nama === 'akaun') halamanAkaun();
+    else if (nama === 'golongan') halamanGolongan();
     else { location.hash = '#/'; return; }
   } catch (e) {
     akar.innerHTML = ralatHalaman(e);

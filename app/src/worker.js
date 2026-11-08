@@ -18,11 +18,16 @@ import { pelajarApi } from './pelajar-api.js';
 import { halamanArtikel } from './artikel-halaman.js';
 import { tangguhHari } from './lib/konfig.js';
 import { gabungTetapan, urlLogo, LALAI } from './lib/tetapan.js';
+import { golonganEfektif, LABEL as LABEL_GOLONGAN } from './lib/golongan.js';
 
 async function profil(repo, env, p, now) {
   const st = status(await repo.langganan(p.emel), hariIni(now), tangguhHari(env));
+  const peranan = await perananPenuh(env, repo, p);
+  const g = golonganEfektif(p, hariIni(now), peranan);
   return {
-    pengguna: { emel: p.emel, nama: p.nama, peranan: await perananPenuh(env, repo, p) },
+    pengguna: { emel: p.emel, nama: p.nama, peranan },
+    // perluPilih hanya bila lajur golongan wujud dan masih NULL (sebelum migrasi 0010 ia undefined: tiada paksaan memilih)
+    golongan: { ...g, label: LABEL_GOLONGAN[g.golongan], simpanan: p.golongan ?? null },
     langganan: { ...st, notis: notis(st) },
     buyUrl: env.BUY_URL || '',
   };
@@ -130,7 +135,7 @@ export async function handle(req, env, opts = {}) {
     return new Response(obj.body, { headers: { 'content-type': g.logoJenis || 'image/png', 'cache-control': 'public, max-age=3600', 'x-content-type-options': 'nosniff' } });
   }
 
-  if (p.startsWith('/api/course') || p.startsWith('/api/subject') || p.startsWith('/api/nota') || p.startsWith('/api/soalan')) return pelajarApi(req, env, url, repo, now);
+  if (p.startsWith('/api/course') || p.startsWith('/api/subject') || p.startsWith('/api/nota') || p.startsWith('/api/soalan') || p === '/api/golongan') return pelajarApi(req, env, url, repo, now);
 
   if (p === '/auth/google' && req.method === 'POST') {
     // JSON sahaja: borang silang laman tidak boleh menghantar application/json tanpa CORS

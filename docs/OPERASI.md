@@ -134,6 +134,63 @@ Cara kerja:
 - **Admin** melihat semua soalan (termasuk emel penanya untuk moderasi), boleh menjawab, **menyorok** jawapan daripada pelajar, atau memadam. Guru tidak boleh menyorok atau memadam.
 - **Tiada notifikasi emel.** Guru perlu membuka panel untuk melihat soalan baharu, dan pelajar perlu membuka kuliah untuk melihat jawapan. Emel boleh ditambah kemudian (contoh Resend).
 
+### A1i. Golongan, kod, pengguna, admin tambahan, sijil (08/11/2026)
+Jalankan dalam Console D1 `kuliahharaki`, **satu pernyataan setiap kali, ikut turutan**. Pernyataan terakhir (UPDATE) menjadikan semua pengguna sedia ada sebagai orang awam, supaya mereka tidak ditanya "Anda siapa?". Hanya pengguna baharu selepas ini akan ditanya. Selagi belum dijalankan, laman berfungsi seperti biasa tetapi menu Kod golongan dan pilihan golongan course belum boleh disimpan.
+
+```sql
+ALTER TABLE pengguna ADD COLUMN golongan TEXT;
+```
+```sql
+ALTER TABLE pengguna ADD COLUMN golongan_tamat TEXT;
+```
+```sql
+ALTER TABLE pengguna ADD COLUMN kod_id INTEGER;
+```
+```sql
+ALTER TABLE pengguna ADD COLUMN disekat INTEGER NOT NULL DEFAULT 0;
+```
+```sql
+ALTER TABLE pengguna ADD COLUMN hari_sesi INTEGER;
+```
+```sql
+ALTER TABLE pengguna ADD COLUMN log_masuk_terakhir TEXT;
+```
+```sql
+ALTER TABLE course ADD COLUMN golongan TEXT NOT NULL DEFAULT 'awam';
+```
+```sql
+CREATE TABLE kod_daftar ( id INTEGER PRIMARY KEY AUTOINCREMENT, kod TEXT NOT NULL UNIQUE, golongan TEXT NOT NULL, label TEXT NOT NULL DEFAULT '', bulan_akses INTEGER, had_guna INTEGER, bil_guna INTEGER NOT NULL DEFAULT 0, tamat_pada TEXT, aktif INTEGER NOT NULL DEFAULT 1, dicipta_pada TEXT NOT NULL );
+```
+```sql
+CREATE TABLE kod_guna ( id INTEGER PRIMARY KEY AUTOINCREMENT, kod_id INTEGER NOT NULL REFERENCES kod_daftar(id), pengguna_id INTEGER NOT NULL REFERENCES pengguna(id), golongan_tamat TEXT, digunakan_pada TEXT NOT NULL );
+```
+```sql
+CREATE INDEX kod_guna_kod ON kod_guna(kod_id);
+```
+```sql
+CREATE TABLE kod_cubaan (pengguna_id INTEGER NOT NULL, masa TEXT NOT NULL);
+```
+```sql
+CREATE INDEX kod_cubaan_pengguna ON kod_cubaan(pengguna_id, masa);
+```
+```sql
+CREATE TABLE admin_tambahan ( emel TEXT PRIMARY KEY, ditambah_oleh TEXT NOT NULL, dicipta_pada TEXT NOT NULL );
+```
+```sql
+CREATE TABLE sijil ( id INTEGER PRIMARY KEY AUTOINCREMENT, kod TEXT NOT NULL UNIQUE, pengguna_id INTEGER NOT NULL REFERENCES pengguna(id), course_id INTEGER NOT NULL, nama TEXT NOT NULL, tajuk_course TEXT NOT NULL, guru TEXT, dikeluarkan_pada TEXT NOT NULL, UNIQUE (pengguna_id, course_id) );
+```
+```sql
+UPDATE pengguna SET golongan = 'awam' WHERE golongan IS NULL;
+```
+
+Cara kerja golongan:
+- Tiga golongan: **Orang awam**, **Pelajar**, **Ahli organisasi**. Golongan menentukan course yang **dilihat**. Langganan Advance kekal sebagai paywall untuk course berbayar, jadi pelajar dan ahli organisasi tetap perlu melanggan untuk kandungan berbayar.
+- Setiap course ada tetapan **Siapa boleh lihat**: Semua (orang awam) / Pelajar dan ahli organisasi / Ahli organisasi sahaja. Orang awam nampak course pelajar dan ahli organisasi dalam keadaan berkunci (ajakan masukkan kod). Pelajar tidak nampak course ahli organisasi langsung. Admin dan guru nampak semua.
+- Pengguna baharu ditanya **"Anda siapa?"** selepas log masuk kali pertama. Pelajar dan ahli organisasi mesti memasukkan kod. Pengguna boleh naik taraf atau menyambung dengan kod di halaman **Akaun**. Hanya admin boleh menurunkan golongan.
+- Kod dicipta di panel, menu **Kod golongan**. Tempoh akses lalai 1 bulan dari tarikh kod dimasukkan. Bila tamat, pengguna kembali sebagai orang awam dan diminta memasukkan kod baharu. Memasukkan kod golongan yang sama sebelum tamat akan menyambung dari tarikh tamat sedia ada.
+- **Had guna** ialah satu-satunya "jenis" kod: kosong = kod kongsi untuk satu kelas (semua orang guna kod sama); 1 = kod peribadi sekali guna; nombor lain = had bilangan orang. Kod yang sudah digunakan tidak boleh dipadam, hanya dimatikan.
+- Had cubaan: 5 kod salah sejam bagi setiap pengguna.
+
 ### A2. Worker dari GitHub
 Workers & Pages, Create, import repository `farhasa97/kuliahharaki`:
 - Project name: `kuliahharaki` (mesti sama dengan `name` dalam `app/wrangler.toml`)
