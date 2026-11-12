@@ -33,11 +33,13 @@ Ringkasan; butiran penuh dalam `references/keputusan-produk.md`.
 - Beli satu video (RM2) **ditangguh**; kod ada tetapi migrasi `0002` tidak dijalankan.
 - Guru ramai; semua penerbitan dan perubahan kandungan terbit perlu kelulusan admin. Jawapan soal jawab guru terus tersiar. Paparan soalan: awam selepas dijawab.
 - **Golongan** (awam / pelajar / ahli organisasi) menentukan kandungan yang *dilihat*; **langganan** kekal paywall. Kod: satu mekanisme "had guna" (kosong = kongsi kelas, 1 = peribadi), akses 1 bulan lalai. Naik taraf sendiri dengan kod; turun taraf oleh admin sahaja. Awam nampak course lebih tinggi berkunci; pelajar tidak nampak course ahli.
+- Istilah di skrin: tier berbayar dipanggil **Advance** / **Pelanggan Advance** (bukan "Ahli penuh"), supaya tidak bertembung dengan golongan "Ahli organisasi".
+- Untuk LMS **tanpa bayaran** (pensyarah, guru, bengkel), guna skill `lms-percuma`: templat berasingan yang sudah dibuang semua kod bayaran dan memasang skemanya sendiri. Jangan cuba "mematikan" bayaran dalam kod ini.
 - Admin utama dalam `ADMIN_EMELS`; admin tambahan (jadual `admin_tambahan`) hanya diurus admin utama. Akaun disekat tiada sesi sah dan tidak boleh log masuk.
 
 ## Seni bina dalam satu pandangan
 
-`public/` (SPA hash-route untuk pelajar, `/panel/` untuk admin dan guru, `tema.css`, `gaya.css`, `efek.js`, `sw.js`, manifest) dan `src/` (Worker). Worker hanya dijalankan untuk laluan dalam `run_worker_first` (`/api/*`, `/auth/*`, `/bcl/*`, `/admin/*`, `/artikel`, `/sitemap.xml`, `/robots.txt`, `/media/*`); selebihnya dihidang terus sebagai aset statik. Semua SQL dalam `src/repo.js`; ujian guna repo dalam memori (`test/repo-palsu.js`) dengan antara muka sama. Peta fail dan corak: `references/seni-bina.md`.
+`public/` (SPA hash-route untuk pelajar, `/panel/` untuk admin dan guru, `tema.css`, `gaya.css`, `efek.js`, `sw.js`, manifest) dan `src/` (Worker). Worker hanya dijalankan untuk laluan dalam `run_worker_first` (`/api/*`, `/auth/*`, `/bcl/*`, `/admin/*`, `/artikel`, `/sitemap.xml`, `/robots.txt`, `/media/*`, `/sijil/*`); selebihnya dihidang terus sebagai aset statik. Semua SQL dalam `src/repo.js`; ujian guna repo dalam memori (`test/repo-palsu.js`) dengan antara muka sama. Peta fail dan corak: `references/seni-bina.md`.
 
 Peraturan akses (disemak di pelayan pada setiap permintaan): subject terbit dalam course terbit; course percuma atau subject pratonton terbuka; selain itu langganan `aktif` atau `tangguh`. `video_id`, senarai nota dan soal jawab ikut peraturan yang sama; senarai (course, subject) tidak pernah membawa `video_id`.
 

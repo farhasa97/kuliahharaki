@@ -23,7 +23,7 @@ Tujuan: video yang menunjukkan sistem **benar-benar berfungsi**, tanpa membocork
 | Masa | Babak |
 |---|---|
 | 0:00 | Kad pembuka: jenama, "Sistem LMS untuk kuliah, kelas dan kursus anda", cip ciri |
-| 0:04 | Laman awam: hero dengan video main terus, tab Percuma/Ahli penuh, yuran bulanan/tahunan |
+| 0:04 | Laman awam: hero dengan video main terus, tab Percuma/Advance, yuran bulanan/tahunan |
 | 0:18 | Log masuk Google (butang tiruan) |
 | 0:21 | Dashboard pelajar: kemajuan, Sambung kuliah |
 | 0:25 | Kuliah: video contoh main, tamat → ditanda khatam, tab Nota PDF |

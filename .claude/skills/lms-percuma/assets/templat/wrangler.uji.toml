@@ -1,0 +1,23 @@
+# Konfigurasi untuk UJIAN dan `npm run dev` di komputer sahaja (D1 dan R2 tempatan, tiada kaitan dengan Cloudflare sebenar).
+# Jangan guna fail ini untuk deploy. Deploy guna wrangler.toml.
+name = "lms-uji"
+main = "src/worker.js"
+compatibility_date = "2026-10-01"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = ["/api/*", "/auth/*", "/artikel", "/artikel/*", "/sitemap.xml", "/robots.txt", "/media/*", "/sijil/*"]
+
+[vars]
+GOOGLE_CLIENT_ID = "ujian.apps.googleusercontent.com"
+ADMIN_EMELS = "admin@contoh.my"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "lms-uji"
+database_id = "00000000-0000-0000-0000-000000000000"
+
+[[r2_buckets]]
+binding = "NOTA"
+bucket_name = "lms-uji-fail"

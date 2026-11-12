@@ -22,6 +22,8 @@ Kemas kini bila ciri baharu siap. Sumber rasmi: `docs/SPEC.md` bahagian 15 dan 1
 | Golongan (08/11/2026) | Awam / pelajar / ahli organisasi dengan kod (had guna, tempoh 1 bulan lalai, sambung), skrin "Anda siapa?", course "siapa boleh lihat", panel Kod golongan; langganan kekal paywall |
 | Pengguna dan sesi (08/11/2026) | Panel Pengguna (cari, tapis, CSV, tukar golongan, sekat, log keluar semua peranti), tempoh sesi di Tetapan dan setiap pengguna, admin tambahan (Pasukan) |
 | Sijil (08/11/2026) | Bila khatam semua kuliah terbit, `/sijil/<kod>` pengesahan awam bercetak A4, Sijil saya di Akaun |
+| Label (12/11/2026) | "Ahli penuh" ditukar kepada **Advance** (lencana) dan **Pelanggan Advance** (ayat), supaya tidak keliru dengan golongan "Ahli organisasi" |
+| Versi percuma (12/11/2026) | Skill berasingan `lms-percuma`: templat tanpa bayaran, skema pasang sendiri, panduan untuk bukan pengaturcara dan modul bengkel |
 | Tema dan sandaran (08/11/2026) | 5 pilihan warna tema; cron harian D1 ke R2 `sandaran/` simpan 30, panel muat turun |
 
 ## Tinggal sebelum buka kepada pelajar (pelancaran)
@@ -34,7 +36,7 @@ Pemilik yang menjalankan; lihat `operasi-pelancaran.md` bahagian 5:
 - Halaman privasi dan saluran sokongan.
 - Ujian bayaran kedua, kuantiti 2, item tahunan.
 - Pertimbangkan repo Private (sapu sejarah untuk rahsia dahulu).
-- Jalankan SQL migrasi 0010 (OPERASI A1i, termasuk UPDATE golongan pengguna sedia ada) di Console D1. A1c hingga A1h sudah dijalankan.
+- Semua SQL hingga migrasi 0010 (A1c hingga A1i) **sudah dijalankan** oleh pemilik (12/11/2026).
 
 ## Dijadualkan minggu depan (keputusan pemilik 06/11/2026: "di bawah kita tangguh, next week kita buat")
 
@@ -51,7 +53,7 @@ Prasyarat daripada pemilik: akaun penghantar emel (contoh Resend) dengan rekod D
 | Manual pengguna dan pemilik (HTML + PDF) + video tutorial | Guna `micro-saas-builder/references/manuals-videos.md` |
 | Emel notifikasi (soalan baharu, jawapan, langganan hampir tamat) | Perlukan penghantar emel (contoh Resend) kerana domain sudah ada |
 | Login tanpa Google (kod emel) | Perlukan emel; ditangguh |
-| Beli satu video RM2 | Kod ada (migrasi 0002, `pesanan.js`), laluan gateway belum diputuskan; **jangan jalankan 0002** |
+| Beli satu video RM2 | Pemilik menilai ia tidak praktikal (caj gateway setiap transaksi). **Cadangan pengganti: kredit prabayar** (dibincang 12/11/2026, belum diputuskan): topup minimum RM20, video 5 kredit. Pilihan A RM20 = 40 kredit (RM2.50/video), B RM20 = 50 kredit (RM2/video, disyorkan), C berperingkat dengan bonus. Keputusan menunggu: video dibuka kekal atau bertempoh, kredit luput (cadangan 12 bulan), tiada tunai semula. Bina sebagai lejar kredit baharu; kod `pesanan.js` dan migrasi 0002 akan diganti, **jangan jalankan 0002** |
 | Bunny Stream untuk video premium | Jika kebocoran pautan YouTube menjadi masalah |
 | Auto-debit | Tiada pada fasa 1 |
 | Komen umum (selain soal jawab) | Ditangguh |

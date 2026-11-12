@@ -1,0 +1,14 @@
+{
+  "name": "lms-saya",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"test/*.test.js\"",
+    "dev": "wrangler dev --config wrangler.uji.toml",
+    "test:d1": "node --test test/repo-d1.integ.js",
+    "test:e2e": "node test/e2e-panel.mjs && node test/e2e-pelajar.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "^4"
+  }
+}
