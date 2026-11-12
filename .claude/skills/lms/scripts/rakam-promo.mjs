@@ -198,9 +198,9 @@ try {
   await rehat(1000);
   await pergi(640, 300, 400);
   await gulung(await page.evaluate(() => document.getElementById('courses').getBoundingClientRect().top + scrollY + 95), 1000);
-  await kap('Siri percuma dan siri ahli penuh dalam satu tempat');
+  await kap('Siri percuma dan siri Advance dalam satu tempat');
   await klik(page.getByRole('tab', { name: 'Percuma' }), 400); await rehat(900);
-  await klik(page.getByRole('tab', { name: 'Ahli penuh' }), 350); await rehat(900);
+  await klik(page.getByRole('tab', { name: 'Advance' }), 350); await rehat(900);
   await klik(page.getByRole('tab', { name: 'Semua' }), 300); await rehat(300);
   await gulung(await page.evaluate(() => document.getElementById('pricing').getBoundingClientRect().top + scrollY - 40), 900);
   await kap('Yuran bulanan atau tahunan, bayar melalui FPX');

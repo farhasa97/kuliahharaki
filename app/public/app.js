@@ -17,7 +17,7 @@ const dua = (n) => String(n).padStart(2, '0');
 // `laman` datang dari tetapan admin (/api/konfig); nilai di sini hanya sandaran jika permintaan gagal.
 let konfig = { googleClientId: '', buyUrl: '', hargaTeks: '', hargaBulanan: '', hargaTahunan: '', laman: {
   nama: 'Kuliah Haraki', tagline: 'Ilmu · Tarbiyah · Amal', hero_tajuk: 'Menuntut ilmu tanpa terikat masa dan tempat.',
-  hero_teks: 'Setiap kuliah dalam bentuk video yang boleh ditonton bila-bila masa. Mula dengan kuliah percuma, naik taraf ahli penuh bila mahu ikuti siri yang lebih mendalam.',
+  hero_teks: 'Setiap kuliah dalam bentuk video yang boleh ditonton bila-bila masa. Mula dengan kuliah percuma, naik taraf ke Advance bila mahu ikuti siri yang lebih mendalam.',
   footer_teks: 'Platform kuliah dalam talian untuk peserta usrah, halaqah dan sesiapa yang mahu menuntut ilmu secara berterusan.', emel_hubungan: '', logo: null } };
 let saya = null; // { pengguna, langganan } atau null jika pelawat
 let pemain = null;
@@ -51,10 +51,10 @@ const tarikhMy = (iso) => { if (!iso) return ''; const d = new Date(Date.parse(i
 const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
 
 const NOTIS = {
-  amaran: (n) => [`Langganan ahli penuh tamat dalam ${n} hari`, 'warn', 'Perhatian'],
-  mendesak: (n) => [`Langganan ahli penuh tamat dalam ${n} hari`, 'crit', 'Segera'],
+  amaran: (n) => [`Langganan Advance tamat dalam ${n} hari`, 'warn', 'Perhatian'],
+  mendesak: (n) => [`Langganan Advance tamat dalam ${n} hari`, 'crit', 'Segera'],
   tangguh: () => ['Langganan sudah tamat, dalam tempoh tangguh', 'crit', 'Sambung sekarang'],
-  tamat: () => ['Langganan ahli penuh sudah tamat', 'crit', 'Tamat'],
+  tamat: () => ['Langganan Advance sudah tamat', 'crit', 'Tamat'],
 };
 const STATUS_LANGGANAN = { aktif: 'Aktif', tangguh: 'Tempoh tangguh', tamat: 'Tamat', tiada: 'Tiada langganan' };
 
@@ -139,7 +139,7 @@ async function pasangApp() {
 function topbar(aktif) {
   const pil = (nama, label, ke, ikon = '') => `<button role="tab" aria-selected="${aktif === nama}" data-pergi="${ke}">${ikon}${label}</button>`;
   const kanan = saya
-    ? `<button class="role-chip" data-pergi="#/akaun">${ORANG}<span class="rc-text"><small>Keahlian</small><b>${saya.langganan.akses ? 'Ahli Penuh' : 'Percuma'}</b></span></button>
+    ? `<button class="role-chip" data-pergi="#/akaun">${ORANG}<span class="rc-text"><small>Keahlian</small><b>${saya.langganan.akses ? 'Advance' : 'Percuma'}</b></span></button>
        <button class="avatar lg" style="background:var(--accent);border:0;cursor:pointer" data-pergi="#/akaun" aria-label="Akaun">${inisial(saya.pengguna)}</button>`
     : `<a class="btn ghost sm" href="#/masuk">Log masuk</a><a class="btn primary sm" href="#/masuk">Daftar percuma</a>`;
   return `<div class="topbar">
@@ -157,15 +157,15 @@ const halamanApp = (aktif, isi) => `<div class="app${saya ? ' ada-tab' : ''}"><d
 // Kad langganan: pelawat diajak log masuk; pengguna dibawa ke borang BCL dengan emel akaunnya.
 function kadLanggan() {
   const hb = harga('bulan'), ht = harga('tahun');
-  const tanda = `<span class="badge vip">AHLI PENUH</span>${hb ? `<div class="plan-price"><b>${hb}</b><span>/bulan${ht ? ` · ${ht}/tahun` : ''}</span></div>` : ''}`;
+  const tanda = `<span class="badge vip">ADVANCE</span>${hb ? `<div class="plan-price"><b>${hb}</b><span>/bulan${ht ? ` · ${ht}/tahun` : ''}</span></div>` : ''}`;
   if (!saya) {
     return `<div class="panel-card kad-langganan">${tanda}
-      <h3 style="margin-top:6px">Kuliah ini untuk ahli penuh</h3>
+      <h3 style="margin-top:6px">Kuliah ini untuk pelanggan Advance</h3>
       <p>Log masuk dahulu, kemudian langgan menggunakan emel Google yang sama.</p>
       <div class="baris-butang"><a class="btn primary" href="#/masuk">Log masuk</a></div></div>`;
   }
   return `<div class="panel-card kad-langganan">${tanda}
-    <h3 style="margin-top:6px">Buka semua kuliah dengan ahli penuh</h3>
+    <h3 style="margin-top:6px">Buka semua kuliah dengan langganan Advance</h3>
     <p>Semasa membayar, isikan emel <b>${h(saya.pengguna.emel)}</b> dalam medan emel akaun.</p>
     <div class="baris-butang">${konfig.buyUrl ? `<a class="btn primary" href="${h(konfig.buyUrl)}" target="_blank" rel="noopener">Langgan Advance</a>` : ''}<button class="btn outline" data-act="semak">Saya dah bayar, semak semula</button></div></div>`;
 }
@@ -207,9 +207,9 @@ function kadCourse(c, i) {
     ? `<span class="kemajuan-kecil"><span class="bar-mini"><i style="width:${pct(c.selesai, c.bil_subject)}%"></i></span>${c.selesai}/${c.bil_subject}</span>`
     : '<span class="kemajuan-kecil">Mula tonton</span>';
   return `<a class="course" href="#/course/${encodeURIComponent(c.slug)}" data-akses="${h(c.akses)}" style="--i:${i}">
-    <div class="thumb"><div class="${ART(i)}"></div><span class="acc badge ${bebas ? 'free' : 'vip'}">${bebas ? 'PERCUMA' : 'AHLI PENUH'}</span><span class="play"></span><span class="dur tnum">${c.bil_subject} kuliah</span></div>
+    <div class="thumb"><div class="${ART(i)}"></div><span class="acc badge ${bebas ? 'free' : 'vip'}">${bebas ? 'PERCUMA' : 'ADVANCE'}</span><span class="play"></span><span class="dur tnum">${c.bil_subject} kuliah</span></div>
     <div class="course-body">
-      <p class="course-level">${bebas ? 'Siri percuma' : 'Siri ahli penuh'}${c.golongan && c.golongan !== 'awam' ? ` · ${c.golongan === 'ahli' ? 'Ahli organisasi' : 'Pelajar'}${c.terkunci_golongan ? ' (perlu kod)' : ''}` : ''}</p>
+      <p class="course-level">${bebas ? 'Siri percuma' : 'Siri Advance'}${c.golongan && c.golongan !== 'awam' ? ` · ${c.golongan === 'ahli' ? 'Ahli organisasi' : 'Pelajar'}${c.terkunci_golongan ? ' (perlu kod)' : ''}` : ''}</p>
       <h3>${h(c.tajuk)}</h3>
       ${c.huraian ? `<p class="course-desc">${h(c.huraian)}</p>` : ''}
       <div class="course-meta">${c.guru ? `<span>Bersama ${h(c.guru)}</span>` : ''}<span>${c.bil_subject} kuliah video</span>${c.selesai != null ? `<span>${c.selesai} khatam</span>` : ''}</div>
@@ -317,8 +317,8 @@ async function lamanAwam() {
   const artikel = (await dapat('/api/artikel').catch(() => [])).slice(0, 3);
   const hb = harga('bulan'), ht = harga('tahun');
   const butangLanggan = saya
-    ? (konfig.buyUrl ? `<a class="btn primary block" href="${h(konfig.buyUrl)}" target="_blank" rel="noopener">Jadi ahli penuh</a>` : '')
-    : '<a class="btn primary block" href="#/masuk">Jadi ahli penuh</a>';
+    ? (konfig.buyUrl ? `<a class="btn primary block" href="${h(konfig.buyUrl)}" target="_blank" rel="noopener">Langgan Advance</a>` : '')
+    : '<a class="btn primary block" href="#/masuk">Langgan Advance</a>';
   const menu = `<a href="#/" class="active">Utama</a><a href="#/" data-act="gulung" data-sasaran="courses">Siri kuliah</a>${artikel.length ? '<a href="/artikel">Artikel</a>' : ''}<a href="#/" data-act="gulung" data-sasaran="pricing">Yuran</a>`;
 
   akar.innerHTML = `<div class="halaman">
@@ -363,12 +363,12 @@ async function lamanAwam() {
         <p class="kicker">Siri kuliah</p>
         <h2 style="margin-top:10px">Pilih siri, mula menuntut</h2>
         ${ORNAMEN}
-        <p style="margin-top:14px">Siri percuma terbuka kepada semua. Siri ahli penuh untuk pelanggan ahli penuh.</p>
+        <p style="margin-top:14px">Siri percuma terbuka kepada semua. Siri Advance untuk pelanggan Advance.</p>
       </div></div>
       <div class="tabs" role="tablist" aria-label="Jenis siri">
         <button class="tab" role="tab" aria-selected="true" data-act="tapis" data-tapis="semua">Semua</button>
         <button class="tab" role="tab" aria-selected="false" data-act="tapis" data-tapis="percuma">Percuma</button>
-        <button class="tab" role="tab" aria-selected="false" data-act="tapis" data-tapis="ahli">Ahli penuh</button>
+        <button class="tab" role="tab" aria-selected="false" data-act="tapis" data-tapis="ahli">Advance</button>
       </div>
       ${senarai.length ? `<div class="course-grid" id="gridCourse" data-skrol>${senarai.map(kadCourse).join('')}</div>`
         : '<div class="panel-card ralat-halaman"><p>Kandungan akan datang. Sila kembali tidak lama lagi.</p></div>'}
@@ -389,7 +389,7 @@ async function lamanAwam() {
       <div class="steps">
         <div class="step" style="--i:0"><span class="step-no">LANGKAH 01</span><h3>Log masuk dengan Google</h3><p>Satu klik dengan akaun Google. Tiada kata laluan untuk diingat, dan semua kuliah percuma terus terbuka.</p></div>
         <div class="step" style="--i:1"><span class="step-no">LANGKAH 02</span><h3>Tonton dan ikut kemajuan</h3><p>Kuliah yang ditonton hingga habis ditanda khatam secara automatik, jadi anda tahu di mana untuk sambung.</p></div>
-        <div class="step" style="--i:2"><span class="step-no">LANGKAH 03</span><h3>Naik taraf ahli penuh</h3><p>Yuran membuka semua siri ahli penuh. Tiada potongan automatik: sambung bila mahu teruskan.</p></div>
+        <div class="step" style="--i:2"><span class="step-no">LANGKAH 03</span><h3>Naik taraf ke Advance</h3><p>Yuran membuka semua siri Advance. Tiada potongan automatik: sambung bila mahu teruskan.</p></div>
       </div>
     </div>
   </section>
@@ -397,7 +397,7 @@ async function lamanAwam() {
   <section class="section tint" id="pricing">
     <div class="wrap" style="text-align:center">
       <p class="kicker">Yuran</p>
-      <h2 style="margin:10px 0 16px">Percuma untuk bermula. Ahli penuh bila mahu teruskan.</h2>
+      <h2 style="margin:10px 0 16px">Percuma untuk bermula. Advance bila mahu teruskan.</h2>
       <p style="color:var(--ink-2);max-width:56ch;margin:0 auto 26px">Tiada kontrak, tiada yuran pendaftaran, tiada potongan automatik.</p>
       ${ht ? `<div class="plan-toggle" role="group" aria-label="Kitaran bayaran">
         <button type="button" aria-pressed="true" data-act="kitaran" data-kitaran="bulan">Bulanan</button>
@@ -410,19 +410,19 @@ async function lamanAwam() {
           <p style="font-size:14px;color:var(--ink-2)">Untuk yang baru mahu mengikuti kuliah.</p>
           <ul>
             <li><span class="check">&check;</span> Semua siri percuma</li>
-            <li><span class="check">&check;</span> Kuliah pengenalan dalam siri ahli penuh</li>
+            <li><span class="check">&check;</span> Kuliah pengenalan dalam siri Advance</li>
             <li><span class="check">&check;</span> Kemajuan disimpan dalam akaun</li>
-            <li class="off"><span class="dash">–</span> Siri ahli penuh</li>
+            <li class="off"><span class="dash">–</span> Siri Advance</li>
           </ul>
           <a class="btn outline block" href="#/masuk">Daftar percuma</a>
         </div>
         <div class="plan highlight" style="text-align:left">
-          <span class="badge vip">AHLI PENUH</span>
+          <span class="badge vip">ADVANCE</span>
           <div class="plan-price"><b id="hargaPlan">${hb || '—'}</b><span id="kitaranPlan">/bulan</span></div>
           <p style="font-size:14px;color:var(--ink-2)" id="notaPlan">Bayar bulanan. Tiada potongan automatik.</p>
           <ul>
             <li><span class="check">&check;</span> Semua ${bilVideo} kuliah video</li>
-            <li><span class="check">&check;</span> Semua siri percuma dan ahli penuh</li>
+            <li><span class="check">&check;</span> Semua siri percuma dan Advance</li>
             <li><span class="check">&check;</span> Kuliah baharu bila diterbitkan</li>
             <li><span class="check">&check;</span> Sambung bila mahu, tiada kontrak</li>
           </ul>
@@ -478,7 +478,7 @@ function halamanMasuk() {
       <div class="auth-copy muncul">
         <div class="rule"></div>
         <h1>Menuntut ilmu,<br>bila-bila masa.</h1>
-        <p>Akaun percuma terus membuka semua kuliah percuma. Naik taraf ahli penuh bila mahu teruskan.</p>
+        <p>Akaun percuma terus membuka semua kuliah percuma. Naik taraf ke Advance bila mahu teruskan.</p>
         <ul class="auth-points">
           <li><span class="check">&check;</span> Kuliah percuma sedia untuk ditonton</li>
           <li><span class="check">&check;</span> Log masuk sekali dengan akaun Google</li>
@@ -562,7 +562,7 @@ async function dashboard() {
   if (gol.tamatTempoh) tindakan.push(`<div class="row-item crit"><div class="rt"><b>Akses ${h(LABEL_GOL[gol.asal] || '')} sudah tamat</b><small><em class="crit">Masukkan kod baharu</em> · kini sebagai orang awam</small></div><a class="btn sm outline" href="#/akaun">Kod</a></div>`);
   else if (gol.tamat && bezaHari(gol.tamat, hariIniMy()) <= 7) tindakan.push(`<div class="row-item warn"><div class="rt"><b>Akses ${h(LABEL_GOL[gol.golongan])} tamat dalam ${Math.max(0, bezaHari(gol.tamat, hariIniMy()))} hari</b><small><em class="warn">Perhatian</em> · tarikh tamat ${h(tarikhMy(gol.tamat + 'T00:00:00+08:00'))}</small></div><a class="btn sm outline" href="#/akaun">Kod</a></div>`);
   if (l.notis) { const [teks, kelas, label] = NOTIS[l.notis](Math.max(0, l.bakiHari)); tindakan.push(`<div class="row-item ${kelas}"><div class="rt"><b>${teks}</b><small><em class="${kelas}">${label}</em>${l.tarikh_tamat ? ` · tarikh tamat ${h(l.tarikh_tamat)}` : ''}</small></div>${konfig.buyUrl ? `<a class="btn sm outline" href="${h(konfig.buyUrl)}" target="_blank" rel="noopener">Sambung</a>` : ''}</div>`); }
-  if (!l.akses && kunci) tindakan.push(`<div class="row-item info"><div class="rt"><b>${kunci} kuliah ahli penuh berkunci</b><small><em class="info">Ahli penuh</em> · buka semua siri</small></div><button class="btn sm outline" data-pergi="#/akaun">Langgan</button></div>`);
+  if (!l.akses && kunci) tindakan.push(`<div class="row-item info"><div class="rt"><b>${kunci} kuliah Advance berkunci</b><small><em class="info">Advance</em> · buka semua siri</small></div><button class="btn sm outline" data-pergi="#/akaun">Langgan</button></div>`);
   if (!tindakan.length) tindakan.push('<div class="row-item done"><div class="rt"><b>Tiada tindakan diperlukan</b><small><em class="done">Semua baik</em></small></div></div>');
 
   const ring = 326.7;
@@ -580,7 +580,7 @@ async function dashboard() {
       <div class="seg-bars">
         <div><i style="background:var(--ok)"></i><b class="tnum">${dua(khatam)}</b><small>Kuliah khatam</small></div>
         <div><i style="background:var(--accent)"></i><b class="tnum">${dua(boleh.length)}</b><small>Boleh ditonton</small></div>
-        <div><i style="background:var(--vip)"></i><b class="tnum">${dua(kunci)}</b><small>Ahli penuh</small></div>
+        <div><i style="background:var(--vip)"></i><b class="tnum">${dua(kunci)}</b><small>Advance</small></div>
       </div>
       <div class="mini-stats">
         <div><b class="tnum">${siri.length}</b><small>Siri kuliah</small></div>
@@ -622,7 +622,7 @@ async function kuliahSaya() {
 
 function barisKuliah(s, i, aktifId, siriPercuma) {
   const keadaan = s.selesai ? 'done' : s.id === aktifId ? 'now' : !s.boleh_tonton ? 'lock' : '';
-  const label = s.selesai ? 'Khatam' : !s.boleh_tonton ? (s.sebab === 'perlu-golongan' ? 'Perlu kod' : 'Ahli penuh') : !siriPercuma && s.pratonton ? 'Percuma' : '';
+  const label = s.selesai ? 'Khatam' : !s.boleh_tonton ? (s.sebab === 'perlu-golongan' ? 'Perlu kod' : 'Advance') : !siriPercuma && s.pratonton ? 'Percuma' : '';
   return `<li><button class="lesson-row ${s.id === aktifId ? 'active' : ''} ${!s.boleh_tonton ? 'locked' : ''} ${s.selesai ? 'selesai' : ''}" type="button" data-pergi="#/subject/${s.id}">
     <span class="lr-state ${keadaan}">${s.selesai ? '&check;' : !s.boleh_tonton ? '&#128274;' : ''}</span>
     <span class="lr-body"><span class="lr-title">${dua(i + 1)} · ${h(s.tajuk)}</span>${label ? `<span class="lr-meta"><span>${label}</span></span>` : ''}</span>
@@ -662,7 +662,7 @@ async function halamanCourse(slug) {
         ${d.log_masuk ? `<div class="head-stat"><b class="tnum">${pct(s, n)}%</b><span>${s} daripada ${n} selesai</span></div>` : ''}
       </div>
       <div class="pilltabs">
-        <span class="badge ${percuma(d.course) ? 'free' : 'vip'}" style="height:36px;padding:0 14px;border-radius:999px">${percuma(d.course) ? 'SIRI PERCUMA' : 'SIRI AHLI PENUH'}</span>
+        <span class="badge ${percuma(d.course) ? 'free' : 'vip'}" style="height:36px;padding:0 14px;border-radius:999px">${percuma(d.course) ? 'SIRI PERCUMA' : 'SIRI ADVANCE'}</span>
         ${pertama ? `<button data-pergi="#/subject/${pertama.id}">${s ? 'Sambung tonton' : 'Mula tonton'}</button>` : ''}
       </div>
     </div>
@@ -732,9 +732,9 @@ async function halamanSubject(id) {
     ? `<div class="player"><div class="stage"><div class="${ART(d.kedudukan - 1)} stage-art"></div><div class="stage-veil"></div><div id="pemain"></div></div></div>`
     : `<div class="player"><div class="stage"><div class="${ART(d.kedudukan - 1)} stage-art"></div><div class="stage-veil"></div>
         <div class="stage-kunci"><span>${KUNCI}</span></div>
-        <div class="stage-caption"><small>${s.sebab === 'perlu-golongan' ? `Untuk ${LABEL_GOL[d.course.golongan] || 'golongan tertentu'}` : s.sebab === 'perlu-log-masuk' ? 'Untuk ahli penuh' : 'Ahli penuh'}</small><b>${h(s.tajuk)}</b></div></div></div>
+        <div class="stage-caption"><small>${s.sebab === 'perlu-golongan' ? `Untuk ${LABEL_GOL[d.course.golongan] || 'golongan tertentu'}` : s.sebab === 'perlu-log-masuk' ? 'Untuk pelanggan Advance' : 'Pelanggan Advance'}</small><b>${h(s.tajuk)}</b></div></div></div>
        <div style="margin-top:16px">${s.sebab === 'perlu-golongan' ? kadGolongan(d.course.golongan) : s.sebab === 'perlu-log-masuk'
-        ? '<div class="panel-card kad-langganan"><span class="badge vip">AHLI PENUH</span><h3 style="margin-top:8px">Video ini untuk pelanggan Advance</h3><p>Log masuk dahulu untuk melanggan atau menonton.</p><div class="baris-butang"><a class="btn primary" href="#/masuk">Log masuk</a></div></div>'
+        ? '<div class="panel-card kad-langganan"><span class="badge vip">ADVANCE</span><h3 style="margin-top:8px">Video ini untuk pelanggan Advance</h3><p>Log masuk dahulu untuk melanggan atau menonton.</p><div class="baris-butang"><a class="btn primary" href="#/masuk">Log masuk</a></div></div>'
         : kadLanggan()}</div>`;
   akar.innerHTML = halamanApp('kuliah', `<div class="halaman">
     <div class="page-head">
@@ -744,7 +744,7 @@ async function halamanSubject(id) {
         ${d.log_masuk ? `<div class="head-stat"><b class="tnum">${pct(khatam, n)}%</b><span>siri selesai</span></div>` : ''}
       </div>
       <div class="pilltabs">
-        <span class="badge ${bebas ? 'free' : 'vip'}" style="height:36px;padding:0 14px;border-radius:999px">${bebas ? 'KULIAH PERCUMA' : 'AHLI PENUH'}</span>
+        <span class="badge ${bebas ? 'free' : 'vip'}" style="height:36px;padding:0 14px;border-radius:999px">${bebas ? 'KULIAH PERCUMA' : 'ADVANCE'}</span>
         ${s.boleh_tonton ? `<span id="kotak-selesai">${butangSelesai(s)}</span>` : ''}
       </div>
     </div>
@@ -873,7 +873,7 @@ function halamanAkaun() {
         <div class="panel-title"><h3>Maklumat akaun</h3></div>
         <div class="mycourse" style="border:0"><span class="avatar lg" style="background:var(--accent)">${inisial(saya.pengguna)}</span><div class="mc"><b>${h(saya.pengguna.nama || '')}</b><small>${h(saya.pengguna.emel)}</small></div></div>
         <div class="row-list" style="margin-top:14px">${barisGolongan()}
-          <div class="row-item ${l.akses ? 'done' : 'info'}"><div class="rt"><b>Ahli penuh: ${STATUS_LANGGANAN[l.status]}${l.tarikh_tamat ? ` hingga ${h(l.tarikh_tamat)}` : ''}</b><small>Keahlian ${l.akses ? 'ahli penuh' : 'percuma'}</small></div></div>
+          <div class="row-item ${l.akses ? 'done' : 'info'}"><div class="rt"><b>Pelanggan Advance: ${STATUS_LANGGANAN[l.status]}${l.tarikh_tamat ? ` hingga ${h(l.tarikh_tamat)}` : ''}</b><small>Keahlian ${l.akses ? 'Advance' : 'percuma'}</small></div></div>
         </div>
         ${notis}
         <div id="sijilSaya"></div>

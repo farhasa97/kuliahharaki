@@ -95,7 +95,7 @@ try {
     const toggle = await p.locator('#nav .menu-toggle').boundingBox();
     assert.ok(toggle && toggle.x + toggle.width <= 390, 'hamburger terkeluar skrin');
     await p.locator('.bar-pelawat').getByRole('link', { name: 'Daftar percuma' }).waitFor();
-    assert.equal(await p.locator('.course', { hasText: 'Fiqh Advance' }).locator('.badge').textContent(), 'AHLI PENUH');
+    assert.equal(await p.locator('.course', { hasText: 'Fiqh Advance' }).locator('.badge').textContent(), 'ADVANCE');
     // video percuma pertama terus dimainkan dalam kad hero (bukan pautan ke halaman lain)
     assert.match(await p.locator('.preview-stage iframe').getAttribute('src'), new RegExp(`youtube-nocookie\\.com/embed/${V.a1}`));
     // karusel: empat kuliah boleh ditonton tanpa langganan. Titik, anak panah, dan butiran di bawah video.
@@ -193,7 +193,7 @@ try {
     const p = pelawat.page;
     await p.goto(`${B}/#/course/${fiqh.slug}`);
     await p.locator('.lesson-row', { hasText: 'Intro Fiqh' }).getByText('Percuma').waitFor();
-    await p.locator('.lesson-row', { hasText: 'Bab 1: Taharah' }).getByText('Ahli penuh').waitFor();
+    await p.locator('.lesson-row', { hasText: 'Bab 1: Taharah' }).getByText('Advance', { exact: true }).waitFor();
     await p.getByRole('button', { name: /Bab 1: Taharah/ }).click();
     await p.getByText('Video ini untuk pelanggan Advance').waitFor();
     assert.equal(await p.locator('[data-video]').count(), 0);
@@ -289,7 +289,7 @@ try {
     await p.locator(`[data-video="${V.b1}"]`).waitFor();
     await p.goto(B + '/#/');
     await p.locator('.greet', { hasText: 'Ahmad' }).waitFor();
-    assert.equal(await p.locator('.role-chip b').textContent(), 'Ahli Penuh');
+    assert.equal(await p.locator('.role-chip b').textContent(), 'Advance');
     assert.equal(await p.getByRole('link', { name: 'Langgan Advance' }).count(), 0);
     await skrin(p, '14-ahli-dashboard');
   });

@@ -13,7 +13,7 @@ export const MEDAN = {
   nama: { maks: 60, lalai: 'Kuliah Haraki' },
   tagline: { maks: 60, lalai: 'Ilmu · Tarbiyah · Amal' },
   hero_tajuk: { maks: 120, lalai: 'Menuntut ilmu tanpa terikat masa dan tempat.' },
-  hero_teks: { maks: 300, lalai: 'Setiap kuliah dalam bentuk video yang boleh ditonton bila-bila masa. Mula dengan kuliah percuma, naik taraf ahli penuh bila mahu ikuti siri yang lebih mendalam.' },
+  hero_teks: { maks: 300, lalai: 'Setiap kuliah dalam bentuk video yang boleh ditonton bila-bila masa. Mula dengan kuliah percuma, naik taraf ke Advance bila mahu ikuti siri yang lebih mendalam.' },
   footer_teks: { maks: 300, lalai: 'Platform kuliah dalam talian untuk peserta usrah, halaqah dan sesiapa yang mahu menuntut ilmu secara berterusan.' },
   emel_hubungan: { maks: 120, lalai: '' },
   papar_peserta: { maks: 5, lalai: 'ya' }, // 'ya' | 'tidak': papar bilangan peserta berdaftar di laman utama
